@@ -1,0 +1,49 @@
+# Nux Standard Memory Library
+# Implements a simple Bump Allocator with Freelists (or just bump for now) on the Heap.
+# The Heap is the Virtual Memory buffer (shared).
+# By convention, 0..1024 is Reserved (Null/Registers).
+# 1024..End is Heap.
+
+var __heap_start = 1024;
+var __heap_ptr = 1024;
+var __heap_max = 65536; # 64KB VM size
+
+# Simple Bump Allocate
+func Mem_malloc(size) {
+    var ptr = __heap_ptr;
+    if ptr + size > __heap_max {
+        Util_panic("Out of Memory");
+        return 0;
+    }
+    __heap_ptr = __heap_ptr + size;
+    return ptr;
+}
+
+# Free is No-Op in Bump Allocator (Leak memory, fine for scripts)
+# For "Advanced", we need a header.
+func Mem_free(ptr) {
+    # TODO: Implement Free List
+}
+
+# Memory Copy
+func Mem_memcpy(dest, src, size) {
+    var i = 0;
+    while i < size {
+        var r_src = src + i;
+        var r_dest = dest + i;
+        
+        var val = peek(r_src);
+        poke(r_dest, val);
+        
+        i = i + 1;
+    }
+}
+
+func Mem_memset(dest, val, size) {
+    var i = 0;
+    while i < size {
+        poke(dest + i, val);
+        i = i + 1;
+    }
+}
+

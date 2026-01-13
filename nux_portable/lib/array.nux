@@ -1,0 +1,61 @@
+# Nux Standard Array Library
+import "memory.nux";
+
+# Struct layout:
+# [0] = Capacity
+# [8] = Length
+# [16..] = Data
+
+func Array_new(capacity) {
+    # Header (16) + capacity * 8 (i64)
+    var size = 16 + (capacity * 8);
+    var ptr = Mem_malloc(size);
+    
+    poke(ptr, capacity);      # Cap
+    poke(ptr + 8, 0);         # Len
+    
+    return ptr;
+}
+
+func Array_push(arr_ptr, val) {
+    var cap = peek(arr_ptr);
+    var len = peek(arr_ptr + 8);
+    
+    if len >= cap {
+        # Simple grow strategy (Wait, we can't realloc easily without move)
+        # For now, Panic.
+        Util_panic("Array Overflow (Resize not impl)");
+        return;
+    }
+    
+    # Data starts at +16
+    var offset = 16 + (len * 8);
+    poke(arr_ptr + offset, val);
+    
+    # Update len
+    poke(arr_ptr + 8, len + 1);
+}
+
+func Array_get(arr_ptr, index) {
+    var len = peek(arr_ptr + 8);
+    if index >= len {
+        # Out of bounds
+        # Return 0 or Panic
+        return 0; # Unsafe
+    }
+    var offset = 16 + (index * 8);
+    return peek(arr_ptr + offset);
+}
+
+func Array_set(arr_ptr, index, val) {
+     var len = peek(arr_ptr + 8);
+    if index >= len {
+        return;
+    }
+    var offset = 16 + (index * 8);
+    poke(arr_ptr + offset, val);
+}
+
+func Array_len(arr_ptr) {
+    return peek(arr_ptr + 8);
+}

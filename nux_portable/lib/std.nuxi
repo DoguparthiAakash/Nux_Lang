@@ -1,0 +1,15 @@
+// Nux Standard Library (std.nux)
+// "Simple and Easy to use"
+
+fn clear_screen() {
+    // Black Background
+    draw_rect(0xFF000000, 600, 800, 0, 0); 
+}
+
+fn draw_win() {
+    // Draws a test window
+    // Title (Blue)
+    draw_rect(0xFF0000FF, 20, 200, 50, 50);
+    // Body (Gray)
+    draw_rect(0xFF888888, 100, 200, 70, 50);
+}

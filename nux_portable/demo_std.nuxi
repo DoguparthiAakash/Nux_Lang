@@ -1,0 +1,8 @@
+// Demo of Nux Libraries
+#include "std.nuxi"
+
+fn main() {
+    call clear_screen;
+    call draw_win;
+    exit;
+}

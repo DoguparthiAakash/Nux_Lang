@@ -1,0 +1,22 @@
+func fib(n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fib(n-1) + fib(n-2);
+}
+
+func main() {
+    var n = 10;
+    var res = fib(n);
+    print("Fib(10) = ");
+    println(res);
+    
+    // Check if Locals work
+    var a = 100;
+    var b = 200;
+    var c = a + b;
+    print("100+200=");
+    println(c);
+}
+
+main();
