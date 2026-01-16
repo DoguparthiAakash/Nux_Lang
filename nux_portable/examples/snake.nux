@@ -1,0 +1,129 @@
+# Snake Game
+import "graphics";
+import "collections";
+
+func main() {
+    print("Starting Snake (Text Mode)...");
+    var screen = img_alloc(640, 480);
+    
+    # Grid size
+    var GX = 32;
+    var GY = 24;
+    var SZ = 20; # 20px Cells
+    
+    print("Grid Configured.");
+    
+    # State
+    var hx = 10;
+    var hy = 10;
+    var vx = 1;
+    var vy = 0;
+    
+    var ax = 5;
+    var ay = 5;
+    
+    # Tail Arrays (Capacity 100)
+    var tx = Array_new(100);
+    var ty = Array_new(100);
+    var tlen = 0;
+    
+    var score = 0;
+    var game_over = false;
+    
+    while (game_over == false) {
+        # Input
+        if (is_key_down(0)) { # Up
+            if (vy != 1) { vx = 0; vy = -1; }
+        }
+        if (is_key_down(1)) { # Down
+            if (vy != -1) { vx = 0; vy = 1; }
+        }
+        if (is_key_down(2)) { # Left
+            if (vx != 1) { vx = -1; vy = 0; }
+        }
+        if (is_key_down(3)) { # Right
+            if (vx != -1) { vx = 1; vy = 0; }
+        }
+        if (is_key_down(5)) { # Esc
+            game_over = true;
+        }
+        
+        # Update Tail
+        # Shift back? No, ring buffer or simple shift?
+        # Simple shift for now.
+        var i = tlen;
+        while (i > 0) {
+            # ty[i] = ty[i-1]
+            Array_set(tx, i, Array_get(tx, i - 1));
+            Array_set(ty, i, Array_get(ty, i - 1));
+            i = i - 1;
+        }
+        Array_set(tx, 0, hx);
+        Array_set(ty, 0, hy);
+        
+        # Move Head
+        hx = hx + vx;
+        hy = hy + vy;
+        
+        # Collision Wall
+        if (hx < 0) { hx = GX - 1; }
+        if (hx >= GX) { hx = 0; }
+        if (hy < 0) { hy = GY - 1; }
+        if (hy >= GY) { hy = 0; }
+        
+        # Collision Tail
+        i = 0;
+        while (i < tlen) {
+            if (hx == Array_get(tx, i)) {
+                if (hy == Array_get(ty, i)) {
+                   # Die
+                   score = 0;
+                   tlen = 0;
+                }
+            }
+            i = i + 1;
+        }
+        
+        # Eat Apple
+        if (hx == ax) {
+            if (hy == ay) {
+                score = score + 1;
+                tlen = tlen + 1;
+                # Respawn (Simple pseudo random by moving apple)
+                ax = (ax + 7) - ((ax + 7) / GX) * GX; 
+                ay = (ay + 3) - ((ay + 3) / GY) * GY;
+                # Or use proper random if I had it.
+                if (ax == hx) { ax = ax + 1; }
+            }
+        }
+        
+        # Draw
+        gfx_clear(screen, 0);
+        
+        # Draw Apple (Red)
+        gfx_rect_fill(screen, ax * SZ, ay * SZ, SZ - 2, SZ - 2, 16711680);
+        
+        # Draw Head (Green)
+        gfx_rect_fill(screen, hx * SZ, hy * SZ, SZ - 2, SZ - 2, 65280);
+        
+        # Draw Tail (Dark Green)
+        i = 0;
+        while (i < tlen) {
+            var cx = Array_get(tx, i);
+            var cy = Array_get(ty, i);
+            gfx_rect_fill(screen, cx * SZ, cy * SZ, SZ - 2, SZ - 2, 34816);
+            i = i + 1;
+        }
+        
+        img_draw(screen, 0, 0);
+        
+        # print("Frame Rendered"); # Uncomment to see loop speed
+        
+        # Delay (Spin loop)
+        # Delay
+        sleep(50);
+    }
+    
+    print("Game Over. Final Score: ");
+    print(score);
+}

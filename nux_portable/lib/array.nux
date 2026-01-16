@@ -21,7 +21,7 @@ func Array_push(arr_ptr, val) {
     var cap = peek(arr_ptr);
     var len = peek(arr_ptr + 8);
     
-    if len >= cap {
+    if (len >= cap) {
         # Simple grow strategy (Wait, we can't realloc easily without move)
         # For now, Panic.
         Util_panic("Array Overflow (Resize not impl)");
@@ -38,7 +38,7 @@ func Array_push(arr_ptr, val) {
 
 func Array_get(arr_ptr, index) {
     var len = peek(arr_ptr + 8);
-    if index >= len {
+    if (index >= len) {
         # Out of bounds
         # Return 0 or Panic
         return 0; # Unsafe
@@ -49,7 +49,7 @@ func Array_get(arr_ptr, index) {
 
 func Array_set(arr_ptr, index, val) {
      var len = peek(arr_ptr + 8);
-    if index >= len {
+    if (index >= len) {
         return;
     }
     var offset = 16 + (index * 8);

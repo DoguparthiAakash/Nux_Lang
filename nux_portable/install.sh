@@ -1,33 +1,25 @@
 #!/bin/bash
 set -e
 
-# Define Source and Target
-SOURCE="./target/release/nux"
-TARGET_DIR="$HOME/.local/bin"
-TARGET_BIN="$TARGET_DIR/nux"
-
-# Ensure target directory exists
-if [ ! -d "$TARGET_DIR" ]; then
-    echo "Creating directory: $TARGET_DIR"
-    mkdir -p "$TARGET_DIR"
+if [ "$EUID" -ne 0 ]; then 
+  echo "Please run as root"
+  exit 1
 fi
 
-# Build release if not present
-if [ ! -f "$SOURCE" ]; then
-    echo "Building Nux..."
-    cargo build --release
-fi
+echo "Installing Nux Engine..."
 
-# Copy binary
-echo "Installing Nux to $TARGET_BIN..."
-cp "$SOURCE" "$TARGET_BIN"
-chmod +x "$TARGET_BIN"
+# 1. Install Binary
+echo "Installing binary to /usr/local/bin/nux..."
+cp bin/nux /usr/local/bin/nux
+chmod +x /usr/local/bin/nux
 
-# Check PATH
-if [[ ":$PATH:" == *":$TARGET_DIR:"* ]]; then
-    echo "Success! You can now use 'nux' from anywhere."
-else
-    echo "Success! But you need to add $TARGET_DIR to your PATH."
-    echo "Run this command (or add to ~/.bashrc):"
-    echo "export PATH=\"\$PATH:$TARGET_DIR\""
-fi
+# 2. Install Libraries
+LIB_DIR="/usr/local/lib/nux"
+echo "Installing libraries to $LIB_DIR..."
+mkdir -p "$LIB_DIR"
+cp lib/*.nux "$LIB_DIR/"
+
+# 3. Message
+echo "Installation Complete!"
+echo "You can now run 'nux' from anywhere."
+echo "Libraries in $LIB_DIR will be automatically found."

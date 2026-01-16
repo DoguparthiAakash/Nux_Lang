@@ -1,27 +1,3 @@
-# Nux Standard Utility Library
-
-func Util_assert(cond, msg) {
-    if (cond == 0) {
-        print("ASSERTION FAILED: ");
-        println(msg);
-        # Force exit? 
-        # We lack exit opcode in High Level currently.
-        # We can force crash or inf loop.
-        # Let's print widely visible error.
-        print("!!! STOPPING EXECUTION !!!\n");
-        # Generating error by division by zero?
-        var crash = 1 / 0; 
-    }
-}
-
-func Util_panic(msg) {
-    print("PANIC: ");
-    println(msg);
-    var crash = 1 / 0;
-}
-
-# Sleep wrapper
-func Util_sleep_ms(ms) {
-    # Sleep not supported in High Level yet.
-    # asm { "SLEEP" } requires arg on stack.
-}
+# Nux Utility Aggregate
+import "util.math";
+# import "util.random"; # Future

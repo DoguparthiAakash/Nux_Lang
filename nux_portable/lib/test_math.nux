@@ -1,0 +1,22 @@
+/// Test power operator
+x = 2 ** 3;
+print("2 ** 3 = ");
+println(x);
+
+y = 5 ** 2;
+print("5 ** 2 = ");
+println(y);
+
+/// Test floor division
+a = 7 // 2;
+print("7 // 2 = ");
+println(a);
+
+b = 10 // 3;
+print("10 // 3 = ");
+println(b);
+
+/// Test combined
+result = 2 ** 3 + 10 // 3;
+print("2**3 + 10//3 = ");
+println(result);

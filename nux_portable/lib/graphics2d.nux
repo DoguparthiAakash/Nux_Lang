@@ -1,0 +1,96 @@
+# 2D Graphics Library for Nux
+# Requires: Vision, Math
+
+func Color_rgb(r, g, b) {
+    return (255 * 16777216) + (r * 65536) + (g * 256) + b;
+}
+
+func Color_rgba(r, g, b, a) {
+    return (a * 16777216) + (r * 65536) + (g * 256) + b;
+}
+
+func gfx_clear(handle, color) {
+    img_fill(handle, color);
+}
+
+func gfx_pixel(handle, x, y, color) {
+    img_set(handle, x, y, color);
+}
+
+func gfx_line(handle, x0, y0, x1, y1, color) {
+    var dx = 0;
+    if (x1 > x0) { dx = x1 - x0; } else { dx = x0 - x1; }
+    
+    var dy = 0;
+    if (y1 > y0) { dy = y1 - y0; } else { dy = y0 - y1; }
+    
+    var sx = 0;
+    if (x0 < x1) { sx = 1; } else { sx = -1; }
+    
+    var sy = 0;
+    if (y0 < y1) { sy = 1; } else { sy = -1; }
+    
+    var err = dx - dy;
+    
+    var x = x0;
+    var y = y0;
+    
+    while (true) {
+        img_set(handle, x, y, color);
+        
+        if (x == x1) {
+            if (y == y1) { break; }
+        }
+        
+        var e2 = 2 * err;
+        if (e2 > -dy) {
+            err = err - dy;
+            x = x + sx;
+        }
+        if (e2 < dx) {
+            err = err + dx;
+            y = y + sy;
+        }
+    }
+}
+
+func gfx_rect(handle, x, y, w, h, color) {
+    gfx_line(handle, x, y, x + w, y, color);
+    gfx_line(handle, x + w, y, x + w, y + h, color);
+    gfx_line(handle, x + w, y + h, x, y + h, color);
+    gfx_line(handle, x, y + h, x, y, color);
+}
+
+func gfx_rect_fill(handle, x, y, w, h, color) {
+    var i = 0;
+    var j = 0;
+    # Naive fill
+    for (i = 0; i < h; i = i + 1) {
+        for (j = 0; j < w; j = j + 1) {
+            img_set(handle, x + j, y + i, color);
+        }
+    }
+}
+
+func gfx_circle(handle, xm, ym, r, color) {
+    var x = -r;
+    var y = 0;
+    var err = 2 - 2 * r;
+    
+    while (x < 0) {
+        img_set(handle, xm - x, ym + y, color);
+        img_set(handle, xm - y, ym - x, color);
+        img_set(handle, xm + x, ym - y, color);
+        img_set(handle, xm + y, ym + x, color);
+        
+        r = err;
+        if (r <= y) {
+            y = y + 1;
+            err = err + y * 2 + 1;
+        }
+        if (r > x || err > y) {
+            x = x + 1;
+            err = err + x * 2 + 1;
+        }
+    }
+}
