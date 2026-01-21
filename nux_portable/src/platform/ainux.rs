@@ -42,4 +42,8 @@ impl Platform for AinuxPlatform {
     fn platform_type(&self) -> u8 {
         4
     }
+
+    fn is_key_down(&self, _key: usize) -> bool {
+        false 
+    }
 }

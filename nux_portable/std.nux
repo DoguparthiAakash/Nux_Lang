@@ -1,0 +1,43 @@
+import "io";
+import "math";
+import "util";
+import "graphics";
+import "string";
+import "sys";
+import "file";
+import "collections";
+import "time";
+import "testing";
+import "log";
+
+func main() {
+    IO_clear();
+    println "--- Nux Standard Library Demo ---";
+    
+    // Test Math
+    var a = 10;
+    var b = 25;
+    
+    print "Max(10, 25) = ";
+    print_val Math_max(a, b);
+    println "";
+    
+    print "Sqrt(144) = ";
+    print_val Math_sqrt(144);
+    println "";
+    
+    print "Pow(2, 10) = ";
+    print_val Math_pow(2, 10);
+    println "";
+    
+    // Test Assertion (Should pass)
+    Util_assert(1 == 1, "Math is broken!");
+    println "Assertion passed.";
+    
+    // Test IO (Input usually blocks, skip for auto-test, but verify compilation)
+    // println "Type a number:";
+    // var n = IO_input_int();
+    // print "You typed: ";
+    // print_val n;
+    // println "";
+}

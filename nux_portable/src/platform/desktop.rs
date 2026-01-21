@@ -110,4 +110,5 @@ impl Platform for DesktopPlatform {
     fn capture_cam(&mut self, _id: usize) -> Option<(usize, usize, Vec<u32>)> { None }
     fn sys_info(&self) -> String { "Desktop (GUI Disabled)".to_string() }
     fn platform_type(&self) -> u8 { 0 }
+    fn is_key_down(&self, _key: usize) -> bool { false }
 }

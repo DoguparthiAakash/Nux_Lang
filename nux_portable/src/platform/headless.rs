@@ -20,27 +20,53 @@ impl Platform for HeadlessPlatform {
     }
 
     fn update_window(&mut self, buffer: &[u32], width: usize, height: usize) -> Result<(), String> {
-        // ASCII Logic
-        println!("--- Image Dump ({}x{}) ---", width, height);
-        let chars = b" .:-=+*#%@";
-        // Simple downscaling/sampling for console? Or full dump?
-        // Let's print full for small images, skip lines for big?
+        // Clear screen and move cursor to top
+        print!("\x1b[2J\x1b[H");
         
-        let step_y = if height > 64 { height / 32 } else { 1 };
-        let step_x = if width > 64 { width / 32 } else { 1 };
+        println!("╔{}╗", "═".repeat(width.min(80)));
+        
+        // Better ASCII character mapping (more gradients)
+        let chars = b" .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+        
+        let step_y = if height > 40 { height / 40 } else { 1 };
+        let step_x = if width > 80 { width / 80 } else { 1 };
 
         for y in (0..height).step_by(step_y) {
+            print!("║");
             for x in (0..width).step_by(step_x) {
                 let pixel = buffer[y * width + x];
-                // Extract Blue channel (or average) as brightness for grayscale input
-                // ARGB: 0xAARRGGBB.
-                let val = (pixel & 0xFF) as usize; 
-                let char_idx = (val * (chars.len() - 1)) / 255;
-                print!("{}", chars[char_idx] as char);
+                
+                // Extract RGB
+                let r = ((pixel >> 16) & 0xFF) as u8;
+                let g = ((pixel >> 8) & 0xFF) as u8;
+                let b = (pixel & 0xFF) as u8;
+                
+                // Calculate brightness
+                let brightness = ((r as usize + g as usize + b as usize) / 3);
+                let char_idx = (brightness * (chars.len() - 1)) / 255;
+                
+                // Use ANSI color codes for better visualization
+                if r > 200 && g < 100 && b < 100 {
+                    // Red
+                    print!("\x1b[31m{}\x1b[0m", chars[char_idx] as char);
+                } else if g > 200 && r < 100 && b < 100 {
+                    // Green
+                    print!("\x1b[32m{}\x1b[0m", chars[char_idx] as char);
+                } else if b > 200 && r < 100 && g < 100 {
+                    // Blue
+                    print!("\x1b[34m{}\x1b[0m", chars[char_idx] as char);
+                } else if brightness > 200 {
+                    // White/bright
+                    print!("\x1b[37;1m{}\x1b[0m", chars[char_idx] as char);
+                } else {
+                    // Default
+                    print!("{}", chars[char_idx] as char);
+                }
             }
-            println!("");
+            println!("║");
         }
-        println!("-------------------------");
+        
+        println!("╚{}╝", "═".repeat(width.min(80)));
         Ok(())
     }
 
@@ -72,5 +98,9 @@ impl Platform for HeadlessPlatform {
         return 3;
         #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         return 0;
+    }
+
+    fn is_key_down(&self, _key: usize) -> bool {
+        false
     }
 }

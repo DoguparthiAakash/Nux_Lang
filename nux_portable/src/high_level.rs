@@ -68,7 +68,37 @@ pub enum Type {
     Char,
     String,
     Bool,
-    Unknown
+    Unknown,
+    Class(String)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AccessModifier {
+    Public,
+    Private,
+    Protected(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConstantValue {
+    Int(i64),
+    Float(f64),
+    Bool(bool),
+    String(String),
+    None,
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionInfo {
+    pub label: String,
+    pub arg_count: usize,
+    pub access: AccessModifier,
+}
+
+#[derive(Clone, Debug)]
+pub struct ClassInfo {
+    pub fields: HashMap<String, u32>,
+    pub size: u32,
 }
 
 pub struct Parser {
@@ -96,6 +126,8 @@ pub struct Parser {
     // Advanced Types
     // Name -> (Start, End) (Inclusive)
     bound_types: HashMap<String, (i64, i64)>,
+    classes: HashMap<String, ClassInfo>,
+    functions: HashMap<String, FunctionInfo>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -126,6 +158,8 @@ impl Parser {
             loop_stack: Vec::new(),
             local_offset: 0,
             bound_types: HashMap::new(),
+            classes: HashMap::new(),
+            functions: HashMap::new(),
         }
     }
 
@@ -215,6 +249,44 @@ impl Parser {
             // println!("DEBUG: Token: {:?}", self.current_token); // TRACE
             match &self.current_token {
                 Token::EOF => break,
+                Token::Pub => {
+                    self.advance();
+                    if self.current_token == Token::Func {
+                         self.parse_func(&mut definitions, "", AccessModifier::Public)?;
+                    } else if self.current_token == Token::Class {
+                         self.parse_class(&mut definitions)?;
+                    } else {
+                         return self.error("Expected func or class after pub".to_string());
+                    }
+                },
+                Token::Private => {
+                    self.advance();
+                     if self.current_token == Token::Func {
+                         self.parse_func(&mut definitions, "", AccessModifier::Private)?;
+                    } else {
+                         return self.error("Expected func after private".to_string());
+                    }
+                },
+                Token::Protected => {
+                    self.advance();
+                    let mut key = String::new();
+                    if self.current_token == Token::LParen {
+                        self.advance();
+                        match &self.current_token {
+                            Token::String(s) => key = s.clone(),
+                            Token::Number(n) => key = n.to_string(),
+                             _ => return self.error("Expected key".to_string()),
+                        }
+                        self.advance();
+                        if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                        self.advance();
+                    }
+                    if self.current_token == Token::Func {
+                         self.parse_func(&mut definitions, "", AccessModifier::Protected(key))?;
+                    } else {
+                         return self.error("Expected func after protected".to_string());
+                    }
+                },
                 Token::Class => {
                      if let Err(e) = self.parse_class(&mut definitions) {
                           self.errors.push(e);
@@ -222,7 +294,7 @@ impl Parser {
                      }
                 },
                 Token::Func => {
-                     if let Err(e) = self.parse_func(&mut definitions, "") {
+                     if let Err(e) = self.parse_func(&mut definitions, "", AccessModifier::Public) {
                          self.errors.push(e);
                          self.synchronize();
                      }
@@ -239,13 +311,27 @@ impl Parser {
                 Token::Import => { // Preprocessor-like include
                     // import "filename";
                     self.advance();
-                    let filename = match &self.current_token {
+                    let raw_name = match &self.current_token {
                         Token::String(s) => s.clone(),
                         _ => {
                             self.errors.push(CompileError::new("Expected filename string".to_string(), self.current_span));
                             continue;
                         }
                     };
+                    self.advance();
+                    // Resolution Logic
+                    let mut filename = String::from("lib/");
+                    // If raw_name ends in .nux, assume relative or absolute import.
+                    // But if it is like "sys", assume lib/sys.nux.
+                    if raw_name.ends_with(".nux") {
+                        if raw_name.starts_with("lib/") { filename = raw_name; } // already resolved?
+                        else { filename = raw_name; } // raw, maybe relative.
+                    } else {
+                        // "sys" -> "lib/sys.nux"
+                        // "io/console" -> "lib/io/console.nux"
+                        filename.push_str(&raw_name);
+                        filename.push_str(".nux");
+                    }
                     self.advance();
                     if self.current_token != Token::SemiColon {
                         self.errors.push(CompileError::new("Expected ;".to_string(), self.prev_span));
@@ -259,7 +345,30 @@ impl Parser {
                     // But `Parser` owns the lexer.
                     // Option: Delegate to a new Parser instance and merge output?
                     // Yes. We can parse the imported file into `definitions` string.
-                    if let Ok(content) = std::fs::read_to_string(&filename) {
+                    // Resolve Import Path
+                    let mut content_opt = std::fs::read_to_string(&filename).ok();
+                    
+                    if content_opt.is_none() {
+                        // Check NUX_LIB_PATH
+                        if let Ok(path) = std::env::var("NUX_LIB_PATH") {
+                             let full_path = format!("{}/{}", path, filename);
+                             content_opt = std::fs::read_to_string(&full_path).ok();
+                        }
+                    }
+                    
+                    if content_opt.is_none() {
+                        // Check Standard Paths
+                        let paths = ["/usr/local/lib/nux", "/usr/lib/nux", "/opt/nux/lib"];
+                        for path in &paths {
+                             let full_path = format!("{}/{}", path, filename);
+                             if let Ok(c) = std::fs::read_to_string(&full_path) {
+                                  content_opt = Some(c);
+                                  break;
+                             }
+                        }
+                    }
+
+                    if let Some(content) = content_opt {
                          let mut sub_parser = Parser::new(&content);
                          match sub_parser.parse_to_asm() {
                              Ok(asm) => {
@@ -382,14 +491,44 @@ impl Parser {
         if self.current_token != Token::LBrace { return self.error("Expected '{' after class name".to_string()); }
         self.advance();
         
+        let mut fields = HashMap::new();
+        let mut offset = 0;
+        
         // Inside class, we expect functions (methods).
         while self.current_token != Token::RBrace && self.current_token != Token::EOF {
             if self.current_token == Token::Func {
-                self.parse_func(out, &name)?;
+                self.parse_func(out, &name, AccessModifier::Public)?;
+            } else if self.current_token == Token::Var {
+                // Field Declaration: var x: type;
+                self.advance();
+                let field_name = match &self.current_token {
+                    Token::Identifier(s) => s.clone(),
+                    _ => return self.error("Expected field name".to_string())
+                };
+                self.advance();
+                
+                // Add to fields
+                fields.insert(field_name, offset);
+                offset += 1; // All fields are 8 bytes (1 slot)
+                
+                // Optional initialization or type?
+                // Expect : Type
+                if self.current_token == Token::Colon {
+                    self.advance();
+                    // Consume type
+                    // Identifier or KwType
+                    self.advance(); 
+                }
+                
+                // For now expect ;
+                if self.current_token == Token::SemiColon { self.advance(); }
             } else {
-                return self.error("Only functions allowed in classes for now".to_string());
+                return self.error("Only functions/fields allowed in classes for now".to_string());
             }
         }
+        
+        // Register Class
+        self.classes.insert(name, ClassInfo { fields, size: offset });
         
         if self.current_token != Token::RBrace { return self.error("Expected '}'".to_string()); }
         self.advance();
@@ -449,13 +588,17 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_func(&mut self, out: &mut String, class_prefix: &str) -> Result<(), CompileError> {
-        self.advance(); // consume 'func'
+    fn parse_func(&mut self, out: &mut String, class_prefix: &str, access: AccessModifier) -> Result<(), CompileError> {
+        // Optional Pub (Legacy check? Should be handled by caller now, but keeping safe)
+        if self.current_token == Token::Pub {
+            self.advance();
+        }
+
+        self.advance(); // consume 'fn' (was func)
         
         if self.current_token == Token::Var {
-             self.advance(); // consume 'var'
-             // Parse Bound Type Declaration
-             // func var MyType { start=...; end=...; }
+             // Support: fn let MyType ... (legacy func var pattern? remove?)
+             self.advance(); 
              return self.parse_bound_type_decl();
         }
 
@@ -489,8 +632,21 @@ impl Parser {
         
         if self.current_token != Token::RParen { return self.error("Expected ')'".to_string()); }
         self.advance();
+        
+        // Optional Return Type: -> Type
+        if self.current_token == Token::Arrow {
+            self.advance(); // skip ->
+            // Parse type (identifier or keyword)
+            match self.current_token {
+                Token::Identifier(_) | Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
+                    self.advance(); // consume type
+                },
+                _ => return self.error("Expected return type".to_string()),
+            }
+        }
 
-        if self.current_token != Token::LBrace { return self.error("Expected '{'".to_string()); }
+// Placeholder to force view_file or find_by_name if I was using grep
+// I will just use grep_search to find the line number of parse_class definition.
         
         // Generate Label
         let full_name = if class_prefix.is_empty() {
@@ -565,6 +721,78 @@ impl Parser {
 
     fn parse_statement_impl(&mut self, out: &mut String, expect_semi: bool) -> Result<(), CompileError> {
         match &self.current_token {
+             Token::Asm => {
+                 self.advance();
+                 if self.current_token != Token::LBrace { return self.error("Expected {".to_string()); }
+                 self.advance();
+                 while self.current_token != Token::RBrace && self.current_token != Token::EOF {
+                     if let Token::String(s) = &self.current_token {
+                         out.push_str(s); out.push('\n'); self.advance();
+                     } else if let Token::Identifier(name) = &self.current_token {
+                         // Resolve Variable
+                         if let Some((loc, _)) = self.resolve_var(name) {
+                             match loc {
+                                 VarLocation::Local(idx) => out.push_str(&format!("GET_LOCAL {}\n", idx)),
+                                 VarLocation::Global(addr) => out.push_str(&format!("GET_GLOBAL {}\n", addr)),
+                             }
+                         } else {
+                              // If not resolved, assume opcode/label
+                              out.push_str(name); out.push('\n');
+                         }
+                         self.advance();
+                     } else if let Token::Number(n) = &self.current_token {
+                         out.push_str(&format!("{}\n", n)); 
+                         self.advance();
+                     } else if self.current_token == Token::Comma || self.current_token == Token::SemiColon {
+                         self.advance();
+                     } else {
+                         return self.error("Invalid token in asm".to_string());
+                     }
+                 }
+                 if self.current_token != Token::RBrace { return self.error("Expected }".to_string()); }
+                 self.advance();
+             },
+             Token::Pub => {
+                 self.advance();
+                 if let Token::Identifier(name) = &self.current_token {
+                     let n = name.clone();
+                     self.advance();
+                     self.parse_call_args(out, &n)?;
+                 } else { return self.error("Expected function name after pub".to_string()); }
+             },
+             Token::Pri => {
+                 self.advance();
+                 if let Token::Identifier(name) = &self.current_token {
+                     let n = name.clone();
+                     self.advance();
+                     // Check Access
+                     if let Some(info) = self.functions.get(&n) {
+                         // if info.access != AccessModifier::Private ... warn?
+                     }
+                     self.parse_call_args(out, &n)?;
+                 } else { return self.error("Expected function name after pri".to_string()); }
+             },
+             Token::Pro => {
+                 self.advance();
+                 if self.current_token == Token::LParen {
+                     self.advance();
+                     let key = match &self.current_token {
+                         Token::String(s) => s.clone(),
+                         _ => return self.error("Expected key string".to_string()),
+                     };
+                     self.advance();
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     
+                     if let Token::Identifier(name) = &self.current_token {
+                         let n = name.clone();
+                         self.advance();
+                         self.parse_call_args(out, &n)?;
+                     } else { return self.error("Expected function name".to_string()); }
+                 } else {
+                     return self.error("Expected ('key') after pro".to_string());
+                 }
+             },
              Token::Print => {
                  self.advance();
                  self.parse_print(out, false)?;
@@ -575,13 +803,44 @@ impl Parser {
              },
              Token::Identifier(name) => {
                  let part1 = name.clone();
+                 
+                 // Intrinsic: sleep
+                 if part1 == "sleep" {
+                     self.advance(); // skip name
+                     if self.current_token != Token::LParen { return self.error("Expected ( for sleep".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi {
+                         if self.current_token == Token::SemiColon { self.advance(); }
+                     } else if self.current_token == Token::SemiColon { self.advance(); }
+                     
+                     out.push_str("OP_SLEEP\n");
+                     return Ok(());
+                 }
+                 
+
                  self.advance(); // skip name
                  if self.current_token == Token::Eq {
                        // Assignment
                         match self.resolve_var(&part1) {
                             Some((loc, _typ)) => {
                                 self.advance(); // Skip =
-                                self.parse_expression(out)?;
+                                let mut sub_out = String::new();
+                                let (_, constant) = self.parse_expression(&mut sub_out)?;
+                                
+                                if let Some(val) = constant {
+                                    match val {
+                                        ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                        ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                                        ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                        _ => {}
+                                    }
+                                } else {
+                                    out.push_str(&sub_out);
+                                }
+
                                 if expect_semi {
                                     if self.current_token != Token::SemiColon {
                                         return self.error("Expected ;".to_string());
@@ -604,7 +863,21 @@ impl Parser {
                                if self.scopes.len() == 1 {
                                    // Global scope - auto-declare
                                    self.advance(); // Skip =
-                                   self.parse_expression(out)?;
+                                   
+                                   let mut sub_out = String::new();
+                                   let (expr_type, constant) = self.parse_expression(&mut sub_out)?;
+                                   
+                                   if let Some(val) = constant {
+                                        match val {
+                                            ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                            ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                                            ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                            _ => {}
+                                        }
+                                   } else {
+                                        out.push_str(&sub_out);
+                                   }
+
                                    if expect_semi {
                                        if self.current_token != Token::SemiColon {
                                            return self.error("Expected ;".to_string());
@@ -650,31 +923,106 @@ impl Parser {
                       } else if self.current_token == Token::SemiColon { self.advance(); }
                       
                       // Emit CALL (vm handles arg cleanup), then POP return value
-                      out.push_str(&format!("CALL {} {}\nPOP\n", part1, arg_count));
+                      println!("DEBUG: Checking intrinsic for {}", part1);
+                      if let Some(opcode) = self.get_intrinsic(&part1) {
+                          println!("DEBUG: Found intrinsic {}", opcode);
+                          out.push_str(&format!("{}\n", opcode));
+                      } else {
+                          println!("DEBUG: No intrinsic for {}", part1);
+                          out.push_str(&format!("CALL {} {}\n", part1, arg_count));
+                      }
+                      out.push_str("POP\n");
                       
                  } else if self.current_token == Token::Dot {
                       self.advance(); // Skip .
-                      let method = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected method name".to_string()) };
-                      self.advance();
-                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                      self.advance();
-                      let mut arg_count = 0;
-                      if self.current_token != Token::RParen {
-                           loop {
-                               self.parse_expression(out)?;
-                               arg_count += 1; 
-                               if self.current_token == Token::Comma { self.advance(); } else { break; }
-                           }
-                      }
-                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                      let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
                       self.advance();
                       
-                      if expect_semi {
-                          if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                      if self.current_token == Token::Eq {
+                          // Field Assignment: obj.field = expr;
+                          let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                          
+                          let offset = if let Type::Class(cname) = typ {
+                              if let Some(cinfo) = self.classes.get(&cname) {
+                                  if let Some(off) = cinfo.fields.get(&member) {
+                                      *off
+                                  } else { return self.error(format!("Class '{}' has no field '{}'", cname, member)); }
+                              } else { return self.error(format!("Unknown class '{}'", cname)); }
+                          } else {
+                              // Fallback: Search all classes
+                             let mut found = None;
+                             for (cname, cinfo) in &self.classes {
+                                 if let Some(off) = cinfo.fields.get(&member) {
+                                     if found.is_some() { return self.error(format!("Ambiguous field '{}' (found in multiple classes)", member)); }
+                                     found = Some(*off);
+                                 }
+                             }
+                             if let Some(off) = found {
+                                 off
+                             } else {
+                                 return self.error(format!("Variable '{}' is not a class instance and field '{}' not found globally", part1, member));
+                             }
+                          };
+                          
+                          // Push Object Addr
+                          match loc {
+                              VarLocation::Global(addr) => {
+                                  // Global var holds the POINTER
+                                  out.push_str(&format!("PUSH {}\n", addr));
+                                  out.push_str("PEEK\n"); 
+                              },
+                              VarLocation::Local(idx) => {
+                                  out.push_str(&format!("OP_GET_LOCAL {}\n\n", idx));
+                              }
+                          }
+                          
+                          // Field Addr
+                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset));
+                          
+                          self.advance(); // Skip =
+                          let mut sub_out = String::new();
+                          let (_, constant) = self.parse_expression(&mut sub_out)?;
+                          if let Some(val) = constant {
+                               match val {
+                                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                                    ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                    _ => {}
+                               }
+                          } else {
+                               out.push_str(&sub_out);
+                          }
+                          
+                          if expect_semi {
+                              if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                              self.advance();
+                          } else if self.current_token == Token::SemiColon { self.advance(); }
+                          
+                          out.push_str("POKE\n");
+                          
+                      } else if self.current_token == Token::LParen {
+                          // Method Call
                           self.advance();
-                      } else if self.current_token == Token::SemiColon { self.advance(); }
-                      
-                      out.push_str(&format!("CALL {}_{} {}\nPOP\n", part1, method, arg_count));
+                          let mut arg_count = 0;
+                          if self.current_token != Token::RParen {
+                               loop {
+                                   self.parse_expression(out)?;
+                                   arg_count += 1; 
+                                   if self.current_token == Token::Comma { self.advance(); } else { break; }
+                               }
+                          }
+                          if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                          self.advance();
+                          
+                          if expect_semi {
+                               if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                               self.advance();
+                          } else if self.current_token == Token::SemiColon { self.advance(); }
+                          
+                          out.push_str(&format!("CALL {}_{} {}\nPOP\n", part1, member, arg_count));
+                      } else {
+                           return self.error("Expected = or ( after member name".to_string());
+                      }
                  } else {
                        return self.error(format!("Unexpected token in statement (ID match): {:?} name={}", self.current_token, part1));
                  }
@@ -711,7 +1059,19 @@ impl Parser {
                      out.push_str("PUSH 0\nRET\n");
                      self.advance();
                  } else {
-                     self.parse_expression(out)?;
+                     let mut sub_out = String::new();
+                     let (_, constant) = self.parse_expression(&mut sub_out)?;
+                     if let Some(val) = constant {
+                        match val {
+                            ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                            ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                            ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                             _ => {}
+                        }
+                     } else {
+                         out.push_str(&sub_out);
+                     }
+                     
                      if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
                      out.push_str("RET\n");
                      self.advance();
@@ -721,7 +1081,64 @@ impl Parser {
                   self.advance(); // skip if
                   if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                   self.advance();
-                  self.parse_expression(out)?;
+                  
+                  let mut sub_out = String::new();
+                  let (_, constant) = self.parse_expression(&mut sub_out)?;
+                  
+                  if let Some(val) = constant {
+                       // Constant Folding for IF
+                       // If True: Emit block, skip else.
+                       // If False: Skip block, emit else if present.
+                       match val {
+                           ConstantValue::Bool(b) => {
+                               if b {
+                                   if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                                   self.advance();
+                                   self.parse_block(out)?;
+                                   // Check if else exists and consume it but don't emit
+                                   if self.current_token == Token::Else {
+                                       self.advance();
+                                       // consume else block without emitting
+                                       let mut junk = String::new();
+                                       if self.current_token == Token::If {
+                                            self.parse_statement_or_expr(&mut junk)?;
+                                       } else {
+                                            self.parse_block(&mut junk)?;
+                                       }
+                                   }
+                                   return Ok(());
+                               } else {
+                                   // False
+                                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                                   self.advance();
+                                   // consume if block
+                                   let mut junk = String::new();
+                                   self.parse_block(&mut junk)?;
+                                   
+                                   if self.current_token == Token::Else {
+                                       self.advance();
+                                       if self.current_token == Token::If {
+                                            self.parse_statement_or_expr(out)?;
+                                       } else {
+                                            self.parse_block(out)?;
+                                       }
+                                   }
+                                   return Ok(());
+                               }
+                           },
+                           _ => {} // Non-bool constant in if? Treat as generic?
+                       }
+                        // Fallthrough if not bool or we want to emit PUSH for it (e.g. Int used as bool)
+                         match val {
+                            ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                            ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)), // Float as bool?
+                            ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                             _ => {}
+                        }
+                  } else {
+                      out.push_str(&sub_out);
+                  }
+
                   if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                   self.advance();
                   
@@ -760,7 +1177,38 @@ impl Parser {
                   self.loop_stack.push((label_start.clone(), label_end.clone())); 
                   
                   out.push_str(&format!("{}:\n", label_start));
-                  self.parse_expression(out)?;
+                  
+                  let mut sub_out = String::new();
+                  let (_, constant) = self.parse_expression(&mut sub_out)?;
+                  // While (false) -> Dead code?
+                  // While (true) -> Infinite loop (unless break)
+                  
+                  if let Some(val) = constant {
+                       match val {
+                           ConstantValue::Bool(b) => {
+                               if !b {
+                                   // while(false)
+                                   // consume body?
+                                   // But we already emitted label_start.
+                                   // We can emit JMP label_end?
+                                   // Better: Just emit PUSH 0; JE ...
+                                    out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 }));
+                               } else {
+                                   // while(true)
+                                    out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 }));
+                               }
+                           },
+                           _ => {
+                                match val {
+                                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                    _ => {}
+                                }
+                           }
+                       }
+                  } else {
+                      out.push_str(&sub_out);
+                  }
+                  
                   if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                   self.advance();
                   
@@ -796,7 +1244,17 @@ impl Parser {
                   
                   // Cond
                   if self.current_token != Token::SemiColon {
-                       self.parse_expression(out)?;
+                       let mut sub_out = String::new();
+                       let (_, constant) = self.parse_expression(&mut sub_out)?;
+                       if let Some(val) = constant {
+                           match val {
+                                ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                _ => {}
+                           }
+                       } else {
+                           out.push_str(&sub_out);
+                       }
                        out.push_str("PUSH 0\n");
                        out.push_str(&format!("JE {}\n", label_end));
                   }
@@ -941,7 +1399,11 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected ( for cam_capture".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // Handle
+                 
+                  let mut sub_out = String::new();
+                  let (_, constant) = self.parse_expression(&mut sub_out)?; 
+                  if let Some(val) = constant { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_CAM_CAPTURE\n");
@@ -952,11 +1414,15 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_draw".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // Handle
+                 
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // X
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // Y
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_IMG_DRAW\n");
@@ -967,7 +1433,9 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_free".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // Handle
+                 
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_IMG_FREE\n");
@@ -977,10 +1445,14 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_filter".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // Handle
+                 
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // Mode
+                 
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_IMG_FILTER\n");
@@ -991,31 +1463,46 @@ impl Parser {
                  // img_set(handle, x, y, color)
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; // handle
+                 
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // x
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // y
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // color
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
-                 // OP_IMG_SET not defined in VM yet, but let's leave it out or implement strict?
-                 // User didn't ask for set. Let's just comment it out or emit panic?
-                 // Wait, I declared the token. I should likely emit nothing or error.
-                 // Actually I'll implement it as placeholder or error to avoid crash.
-                 return self.error("img_set not implemented yet".to_string());
+                 out.push_str("OP_IMG_SET\n");
+                 if self.current_token == Token::SemiColon { self.advance(); }
+             },
+             Token::ImgFill => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_FILL\n");
+                 if self.current_token == Token::SemiColon { self.advance(); }
              },
              Token::ImgGet => {
                   // If used as statement: img_get(h,x,y); -> pop result
                   self.advance();
                   if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                   self.advance();
-                  self.parse_expression(out)?; // h
+                 
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
                   self.advance(); // ,
-                  self.parse_expression(out)?; // x
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
                   self.advance(); // ,
-                  self.parse_expression(out)?; // y
+                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
                   self.advance(); // )
                   out.push_str("OP_IMG_GET\nPOP\n"); // Discard result
                   if self.current_token == Token::SemiColon { self.advance(); }
@@ -1033,7 +1520,7 @@ impl Parser {
     // --- Var Declaration ---
     
     fn parse_var_decl(&mut self, out: &mut String, expected_type: Type) -> Result<(), CompileError> {
-        self.advance(); // consume keyword (int, var, etc)
+        self.advance(); // consume keyword (var, int, etc)
         
         // Name
         let name = match &self.current_token {
@@ -1062,7 +1549,26 @@ impl Parser {
         // = value
         if self.current_token == Token::Eq {
              self.advance();
-             let expr_type = self.parse_expression(out)?;
+             
+             // CONSTANT FOLDING UPDATE:
+             let mut sub_out = String::new();
+             let (mut expr_type, constant) = self.parse_expression(&mut sub_out)?;
+             
+             if let Some(val) = constant {
+                 // We have a constant!
+                 // If we have a type constraint/expected type, we might want to cast IT NOW?
+                 // Or just emit PUSH and let runtime checks handle it?
+                 // Optimization: PUSH the final value.
+                 match val {
+                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                    ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                     _ => {}
+                 }
+                 // Update expr_type based on constant? (Already correct from parser)
+             } else {
+                 out.push_str(&sub_out);
+             }
              
              // Inject Range Check
              if let Some((min, max)) = constraint {
@@ -1094,20 +1600,10 @@ impl Parser {
         match loc {
             VarLocation::Global(addr) => {
                  // Value is on stack.
-                 // We need to Pop to Global.
-                 // POKE expects [Value, Addr]. 
-                 // Stack has [Value].
-                 // Wait. POKE is [Addr, Value]? Or [Value, Addr]?
-                 // VM `OP_POKE`: `let addr = self.pop(); let val = self.pop();`. 
-                 // So Stack must be [..., Value, Addr].
-                 // Currently Stack has [..., Value].
-                 // If we `PUSH addr`, Stack is [..., Value, Addr].
-                 // Then `POKE`. Correct.
                  out.push_str(&format!("PUSH {}\nPOKE\n", addr));
             },
             VarLocation::Local(_) => {
                  // Value is on stack. This IS the local.
-                 // No action.
             }
         }
         
@@ -1131,11 +1627,39 @@ impl Parser {
                 }
                 self.advance();
              } else {
-                let t = self.parse_expression(out)?;
-                if t == Type::Float {
-                    out.push_str("PRINT_FLOAT\n");
+                let mut sub_out = String::new();
+                let (t, constant) = self.parse_expression(&mut sub_out)?;
+                
+                if let Some(val) = constant {
+                    match val {
+                        ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                        ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                        ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                        ConstantValue::String(ref s) => {
+                             for c in s.chars() {
+                                out.push_str(&format!("PUSH {}\nPRINT_CHAR\n", c as u32));
+                             }
+                             // String constant usually not fully supported as value yet, but for print it works if expanded.
+                             // But constant folding usually returns Int/Float/Bool. 
+                        },
+                        _ => {}
+                    }
+                    if t == Type::Float {
+                         // If it was a float constant, we pushed it as bits (Int).
+                         // PRINT_FLOAT expects bits on stack.
+                         out.push_str("PRINT_FLOAT\n");
+                    } else if matches!(val, ConstantValue::String(_)) {
+                         // Handled above loop
+                    } else {
+                         out.push_str("PRINT_VAL\n");
+                    }
                 } else {
-                    out.push_str("PRINT_VAL\n");
+                    out.push_str(&sub_out);
+                    if t == Type::Float {
+                        out.push_str("PRINT_FLOAT\n");
+                    } else {
+                        out.push_str("PRINT_VAL\n");
+                    }
                 }
              }
              
@@ -1160,10 +1684,17 @@ impl Parser {
         self.advance(); // Skip POKE
         if self.current_token != Token::LParen { return self.error("Expected ( for poke".to_string()); }
         self.advance();
-        self.parse_expression(out)?; // Addr
+        let mut sub_out = String::new();
+        let (_, constant) = self.parse_expression(&mut sub_out)?; // Addr
+        if let Some(val) = constant { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
         if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
         self.advance();
-        self.parse_expression(out)?; // Val
+        
+        let mut sub_out = String::new();
+        let (_, constant) = self.parse_expression(&mut sub_out)?; // Val
+        if let Some(val) = constant { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+
         if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
         self.advance();
         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
@@ -1173,146 +1704,222 @@ impl Parser {
     }
 
     
-    fn parse_expression(&mut self, out: &mut String) -> Result<Type, CompileError> {
+    fn parse_expression(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
         self.parse_logical_or(out)
     }
 
-    fn parse_logical_or(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_logical_and(out)?;
+    fn parse_logical_or(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out = String::new();
+        let (mut left_type, mut left_const) = self.parse_logical_and(&mut sub_out)?;
+        
+        if left_const.is_none() { out.push_str(&sub_out); }
         
         while self.current_token == Token::Or {
             self.advance();
-            let _right_type = self.parse_logical_and(out)?; // Right type is consumed
+             // Emit left if it was constant
+            if let Some(val) = left_const.take() {
+                match val { ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b{1}else{0})), _ => {} }
+            }
+            
+            let mut sub_out_right = String::new();
+            let (_, right_const) = self.parse_logical_and(&mut sub_out_right)?; // Right type 
+            if let Some(val) = right_const {
+                 match val { ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b{1}else{0})), _ => {} }
+            } else {
+                 out.push_str(&sub_out_right);
+            }
             out.push_str("OR\n");
-            left_type = Type::Bool; // Logic ops always bool
+            left_type = Type::Bool; 
+            // Result is not constant (simplification)
         }
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
 
-    fn parse_logical_and(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_equality(out)?;
+    fn parse_logical_and(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out = String::new();
+        let (mut left_type, mut left_const) = self.parse_equality(&mut sub_out)?;
+        
+        if left_const.is_none() { out.push_str(&sub_out); }
         
         while self.current_token == Token::And {
             self.advance();
-            let _right_type = self.parse_equality(out)?; // Right type is consumed
+            if let Some(val) = left_const.take() {
+                match val { ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b{1}else{0})), _ => {} }
+            }
+            let mut sub_out_right = String::new();
+            let (_, right_const) = self.parse_equality(&mut sub_out_right)?; 
+            if let Some(val) = right_const {
+                 match val { ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b{1}else{0})), _ => {} }
+            } else {
+                 out.push_str(&sub_out_right);
+            }
             out.push_str("AND\n");
             left_type = Type::Bool; 
         }
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
     
-    fn parse_equality(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_comparison(out)?;
+    fn parse_equality(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out = String::new();
+        let (mut left_type, mut left_const) = self.parse_comparison(&mut sub_out)?;
+        
+        if left_const.is_none() { out.push_str(&sub_out); }
         
         while self.current_token == Token::EqEq || self.current_token == Token::NotEq {
             let op = self.current_token.clone();
             self.advance();
-            let right_type = self.parse_comparison(out)?;
-            
-            // Type check and promotion for equality
-            if left_type == Type::Float || right_type == Type::Float {
-                if left_type != Type::Float { out.push_str("ITOF\n"); }
-                if right_type != Type::Float { out.push_str("ITOF\n"); }
-                match op {
-                    Token::EqEq => out.push_str("FEQ\n"),
-                    Token::NotEq => out.push_str("FNEQ\n"),
-                    _ => {}
-                }
-            } else {
-                match op {
-                    Token::EqEq => out.push_str("EQ\n"),
-                    Token::NotEq => out.push_str("NEQ\n"),
-                    _ => {}
-                }
+             if let Some(val) = left_const.take() {
+                match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} }
             }
-            left_type = Type::Bool; // Result is Bool
+            
+            let mut sub_out_right = String::new();
+            let (_, right_const) = self.parse_comparison(&mut sub_out_right)?;
+             if let Some(val) = right_const {
+                 match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} }
+            } else {
+                 out.push_str(&sub_out_right);
+            }
+            
+            match op {
+                Token::EqEq => out.push_str("EQ\n"),
+                Token::NotEq => out.push_str("NEQ\n"),
+                _ => {}
+            }
+            left_type = Type::Bool;
         }
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
 
-    fn parse_comparison(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_term(out)?;
+    fn parse_comparison(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+         let mut sub_out = String::new();
+        let (mut left_type, mut left_const) = self.parse_term(&mut sub_out)?;
+        
+        if left_const.is_none() { out.push_str(&sub_out); }
         
         while matches!(self.current_token, Token::Lt | Token::Gt | Token::LtEq | Token::GtEq) {
             let op = self.current_token.clone();
             self.advance();
-            let right_type = self.parse_term(out)?;
-            
-            // Type check and promotion for comparison
-            if left_type == Type::Float || right_type == Type::Float {
-                if left_type != Type::Float { out.push_str("ITOF\n"); }
-                if right_type != Type::Float { out.push_str("ITOF\n"); }
-                match op {
-                    Token::Lt => out.push_str("FLT\n"),
-                    Token::Gt => out.push_str("FGT\n"),
-                    Token::LtEq => out.push_str("FLTE\n"),
-                    Token::GtEq => out.push_str("FGTE\n"),
-                    _ => {}
-                }
+             if let Some(val) = left_const.take() {
+                match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} }
+            }
+            let mut sub_out_right = String::new();
+            let (_, right_const) = self.parse_term(&mut sub_out_right)?;
+             if let Some(val) = right_const {
+                 match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} }
             } else {
-                match op {
-                    Token::Lt => out.push_str("LT\n"),
-                    Token::Gt => out.push_str("GT\n"),
-                    Token::LtEq => out.push_str("LTE\n"),
-                    Token::GtEq => out.push_str("GTE\n"),
-                    _ => {}
-                }
+                 out.push_str(&sub_out_right);
+            }
+            
+            match op {
+                Token::Lt => out.push_str("LT\n"),
+                Token::Gt => out.push_str("GT\n"),
+                Token::LtEq => out.push_str("LTE\n"),
+                Token::GtEq => out.push_str("GTE\n"),
+                _ => {}
             }
             left_type = Type::Bool;
         }
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
 
-    fn parse_term(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_factor(out)?;
+    fn parse_term(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out_left = String::new();
+        let (mut left_type, mut left_const) = self.parse_factor(&mut sub_out_left)?;
         
+        // If left is not constant, emit it
+        if left_const.is_none() {
+            out.push_str(&sub_out_left);
+        }
+
         while self.current_token == Token::Plus || self.current_token == Token::Minus {
             let op = self.current_token.clone();
             self.advance();
             
-            // Need to buffer right side code to inject conversion?
-            // Wait, we are writing to `out` directly.
-            // If left is Int and right is Float, we need to convert Left to Float BEFORE right is pushed?
-            // No, Left is already pushed. Integer is on stack.
-            // If we find right is Float, we are in trouble if we didn't convert Left.
-            // Because we only know right's type AFTER parsing it.
-            // And parsing it emits code to push it.
+            let mut sub_out_right = String::new();
+            let (right_type, right_const) = self.parse_factor(&mut sub_out_right)?;
             
-            // Solution: 
-            // 1. If Left is Int, we assume Int math.
-            // 2. Parse Right.
-            // 3. If Right turns out to be Float:
-            //    - If Left was Int, we need to convert Left (generic stack swap? `ITOF` under top? No).
-            //    - We need to `SWAP, ITOF, SWAP`? VM doesn't have Swap.
-            //    - Better: Simple Compiler limitation -> Float Must be on Left? Or explicit cast?
-            //    - Or: We just emit generic ops and VM handles generic types? (Dynamic Typing). 
-            //      But user asked for explicit sizes. VM is `i64`.
-            //      Float bits in i64.
-            //      ADD will mangle float bits. FADD works.
+            // Constant Folding
+            if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+                 // Both are constants! Compute result.
+                 // Note: no code has been emitted to 'out' for left side yet if it was constant.
+                 match (l_val, r_val) {
+                     (ConstantValue::Int(l), ConstantValue::Int(r)) => {
+                         let res = match op {
+                             Token::Plus => l + r,
+                             Token::Minus => l - r,
+                             _ => 0,
+                         };
+                         left_const = Some(ConstantValue::Int(res));
+                         continue; // Skip emitting code
+                     },
+                     (ConstantValue::Float(l), ConstantValue::Float(r)) => {
+                          let res = match op {
+                             Token::Plus => l + r,
+                             Token::Minus => l - r,
+                             _ => 0.0,
+                         };
+                         left_const = Some(ConstantValue::Float(res));
+                         left_type = Type::Float;
+                         continue;
+                     },
+                     (ConstantValue::Int(l), ConstantValue::Float(r)) => {
+                          let res = match op {
+                             Token::Plus => (*l as f64) + r,
+                             Token::Minus => (*l as f64) - r,
+                             _ => 0.0,
+                         };
+                         left_const = Some(ConstantValue::Float(res));
+                         left_type = Type::Float;
+                         continue;
+                     },
+                     (ConstantValue::Float(l), ConstantValue::Int(r)) => {
+                          let res = match op {
+                             Token::Plus => l + (*r as f64),
+                             Token::Minus => l - (*r as f64),
+                             _ => 0.0,
+                         };
+                         left_const = Some(ConstantValue::Float(res));
+                         left_type = Type::Float;
+                         continue;
+                     },
+                     _ => {} // Fallthrough to dynamic
+                 }
+            }
             
-            // Alternative:
-            // Buffer the Right side code.
-            // 1. Evaluate Left type.
-            // 2. Capture Right output in temp buffer.
-            // 3. Evaluate Right type.
-            // 4. Emit corrections.
+            // If we are here, at least one is NOT constant.
+            // If left was constant, we MUST emit it now because we are processing an operation.
+            if let Some(val) = left_const.take() {
+                match val {
+                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                    ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                    ConstantValue::String(_) => {}, // Strings shouldn't be here in math
+                    ConstantValue::None => {},
+                }
+            }
+            // Emit Right side code (if it wasn't constant)
+            // If right is constant, we emit PUSH for it.
+            if let Some(val) = right_const {
+                 match val {
+                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                     _ => {}
+                }
+                out.push_str(&sub_out_right); // Should be empty if it was constant? 
+                // Wait. parse_primary returns Some(Constant) AND creates EMPTY out for numbers.
+                // But for nested expressions (e.g. (1+2)), out is NOT empty?
+                // Ah. In `parse_primary`, `Token::Number` does NOT write to out.
+                // So `sub_out_right` is valid code ONLY if `right_const` is None.
+                // Correct.
+            } else {
+                 out.push_str(&sub_out_right);
+            }
             
-            let mut right_out = String::new();
-            let right_type = self.parse_factor(&mut right_out)?;
-            
-            // Promotion Logic
+            // Promotion Logic for Dynamic execution
             if left_type == Type::Float || right_type == Type::Float {
-                // Float Arithmetic
-                if left_type != Type::Float {
-                     // Left is Int (on stack). Convert to Float.
-                     // But Right code isn't emitted yet.
-                     out.push_str("ITOF\n");
-                }
-                out.push_str(&right_out);
-                if right_type != Type::Float {
-                    // Right is Int (on top of stack). Convert.
-                     out.push_str("ITOF\n");
-                }
+                if left_type != Type::Float { out.push_str("ITOF\n"); }
+                // Right is already on stack
+                if right_type != Type::Float { out.push_str("ITOF\n"); }
                 
                 match op {
                     Token::Plus => out.push_str("FADD\n"),
@@ -1321,34 +1928,140 @@ impl Parser {
                 }
                 left_type = Type::Float;
             } else {
-                // Int Arithmetic
-                out.push_str(&right_out);
                 match op {
                     Token::Plus => out.push_str("ADD\n"),
                     Token::Minus => out.push_str("SUB\n"),
                     _ => {}
                 }
-                // left_type remains Int (or whatever it was)
             }
         }
-        Ok(left_type)
+        
+        // Final check: If we ended up with a constant after strict folding (e.g. 1+2-3 -> 0),
+        // we return it. Logic above handles continuations.
+        // If we broke out of loop because of non-constant usage, `left_const` became None.
+        // If loop finished and `left_const` is Some, we return it without emitting.
+        Ok((left_type, left_const))
     }
 
-    fn parse_factor(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_power(out)?;
+    fn parse_call_args(&mut self, out: &mut String, func_name: &str) -> Result<(), CompileError> {
+        if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+        self.advance();
         
+        let mut arg_count = 0;
+        if self.current_token != Token::RParen {
+            loop {
+                // We must emit args to stack.
+                // If parse_expression returns a constant, we must EMIT IT here.
+                let mut sub_out = String::new();
+                let (_, constant) = self.parse_expression(&mut sub_out)?;
+                
+                if let Some(val) = constant {
+                    match val {
+                        ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                        ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                        ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                        // Strings?
+                         ConstantValue::String(_) => {}, // TODO: String support
+                        _ => {}
+                    }
+                } else {
+                    out.push_str(&sub_out);
+                }
+                
+                arg_count += 1;
+                if self.current_token == Token::Comma { self.advance(); } else { break; }
+            }
+        }
+        if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+        self.advance();
+        
+        if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+        self.advance();
+        
+        if let Some(opcode) = self.get_intrinsic(func_name) {
+             out.push_str(&format!("{}\n", opcode));
+             // Intrinsics managed via parse_call_args (statement context) are followed by POP.
+             // Ensure all intrinsics push a value (even if dummy) to allow POP.
+        } else {
+             out.push_str(&format!("CALL {} {}\n", func_name, arg_count));
+        }
+        out.push_str("POP\n");
+        Ok(())
+    }
+
+    fn parse_factor(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out_left = String::new();
+        let (mut left_type, mut left_const) = self.parse_power(&mut sub_out_left)?;
+        
+        if left_const.is_none() {
+            out.push_str(&sub_out_left);
+        }
+
         while matches!(self.current_token, Token::Star | Token::Slash | Token::SlashSlash | Token::Percent) {
             let op = self.current_token.clone();
             self.advance();
             
-            let mut right_out = String::new();
-            let right_type = self.parse_power(&mut right_out)?;
+            let mut sub_out_right = String::new();
+            let (right_type, right_const) = self.parse_power(&mut sub_out_right)?;
             
+            // Constant Folding
+             if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+                 match (l_val, r_val) {
+                     (ConstantValue::Int(l), ConstantValue::Int(r)) => {
+                         // Zero check for div?
+                         if (op == Token::Slash || op == Token::SlashSlash || op == Token::Percent) && *r == 0 {
+                             // Compile error?
+                             return self.error("Division by zero in constant expression".to_string());
+                         }
+                         let res = match op {
+                             Token::Star => l * r,
+                             Token::Slash => l / r, // Integer Division
+                             Token::SlashSlash => l / r,
+                             Token::Percent => l % r,
+                             _ => 0,
+                         };
+                         left_const = Some(ConstantValue::Int(res));
+                         continue;
+                     },
+                     // Float cases... (omitted for brevity, assume similar pattern)
+                      (ConstantValue::Float(l), ConstantValue::Float(r)) => {
+                             let res = match op {
+                             Token::Star => l * r,
+                             Token::Slash => l / r,
+                             Token::SlashSlash => (l / r).floor(),
+                             _ => 0.0,
+                         };
+                         left_const = Some(ConstantValue::Float(res));
+                         left_type = Type::Float;
+                         continue;
+                     },
+                     _ => {}
+                 }
+            }
+
+            // Not constant
+             if let Some(val) = left_const.take() {
+                match val {
+                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                    ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                    _ => {}
+                }
+            }
+             if let Some(val) = right_const {
+                 match val {
+                    ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                    ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                     _ => {}
+                }
+            } else {
+                 out.push_str(&sub_out_right);
+            }
+            
+            // Dynamic code gen
             if left_type == Type::Float || right_type == Type::Float {
                  if left_type != Type::Float { out.push_str("ITOF\n"); }
-                 out.push_str(&right_out);
                  if right_type != Type::Float { out.push_str("ITOF\n"); }
-                 
                  match op {
                      Token::Star => out.push_str("FMUL\n"),
                      Token::Slash => out.push_str("FDIV\n"),
@@ -1358,7 +2071,6 @@ impl Parser {
                  }
                  left_type = Type::Float;
             } else {
-                out.push_str(&right_out);
                 match op {
                     Token::Star => out.push_str("MUL\n"),
                     Token::Slash => out.push_str("DIV\n"),
@@ -1368,235 +2080,146 @@ impl Parser {
                 }
             }
         }
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
     
-    fn parse_power(&mut self, out: &mut String) -> Result<Type, CompileError> {
-        let mut left_type = self.parse_unary(out)?;
+    fn parse_power(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
+        let mut sub_out = String::new();
+        let (mut left_type, left_const) = self.parse_unary(&mut sub_out)?;
         
-        // Power is right-associative: 2**3**2 = 2**(3**2) = 2**9 = 512
+        if let Some(val) = &left_const {
+             // If left uses constant, we don't emit yet.
+        } else {
+            out.push_str(&sub_out);
+        }
+
         if self.current_token == Token::StarStar {
             self.advance();
-            let mut right_out = String::new();
-            let right_type = self.parse_power(&mut right_out)?; // Recursive for right-associativity
             
+            // Power is right associative, but handling constant folding w/ recursion is standard.
+             // If left is constant, we need to know if right is constant.
+             let mut right_out = String::new();
+             let (right_type, right_const) = self.parse_power(&mut right_out)?;
+             
+             if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+                  // Fold
+                  // ...
+                  // For now, let's just emit dynamic if complex power.
+             }
+             
+             // Emit Left if it was constant
+             if let Some(val) = left_const {
+                match val {
+                     ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                     ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                     _ => {}
+                }
+             }
+             
+             // Emit Right
+             if let Some(val) = right_const {
+                 match val {
+                     ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                     _ => {}
+                 }
+             } else {
+                 out.push_str(&right_out);
+             }
+
             if left_type == Type::Float || right_type == Type::Float {
                 if left_type != Type::Float { out.push_str("ITOF\n"); }
-                out.push_str(&right_out);
                 if right_type != Type::Float { out.push_str("ITOF\n"); }
                 out.push_str("FPOW\n");
                 left_type = Type::Float;
             } else {
-                out.push_str(&right_out);
                 out.push_str("POW\n");
             }
+            
+            return Ok((left_type, None)); // Result of power is dynamic (simplification)
         }
         
-        Ok(left_type)
+        Ok((left_type, left_const))
     }
 
-    fn parse_unary(&mut self, out: &mut String) -> Result<Type, CompileError> {
+    fn parse_unary(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
         if self.current_token == Token::Minus {
             self.advance();
-            let operand_type = self.parse_unary(out)?;
-            if operand_type == Type::Float {
-                out.push_str("PUSH -1.0\nITOF\nFMUL\n");
-                return Ok(Type::Float);
-            } else {
-                out.push_str("PUSH 0\nSWAP\nSUB\n");
-                return Ok(operand_type);
+            // Use temp buffer to support folding
+            let mut sub_out = String::new();
+            let (operand_type, constant) = self.parse_unary(&mut sub_out)?;
+            
+            if let Some(val) = constant {
+                // Constant Folding: Negate immediate
+                match val {
+                    ConstantValue::Int(i) => return Ok((Type::Int, Some(ConstantValue::Int(-i)))),
+                    ConstantValue::Float(f) => return Ok((Type::Float, Some(ConstantValue::Float(-f)))),
+                    _ => {} // Fallback for types that can't be negated normally?
+                }
             }
-        }
-        
-        if self.current_token == Token::Not {
-            // Unary NOT: !x is equivalent to (x == 0)
+            
+            // Not a constant
+            out.push_str(&sub_out); // Emit buffered code
+            if operand_type == Type::Float {
+                let neg_one: f64 = -1.0;
+                let bits = neg_one.to_bits() as i64;
+                out.push_str(&format!("PUSH {}\nFMUL\n", bits));
+                Ok((Type::Float, None))
+            } else {
+                out.push_str("PUSH 0\nSWAP\nSUB\n"); // 0 - x
+                Ok((operand_type, None))
+            }
+        } else if self.current_token == Token::Not {
+            // Unary NOT
             self.advance();
-            let _ = self.parse_unary(out)?;
-            out.push_str("PUSH 0\nEQ\n"); // 0 -> 1, non-zero -> 0
-            return Ok(Type::Bool);
+            let mut sub_out = String::new();
+            let (operand_type, constant) = self.parse_unary(&mut sub_out)?;
+            
+            if let Some(val) = constant {
+                match val {
+                    ConstantValue::Bool(b) => return Ok((Type::Bool, Some(ConstantValue::Bool(!b)))),
+                    ConstantValue::Int(i) => return Ok((Type::Bool, Some(ConstantValue::Bool(i == 0)))),
+                    _ => {}
+                }
+            }
+            
+            out.push_str(&sub_out);
+            out.push_str("PUSH 0\nEQ\n"); 
+            Ok((Type::Bool, None))
+        } else {
+            self.parse_primary(out)
         }
-        
-        self.parse_primary(out)
     }
 
-    fn parse_primary(&mut self, out: &mut String) -> Result<Type, CompileError> {
+    fn parse_primary(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
         match &self.current_token {
-            Token::Input => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("INPUT\n");
-                 Ok(Type::Int) // Input returns an integer
-            },
-            
-            // --- Introspection ---
-            Token::SysPlatform => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_SYS_PLATFORM\n");
-                 Ok(Type::Int)
-            },
-            Token::CamCount => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_CAM_COUNT\n");
-                 Ok(Type::Int)
-            },
-            
-            // --- VISION EXPRESSIONS ---
-            Token::CamCapture => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // Cam ID
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_CAM_CAPTURE\n");
-                 Ok(Type::Int)
-            },
-            Token::ImgAlloc => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // width
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // height
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_IMG_ALLOC\n");
-                 Ok(Type::Int) // Returns Handle ID
-            },
-            Token::ImgResize => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // handle
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // new_w
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // new_h
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_IMG_RESIZE\n");
-                 Ok(Type::Int)
-            },
-            Token::ImgCrop => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // handle
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // x
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // y
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // w
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // h
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_IMG_CROP\n");
-                 Ok(Type::Int)
-            },
-            Token::ImgGrayscale => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // handle
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_IMG_GRAYSCALE\n");
-                 Ok(Type::Int) 
-            },
-            Token::UpperCase => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // value
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_TO_UPPER\n");
-                 Ok(Type::Int)
-            },
-            Token::LowerCase => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // value
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_TO_LOWER\n");
-                 Ok(Type::Int)
-            },
-            Token::ImgGet => {
-                 self.advance();
-                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                 self.advance();
-                 self.parse_expression(out)?; // handle
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // x
-                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 self.parse_expression(out)?; // y
-                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                 self.advance();
-                 out.push_str("OP_IMG_GET\n");
-                 Ok(Type::Int) // Returns Pixel Value
-            },
-
             Token::Number(n) => {
                 let val = *n;
                 self.advance();
                 out.push_str(&format!("PUSH {}\n", val));
-                Ok(Type::Int)
+                Ok((Type::Int, Some(ConstantValue::Int(val))))
             },
             Token::Float(f) => {
                 let val = *f;
                 self.advance();
-                // We need to push raw bits of f64
                 let bits = val.to_bits() as i64;
                 out.push_str(&format!("PUSH {}\n", bits));
-                Ok(Type::Float)
+                Ok((Type::Float, Some(ConstantValue::Float(val))))
             },
             Token::True => {
                 self.advance();
                 out.push_str("PUSH 1\n");
-                Ok(Type::Bool)
+                Ok((Type::Bool, Some(ConstantValue::Bool(true))))
             },
             Token::False => {
                 self.advance();
                 out.push_str("PUSH 0\n");
-                Ok(Type::Bool)
+                Ok((Type::Bool, Some(ConstantValue::Bool(false))))
             },
             Token::String(s) => {
-                // String Literal
-                // TODO: Store string in data segment and push pointer.
-                // For now, fail or char pointer mock?
-                // Minimal: Push chars?
-                // Real: "String" type support not fully in VM yet.
-                // Let's treat as sequence of chars?
-                // Just error for now or basic?
-                // Allow "String" type but value is 0?
-                // Or basic char loop print support.
-                // Let's return String type but emit nothing valuable yet except for print?
-                // Actually, existing `print("foo")` works by iterating.
-                // If this is part of expression `var s = "foo"`, we need value.
-                // Implement: String Table?
-                // Hack: Pass raw string if it's argument to print?
-                // But this is parse_primary.
-                let s_val = s.clone();
+                let val = s.clone();
                 self.advance();
-                // We don't have good support for string variables yet.
-                // Just push 0 and warn.
                 out.push_str("PUSH 0 ; String Literal Placeholder\n"); 
-                Ok(Type::String)
+                Ok((Type::String, Some(ConstantValue::String(val))))
             },
             Token::Identifier(name) => {
                 let part1 = name.clone();
@@ -1615,45 +2238,70 @@ impl Parser {
                     }
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                     self.advance();
-                    // Emit CALL with arg count
-                    out.push_str(&format!("CALL {} {}\n", part1, arg_count));
-                    Ok(Type::Int)
-                } else if self.current_token == Token::Dot {
-                     // Method call...
-                     self.advance();
-                     let method = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected method name".to_string()) };
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
-                     self.advance();
-                     let mut arg_count = 0;
-                     if self.current_token != Token::RParen {
-                           loop {
-                               self.parse_expression(out)?;
-                               arg_count += 1;
-                               if self.current_token == Token::Comma { self.advance(); } else { break; }
-                           }
-                     }
-                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
-                     self.advance();
-                     
-                     out.push_str(&format!("CALL {}_{} {}\n", part1, method, arg_count));
-                     Ok(Type::Int)
+                    
+                    if let Some(opcode) = self.get_intrinsic(&part1) {
+                        out.push_str(&format!("{}\n", opcode));
+                    } else {
+                        // Emit CALL with arg count
+                        out.push_str(&format!("CALL {} {}\n", part1, arg_count));
+                    }
+                    Ok((Type::Int, None))
                 } else {
                     // Variable Access
-                    match self.resolve_var(&part1) {
-                        Some((loc, typ)) => {
-                            match loc {
-                                VarLocation::Global(addr) => {
-                                    out.push_str(&format!("PUSH {}\nPEEK\n", addr)); 
-                                },
-                                VarLocation::Local(offset) => {
-                                    out.push_str(&format!("GET_LOCAL {}\n", offset));
-                                }
-                            }
-                            Ok(typ)
+                    let (loc, mut typ) = match self.resolve_var(&part1) {
+                        Some(r) => r,
+                        None => {
+                            // Check intrinsics or other globals if not found?
+                            // For now error
+                            return self.error(format!("Undefined variable '{}'", part1));
+                        }
+                    };
+                    
+                    match loc {
+                        VarLocation::Global(addr) => {
+                             out.push_str(&format!("PUSH {}\nPEEK\n", addr)); 
                         },
-                        None => self.error(format!("Undefined variable: {}", part1)),
+                        VarLocation::Local(idx) => {
+                             out.push_str(&format!("GET_LOCAL {}\n", idx));
+                        }
                     }
+                    
+                    // Handle Chain: .x.y.z
+                    while self.current_token == Token::Dot {
+                        self.advance();
+                        let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
+                        self.advance();
+                        
+                        let offset = if let Type::Class(cname) = &typ {
+                             if let Some(cinfo) = self.classes.get(cname) {
+                                  if let Some(off) = cinfo.fields.get(&member) {
+                                      *off
+                                  } else { return self.error(format!("Class '{}' has no field '{}'", cname, member)); }
+                             } else { return self.error(format!("Unknown class '{}'", cname)); }
+                        } else {
+                             // Fallback: Search all classes for field
+                             let mut found = None;
+                             for (cname, cinfo) in &self.classes {
+                                 if let Some(off) = cinfo.fields.get(&member) {
+                                     if found.is_some() { return self.error(format!("Ambiguous field '{}' (found in multiple classes)", member)); }
+                                     found = Some(*off);
+                                     // Optimization: Could infer type here? 
+                                     // typ = Type::Class(cname.clone());
+                                 }
+                             }
+                             if let Some(off) = found {
+                                 off
+                             } else {
+                                 return self.error(format!("Field '{}' not found in any class (variable '{}' type unknown)", member, part1));
+                             }
+                        };
+                        
+                        out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset));
+                        // Typ becomes Unknown unless we track field types
+                        typ = Type::Unknown;
+                    }
+                    
+                    Ok((typ, None))
                 }
             },
             Token::LParen => {
@@ -1663,7 +2311,6 @@ impl Parser {
                 self.advance();
                 Ok(t)
             },
-
             Token::Peek => {
                 self.advance();
                 if self.current_token != Token::LParen { return self.error("Expected ( for peek".to_string()); }
@@ -1672,9 +2319,260 @@ impl Parser {
                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                 self.advance();
                 out.push_str("PEEK\n");
-                Ok(Type::Int) // Peek returns Int (raw)
+                Ok((Type::Int, None))
             },
+            Token::New => {
+                self.advance();
+                let name = match &self.current_token {
+                    Token::Identifier(s) => s.clone(),
+                    _ => return self.error("Expected class name after new".to_string()),
+                };
+                self.advance();
+                
+                let size = if let Some(info) = self.classes.get(&name) {
+                    info.size as i32
+                } else {
+                     return self.error(format!("Undefined class '{}'", name));
+                };
+                
+                out.push_str(&format!("PUSH {}\nPUSH 1\nOP_IMG_ALLOC\n", size));
+                
+                if self.current_token == Token::LParen { 
+                     self.advance(); 
+                     if self.current_token != Token::RParen { loop { self.parse_expression(out)?; if self.current_token==Token::Comma{self.advance();}else{break;} } }
+                     self.advance(); 
+                }
+                
+                Ok((Type::Class(name), None)) 
+            },
+            Token::Input => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("INPUT\n");
+                 Ok((Type::Int, None))
+            },
+            Token::KwInt => {
+                 self.advance();
+                 if self.current_token == Token::LParen {
+                     self.advance();
+                     let mut sub_out = String::new();
+                     let (t, c) = self.parse_expression(&mut sub_out)?;
+                     
+                     if let Some(val) = c {
+                         match val {
+                             ConstantValue::Float(f) => return Ok((Type::Int, Some(ConstantValue::Int(f as i64)))),
+                             ConstantValue::Int(i) => return Ok((Type::Int, Some(ConstantValue::Int(i)))),
+                             _ => {}
+                         }
+                     }
+                     out.push_str(&sub_out);
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if t == Type::Float { out.push_str("FTOI\n"); }
+                     Ok((Type::Int, None))
+                 } else {
+                     return self.error("Expected ( after int cast".to_string());
+                 }
+            },
+            Token::KwFloat => {
+                 self.advance();
+                 if self.current_token == Token::LParen {
+                     self.advance();
+                     let mut sub_out = String::new();
+                     let (t, c) = self.parse_expression(&mut sub_out)?;
+                     
+                      if let Some(val) = c {
+                         match val {
+                             ConstantValue::Int(i) => return Ok((Type::Float, Some(ConstantValue::Float(i as f64)))),
+                             ConstantValue::Float(f) => return Ok((Type::Float, Some(ConstantValue::Float(f)))),
+                             _ => {}
+                         }
+                     }
+                     
+                     out.push_str(&sub_out);
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if t != Type::Float { out.push_str("ITOF\n"); }
+                     Ok((Type::Float, None))
+                 } else {
+                     return self.error("Expected ( after float cast".to_string());
+                 }
+            },
+            Token::SysPlatform => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_SYS_PLATFORM\n");
+                 Ok((Type::Int, None))
+            },
+            Token::CamCount => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_CAM_COUNT\n");
+                 Ok((Type::Int, None))
+            },
+            Token::IsKeyDown => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?;
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IS_KEY_DOWN\n");
+                 Ok((Type::Bool, None))
+            },
+            Token::Sin => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?;
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_FSIN\n");
+                 Ok((Type::Float, None))
+            },
+            Token::Cos => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?;
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_FCOS\n");
+                 Ok((Type::Float, None))
+            },
+            Token::Sqrt => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?;
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_FSQRT\n");
+                 Ok((Type::Float, None))
+            },
+            Token::CamCapture => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // Cam ID
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_CAM_CAPTURE\n");
+                 Ok((Type::Int, None))
+            },
+            Token::ImgAlloc => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // width
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // height
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_ALLOC\n");
+                 Ok((Type::Int, None))
+            },
+            Token::ImgResize => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // handle
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // new_w
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // new_h
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_RESIZE\n");
+                 Ok((Type::Int, None))
+            },
+            Token::ImgCrop => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // handle
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // x
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // y
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // w
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // h
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_CROP\n");
+                 Ok((Type::Int, None))
+            },
+            Token::ImgGrayscale => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // handle
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_GRAYSCALE\n");
+                 Ok((Type::Int, None))
+            },
+            Token::UpperCase => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // value
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_TO_UPPER\n");
+                 Ok((Type::Int, None))
+            },
+            Token::LowerCase => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // value
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_TO_LOWER\n");
+                 Ok((Type::Int, None))
+            },
+            Token::ImgGet => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression(out)?; // handle
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // x
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+                 self.parse_expression(out)?; // y
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_IMG_GET\n");
+                 Ok((Type::Int, None)) // Returns Pixel Value
+            },
+            
             _ => return self.error(format!("Unexpected token in expression: {:?}", self.current_token)),
+        }
+    }
+    fn get_intrinsic(&self, name: &str) -> Option<String> {
+        match name {
+            "time" => Some("OP_TIME".to_string()),
+            "random" => Some("OP_RANDOM".to_string()),
+            "system" => Some("OP_SYSTEM".to_string()),
+            "vision_detect" => Some("OP_VISION_DETECT".to_string()),
+            // Graphics intrinsics
+            "gfx_clear" => Some("OP_GFX_CLEAR".to_string()),
+            "gfx_pixel" => Some("OP_DRAW_PIXEL".to_string()),
+            "gfx_line" => Some("OP_DRAW_LINE".to_string()),
+            "gfx_circle" => Some("OP_DRAW_CIRCLE".to_string()),
+            _ => None
         }
     }
 }

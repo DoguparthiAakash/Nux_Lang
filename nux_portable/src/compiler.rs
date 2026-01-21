@@ -43,16 +43,17 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
         match mnemonic.as_str() {
             "PUSH" => {
                 ops.push(0x01); // OP_PUSH
-                if parts.len() < 2 { return Err(format!("PUSH missing operand")); }
-                let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
+                if parts.len() < 2 { return Err(format!("PUSH missing operand in line {:?}", line)); }
+                let val = parts[1].parse::<i64>().map_err(|_| format!("Invalid number for PUSH: '{}' in line {:?}", parts[1], line))?;
                 ops.extend_from_slice(&val.to_le_bytes());
             },
             "POP" => ops.push(0x02),
-            "ADD" => ops.push(0x10),
-            "SUB" => ops.push(0x11),
-            "MUL" => ops.push(0x12),
-            "DIV" => ops.push(0x13),
-            "MOD" => ops.push(0x14),
+            "SWAP" => ops.push(0x03),
+            "ADD" | "OP_ADD" => ops.push(0x10),
+            "SUB" | "OP_SUB" => ops.push(0x11),
+            "MUL" | "OP_MUL" => ops.push(0x12),
+            "DIV" | "OP_DIV" => ops.push(0x13),
+            "MOD" | "OP_MOD" => ops.push(0x14),
             "POW" => ops.push(0x15),
             "FLOORDIV" => ops.push(0x16),
             "AND" => ops.push(0x18),
@@ -77,12 +78,46 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_IMG_RESIZE" => ops.push(0x37),
             "OP_IMG_CROP" => ops.push(0x38),
             "OP_IMG_GRAYSCALE" => ops.push(0x39),
+            "OP_IMG_SET" => ops.push(0x3A),
+            "OP_IMG_FILL" => ops.push(0x3B),
             
             "OP_TO_UPPER" => ops.push(0x55),
             "OP_TO_LOWER" => ops.push(0x56),
             
             "OP_SYS_PLATFORM" => ops.push(0x58),
             "OP_CAM_COUNT" => ops.push(0x59),
+            "OP_IS_KEY_DOWN" => ops.push(0x5A),
+            
+            "OP_VM_STACK_COPY" | "VM_STACK_COPY" => {
+                 ops.push(0x5B);
+            },
+            "OP_TIME" | "TIME" => ops.push(0x5C),
+            "OP_SYSTEM" | "SYSTEM" => ops.push(0x5D),
+            "OP_FILE_DELETE" | "FILE_DELETE" => ops.push(0x5E),
+            
+            // Graphics Opcodes
+            "OP_GFX_CLEAR" => ops.push(0x96),
+            "OP_DRAW_PIXEL" => ops.push(0x95),
+            "OP_DRAW_LINE" => ops.push(0x93),
+            "OP_DRAW_CIRCLE" => ops.push(0x94),
+            
+            "OP_VISION_DETECT" => ops.push(0xB0),
+            
+            // Embedded Opcodes
+            "OP_GPIO_WRITE" => ops.push(0xE0),
+            "OP_GPIO_READ" => ops.push(0xE1),
+            "OP_GPIO_MODE" => ops.push(0xE2),
+            "OP_ANALOG_READ" => ops.push(0xE3),
+            "OP_PWM_WRITE" => ops.push(0xE4),
+            "OP_I2C_WRITE" => ops.push(0xE5),
+            "OP_I2C_READ" => ops.push(0xE6),
+            "OP_SPI_TRANSFER" => ops.push(0xE7),
+            "OP_UART_WRITE" => ops.push(0xE8),
+            "OP_UART_READ" => ops.push(0xE9),
+            "OP_DELAY_MS" => ops.push(0xEA),
+            "OP_DELAY_US" => ops.push(0xEB),
+            "OP_MILLIS" => ops.push(0xEC),
+            "OP_MICROS" => ops.push(0xED),
             
             "OP_CHECK_RANGE" => {
                 ops.push(0x57);
@@ -94,6 +129,50 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
                 ops.extend_from_slice(&min.to_le_bytes());
                 ops.extend_from_slice(&max.to_le_bytes());
             },
+            
+            "GET_GLOBAL" => {
+                 // Pseudo-Op: PUSH addr; PEEK
+                 if parts.len() < 2 { return Err(format!("GET_GLOBAL missing address")); }
+                 let addr = parts[1].parse::<i64>().map_err(|_| "Invalid address")?;
+                 
+                 // PUSH addr
+                 ops.push(0x01); // OP_PUSH
+                 ops.extend_from_slice(&addr.to_le_bytes());
+                 
+                 // PEEK
+                 ops.push(0x40); // OP_PEEK
+            },
+            "SET_GLOBAL" => {
+                 // Pseudo-Op: PUSH addr; SWAP; POKE
+                 if parts.len() < 2 { return Err(format!("SET_GLOBAL missing address")); }
+                 let addr = parts[1].parse::<i64>().map_err(|_| "Invalid address")?;
+                 
+                 // PUSH addr
+                 ops.push(0x01);
+                 ops.extend_from_slice(&addr.to_le_bytes());
+                 
+                 // SWAP
+                 ops.push(0x03);
+                 
+                 // POKE
+                 ops.push(0x41); 
+            },
+
+            "OP_GET_LOCAL" | "GET_LOCAL" => {
+                 ops.push(0x44);
+                 if parts.len() < 2 { return Err(format!("GET_LOCAL missing offset")); }
+                 let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
+                 ops.extend_from_slice(&val.to_le_bytes());
+            },
+            "OP_SET_LOCAL" | "SET_LOCAL" => {
+                 ops.push(0x45);
+                 if parts.len() < 2 { return Err(format!("SET_LOCAL missing offset")); }
+                 let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
+                 ops.extend_from_slice(&val.to_le_bytes());
+            },
+            
+            "PEEK" => ops.push(0x40),
+            "POKE" => ops.push(0x41),
             
             "PRINT_CHAR" => ops.push(0x51),
             "INPUT" => ops.push(0x52),
@@ -107,22 +186,12 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "FTOI" => ops.push(0x1F),
             "FPOW" => ops.push(0x46),
             "FFLOORDIV" => ops.push(0x47),
-            "PEEK" => ops.push(0x40),
-            "POKE" => ops.push(0x41),
+            "OP_FSIN" => ops.push(0x48),
+            "OP_FCOS" => ops.push(0x49),
+            "OP_FSQRT" => ops.push(0x4A),
             "PEEK8" => ops.push(0x42),
             "POKE8" => ops.push(0x43),
-            "GET_LOCAL" => {
-                ops.push(0x44);
-                if parts.len() < 2 { return Err(format!("GET_LOCAL missing offset")); }
-                let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
-                ops.extend_from_slice(&val.to_le_bytes());
-            },
-            "SET_LOCAL" => {
-                ops.push(0x45);
-                if parts.len() < 2 { return Err(format!("SET_LOCAL missing offset")); }
-                let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
-                ops.extend_from_slice(&val.to_le_bytes());
-            },
+
             "DEBUG" => ops.push(0x50), // DEBUG_PRINT
             "JMP" => {
                 ops.push(0x60);

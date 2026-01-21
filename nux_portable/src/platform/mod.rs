@@ -10,4 +10,5 @@ pub trait Platform {
     fn capture_cam(&mut self, cam_id: usize) -> Option<(usize, usize, Vec<u32>)>;
     fn sys_info(&self) -> String;
     fn platform_type(&self) -> u8; // 0=Unk, 1=Linux, 2=Win, 3=Mac, 4=Ainux
+    fn is_key_down(&self, key: usize) -> bool;
 }

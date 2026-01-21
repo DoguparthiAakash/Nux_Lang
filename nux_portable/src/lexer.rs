@@ -1,13 +1,24 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    Print,
-    Println,
+    Print, // print
+    Println, // println
     Input,
+    Struct, 
     Class,
-    Func,
-    Var,
+    Func,   // WAS Fn
+    Var,    // WAS Let
+    Const,
+    Mut,
+    Impl,
+    Pub,
+    Private, 
+    Protected,
+    Pri, // Call Syntax
+    Pro, // Call Syntax
+    Use,
+    Mod,
     Return,
-    New,
+    New, // Maintain for now, or use Type { ... }
     If,
     Else,
     While,
@@ -34,12 +45,14 @@ pub enum Token {
     True, False, Not,
     
     // Vision
-    ImgAlloc, ImgFree, ImgDraw, CamCapture, ImgFilter, ImgGet, ImgSet,
+    ImgAlloc, ImgFree, ImgDraw, CamCapture, ImgFilter, ImgGet, ImgSet, ImgFill,
     ImgResize, ImgCrop, ImgGrayscale,
 
+    // Math Intrinsics
+    Sin, Cos, Sqrt,
     
     // Introspection
-    SysPlatform, CamCount,
+    SysPlatform, CamCount, IsKeyDown,
     
     UpperCase, LowerCase,
     
@@ -67,6 +80,7 @@ pub enum Token {
     Comma,
     Plus,
     Minus,
+    Arrow, // ->
     EOF,
 }
 
@@ -113,7 +127,15 @@ impl Lexer {
         
         match c {
             '+' => { self.advance_pos(); (Token::Plus, start_span) },
-            '-' => { self.advance_pos(); (Token::Minus, start_span) },
+            '-' => { 
+                self.advance_pos();
+                if self.pos < self.input.len() && self.input[self.pos] == '>' {
+                    self.advance_pos();
+                    (Token::Arrow, start_span)
+                } else {
+                    (Token::Minus, start_span)
+                }
+            },
             '*' => {
                 self.advance_pos();
                 if self.pos < self.input.len() && self.input[self.pos] == '*' {
@@ -264,7 +286,33 @@ impl Lexer {
             "println" => Token::Println,
             "input" => Token::Input,
             "func" => Token::Func,
+            "fn" => Token::Identifier(text), // Disable fn
             "var" => Token::Var,
+            "let" => Token::Identifier(text), // Disable let
+            
+            "const" => Token::Const,
+            "mut" => Token::Mut,
+            "struct" => Token::Struct,
+            "class" => Token::Class,
+            "impl" => Token::Impl,
+            "pub" => Token::Pub,
+            "public" => Token::Pub, // Syntax allows both? Token::Pub is fine for both if we treat them same, but let's map 'public' -> Token::Pub or separate?
+            // The prompt requested 'public', 'private', 'protected'.
+            // I added Token::Private, Token::Protected.
+            // Let's map "public" -> Token::Pub (or change Token::Pub to Token::Public and alias).
+            // Existing Token::Pub. I'll use Token::Pub for both "pub" and "public" to simplify?
+            // Or add explicit Token::Public. I didn't add Token::Public in the previous step, I added Private/Protected.
+            // I'll stick to: pub -> Token::Pub. public -> Token::Pub. 
+            // construct is: "public func".
+            // "private" -> Token::Private.
+            "private" => Token::Private,
+            "protected" => Token::Protected,
+            "pri" => Token::Pri,
+            "pro" => Token::Pro,
+            
+            "use" => Token::Use,
+            "mod" => Token::Mod,
+            
             "return" => Token::Return,
             "new" => Token::New,
             "if" => Token::If,
@@ -272,15 +320,20 @@ impl Lexer {
             "while" => Token::While,
             "for" => Token::For,
             "do" => Token::Do,
+            "loop" => Token::While, // Valid alias for now
+            "match" => Token::Identifier(String::from("match")), // TODO: Implement Match later
+            
             "asm" => Token::Asm,
             "spawn" => Token::Spawn,
             "lock" => Token::Lock,
             "unlock" => Token::Unlock,
-            "import" => Token::Import,
+            "import" => Token::Import, // Keep for now or map to Mod?
             "peek" => Token::Peek,
             "poke" => Token::Poke,
             "break" => Token::Break,
             "continue" => Token::Continue,
+            // "class" => Token::Class, // Already matched above
+            "new" => Token::New,
             
             // Types
             "int" => Token::KwInt,
@@ -299,14 +352,24 @@ impl Lexer {
             "img_filter" => Token::ImgFilter,
             "img_get" => Token::ImgGet,
             "img_set" => Token::ImgSet,
+            "img_fill" => Token::ImgFill,
             "img_resize" => Token::ImgResize,
             "img_crop" => Token::ImgCrop,
             "img_grayscale" => Token::ImgGrayscale,
+
+            "sin" => Token::Sin,
+            "cos" => Token::Cos,
+            "sqrt" => Token::Sqrt,
+
             "UpperCase" => Token::UpperCase,
             "LowerCase" => Token::LowerCase,
             
             "sys_platform" => Token::SysPlatform,
             "cam_count" => Token::CamCount,
+            "is_key_down" => Token::IsKeyDown,
+            "system" => Token::Identifier(String::from("system")), // Intrinsic handled by parser check? 
+            // Actually parser checks identifiers for intrinsics if they look like func calls.
+            // So Token::Identifier is fine.
             
             "true" => Token::True,
             "false" => Token::False,

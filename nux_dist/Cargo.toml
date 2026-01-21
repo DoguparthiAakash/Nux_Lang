@@ -1,0 +1,17 @@
+[package]
+name = "nux"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ainux Team"]
+description = "Nux Programming Language - Compiler and Runtime"
+license = "MIT"
+
+[lib]
+name = "nux"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nux"
+path = "src/main.rs"
+
+[dependencies]

@@ -3,6 +3,14 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::process::Command;
 
+// ANSI Color codes for syntax highlighting
+const COLOR_KEYWORD: &str = "\x1b[34m";    // Blue
+const COLOR_STRING: &str = "\x1b[32m";     // Green  
+const COLOR_NUMBER: &str = "\x1b[33m";     // Yellow
+const COLOR_COMMENT: &str = "\x1b[90m";    // Gray
+const COLOR_OPERATOR: &str = "\x1b[35m";   // Magenta
+const COLOR_RESET: &str = "\x1b[0m";
+
 pub fn run(filename: &str) {
     // Try system editor first? User seems to want THIS specific behavior now.
     // But keeping the fallback logic is good practice. 
@@ -129,8 +137,15 @@ impl MiniEditor {
     fn refresh_screen(&self) {
         print!("\x1b[2J\x1b[H"); 
         
+        // Render lines with line numbers and syntax highlighting
         for (i, line) in self.lines.iter().enumerate() {
-            print!("{}\r\n", line); // TODO: Scroll offset support (omitted for brevity)
+            let line_num = format!("{:4} ", i + 1);
+            let line_num_color = if i == self.cy { "\x1b[36;1m" } else { "\x1b[90m" };
+            print!("{}{}{}", line_num_color, line_num, COLOR_RESET);
+            
+            // Apply syntax highlighting
+            let highlighted = self.highlight_line(line);
+            print!("{}\r\n", highlighted);
         }
         
         // Status Bar
@@ -139,10 +154,10 @@ impl MiniEditor {
         let dirty_char = if self.dirty { "[+]" } else { "" };
         let mode_str = match self.mode { Mode::View => "VIEW", Mode::Insert => "INSERT" };
 
-        print!("\n-- {} -- {} Pos: {},{}  {}\r\n", mode_str, dirty_char, self.cx, self.cy, self.msg);
+        print!("\n-- {} -- {} Line: {}/{}  {}\r\n", mode_str, dirty_char, self.cy + 1, self.lines.len(), self.msg);
         
-        // Cursor
-        print!("\x1b[{};{}H", self.cy + 1, self.cx + 1);
+        // Cursor (adjust for line number gutter)
+        print!("\x1b[{};{}H", self.cy + 1, self.cx + 6);
         io::stdout().flush().unwrap();
     }
 
@@ -197,6 +212,12 @@ impl MiniEditor {
 
     fn process_keypress(&mut self) {
         let key = self.read_key();
+        
+        // Check for command mode
+        if self.mode == Mode::View && matches!(key, Key::Char(':')) {
+            self.handle_command();
+            return;
+        }
         
         // Ensure bounds
         if !self.lines.is_empty() {
@@ -325,6 +346,171 @@ impl MiniEditor {
         } else {
             self.msg = "File saved.".to_string();
             self.dirty = false;
+        }
+    }
+    
+    fn highlight_line(&self, line: &str) -> String {
+        let keywords = ["func", "var", "if", "else", "while", "for", "class", "return", "import", "new"];
+        let mut result = String::new();
+        let mut chars = line.chars().peekable();
+        
+        while let Some(ch) = chars.next() {
+            if ch == '#' {
+                result.push_str(COLOR_COMMENT);
+                result.push(ch);
+                result.push_str(&chars.collect::<String>());
+                result.push_str(COLOR_RESET);
+                break;
+            }
+            
+            if ch == '"' {
+                result.push_str(COLOR_STRING);
+                result.push(ch);
+                while let Some(c) = chars.next() {
+                    result.push(c);
+                    if c == '"' { break; }
+                }
+                result.push_str(COLOR_RESET);
+                continue;
+            }
+            
+            if ch.is_numeric() {
+                result.push_str(COLOR_NUMBER);
+                result.push(ch);
+                while let Some(&c) = chars.peek() {
+                    if c.is_numeric() || c == '.' {
+                        result.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                result.push_str(COLOR_RESET);
+                continue;
+            }
+            
+            if ch.is_alphabetic() || ch == '_' {
+                let mut word = String::new();
+                word.push(ch);
+                while let Some(&c) = chars.peek() {
+                    if c.is_alphanumeric() || c == '_' {
+                        word.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                
+                if keywords.contains(&word.as_str()) {
+                    result.push_str(COLOR_KEYWORD);
+                    result.push_str(&word);
+                    result.push_str(COLOR_RESET);
+                } else {
+                    result.push_str(&word);
+                }
+                continue;
+            }
+            
+            if "+-*/=<>!&|".contains(ch) {
+                result.push_str(COLOR_OPERATOR);
+                result.push(ch);
+                result.push_str(COLOR_RESET);
+                continue;
+            }
+            
+            result.push(ch);
+        }
+        
+        result
+    }
+    
+    fn get_indent_level(&self, line_idx: usize) -> usize {
+        if line_idx >= self.lines.len() {
+            return 0;
+        }
+        let line = &self.lines[line_idx];
+        line.chars().take_while(|c| *c == ' ').count()
+    }
+    
+    fn handle_command(&mut self) {
+        // Read command
+        print!("\x1b[H\x1b[999B\r\n:");
+        io::stdout().flush().unwrap();
+        
+        let mut cmd = String::new();
+        loop {
+            let key = self.read_key();
+            match key {
+                Key::Enter => break,
+                Key::Char(c) => {
+                    cmd.push(c);
+                    print!("{}", c);
+                    io::stdout().flush().unwrap();
+                }
+                Key::Backspace => {
+                    if !cmd.is_empty() {
+                        cmd.pop();
+                        print!("\x08 \x08");
+                        io::stdout().flush().unwrap();
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        // Execute command
+        match cmd.trim() {
+            "compile" | "c" => {
+                self.save_file();
+                self.msg = format!("Compiling {}...", self.filename);
+                self.refresh_screen();
+                
+                let output = Command::new("nux")
+                    .arg("build")
+                    .arg(&self.filename)
+                    .output();
+                
+                match output {
+                    Ok(result) => {
+                        if result.status.success() {
+                            self.msg = "✅ Compilation successful!".to_string();
+                        } else {
+                            let err = String::from_utf8_lossy(&result.stderr);
+                            self.msg = format!("❌ Compilation failed: {}", err.lines().next().unwrap_or("Unknown error"));
+                        }
+                    }
+                    Err(e) => {
+                        self.msg = format!("Error running compiler: {}", e);
+                    }
+                }
+            }
+            "run" | "r" => {
+                self.save_file();
+                self.msg = "Running...".to_string();
+                self.refresh_screen();
+                
+                self.disable_raw_mode();
+                let _ = Command::new("nux")
+                    .arg("run")
+                    .arg(&self.filename)
+                    .status();
+                self.enable_raw_mode();
+                
+                self.msg = "Program finished. Press any key...".to_string();
+                self.refresh_screen();
+                self.read_key();
+            }
+            "q" | "quit" => {
+                self.quit = true;
+            }
+            "w" | "write" => {
+                self.save_file();
+            }
+            "wq" => {
+                self.save_file();
+                self.quit = true;
+            }
+            _ => {
+                self.msg = format!("Unknown command: {}", cmd);
+            }
         }
     }
 }

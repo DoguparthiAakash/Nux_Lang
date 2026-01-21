@@ -1,0 +1,200 @@
+   Compiling nux v0.1.0 (/home/aakash/Downloads/Ainuix/custom_kernel/nux_portable)
+warning: unused import: `self`
+ --> src/vm.rs:1:23
+  |
+1 | use crate::platform::{self, Platform};
+  |                       ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Read`
+ --> src/vm.rs:3:28
+  |
+3 | use std::io::{self, Write, Read};
+  |                            ^^^^
+
+warning: unused import: `std::env`
+ --> src/editor.rs:1:5
+  |
+1 | use std::env;
+  |     ^^^^^^^^
+
+error[E0599]: no method named `resolve_local` found for mutable reference `&mut Parser` in the current scope
+   --> src/high_level.rs:733:50
+    |
+733 |                          if let Some(idx) = self.resolve_local(name) {
+    |                                                  ^^^^^^^^^^^^^
+    |
+help: there is a method `resolve_var` with a similar name
+    |
+733 -                          if let Some(idx) = self.resolve_local(name) {
+733 +                          if let Some(idx) = self.resolve_var(name) {
+    |
+
+error[E0599]: no method named `globals_lookup_placeholder` found for mutable reference `&mut Parser` in the current scope
+   --> src/high_level.rs:737:58
+    |
+737 |                          } else if let Some(addr) = self.globals_lookup_placeholder(name) { 
+    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `&mut Parser`
+
+warning: unreachable pattern
+   --> src/compiler.rs:136:13
+    |
+118 |             "PEEK" => ops.push(0x40),
+    |             ------ matches all the relevant values
+...
+136 |             "PEEK" => ops.push(0x40),
+    |             ^^^^^^ no value can reach this
+    |
+    = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: unreachable pattern
+   --> src/compiler.rs:137:13
+    |
+119 |             "POKE" => ops.push(0x41),
+    |             ------ matches all the relevant values
+...
+137 |             "POKE" => ops.push(0x41),
+    |             ^^^^^^ no value can reach this
+
+warning: unreachable pattern
+   --> src/vm.rs:931:17
+    |
+735 |                 OP_TIME => {
+    |                 ------- matches all the relevant values
+...
+931 |                 OP_TIME => {
+    |                 ^^^^^^^ no value can reach this
+
+warning: unused variable: `y`
+   --> src/vm.rs:535:25
+    |
+535 |                     let y = self.pop(); // unused by update_window usually
+    |                         ^ help: if this is intentional, prefix it with an underscore: `_y`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `x`
+   --> src/vm.rs:536:25
+    |
+536 |                     let x = self.pop();
+    |                         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: unused variable: `w`
+   --> src/vm.rs:579:34
+    |
+579 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+    |                                  ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: unused variable: `h`
+   --> src/vm.rs:579:37
+    |
+579 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+    |                                     ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `src_idx`
+   --> src/vm.rs:617:25
+    |
+617 |                     let src_idx = self.pop() as usize; // Index in global stack? Or relative to FP?
+    |                         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_src_idx`
+
+warning: unused variable: `mode`
+   --> src/vm.rs:885:26
+    |
+885 |                      let mode = self.pop();
+    |                          ^^^^ help: if this is intentional, prefix it with an underscore: `_mode`
+
+warning: unused variable: `result_slot`
+   --> src/vm.rs:887:26
+    |
+887 |                      let result_slot = self.pop(); // Pop the 0 pushed before?
+    |                          ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_result_slot`
+
+warning: unused variable: `h`
+   --> src/vm.rs:923:38
+    |
+923 |                      if let Some((w, h, data)) = state.images.get_mut(&handle) {
+    |                                      ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unreachable pattern
+   --> src/lexer.rs:336:13
+    |
+317 |             "new" => Token::New,
+    |             ----- matches all the relevant values
+...
+336 |             "new" => Token::New,
+    |             ^^^^^ no value can reach this
+
+warning: unused variable: `access`
+   --> src/high_level.rs:591:68
+    |
+591 |     fn parse_func(&mut self, out: &mut String, class_prefix: &str, access: AccessModifier) -> Result<(), CompileError> {
+    |                                                                    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_access`
+
+warning: variable does not need to be mutable
+    --> src/high_level.rs:1560:19
+     |
+1560 |              let (mut expr_type, constant) = self.parse_expression(&mut sub_out)?;
+     |                   ----^^^^^^^^^
+     |                   |
+     |                   help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `val`
+    --> src/high_level.rs:2095:21
+     |
+2095 |         if let Some(val) = &left_const {
+     |                     ^^^ help: if this is intentional, prefix it with an underscore: `_val`
+
+warning: unused variable: `l_val`
+    --> src/high_level.rs:2109:27
+     |
+2109 |              if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+     |                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_l_val`
+
+warning: unused variable: `r_val`
+    --> src/high_level.rs:2109:40
+     |
+2109 |              if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+     |                                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_r_val`
+
+warning: unused variable: `operand_type`
+    --> src/high_level.rs:2180:18
+     |
+2180 |             let (operand_type, constant) = self.parse_unary(&mut sub_out)?;
+     |                  ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_operand_type`
+
+warning: unused variable: `cname`
+    --> src/high_level.rs:2289:35
+     |
+2289 | ...                   for (cname, cinfo) in &self.classes {
+     |                            ^^^^^ help: if this is intentional, prefix it with an underscore: `_cname`
+
+warning: unused variable: `i`
+   --> src/editor.rs:132:14
+    |
+132 |         for (i, line) in self.lines.iter().enumerate() {
+    |              ^ help: if this is intentional, prefix it with an underscore: `_i`
+
+warning: unused variable: `width`
+  --> src/platform/ainux.rs:23:50
+   |
+23 |     fn update_window(&mut self, _buffer: &[u32], width: usize, height: usize) -> Result<(), String> {
+   |                                                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+
+warning: unused variable: `height`
+  --> src/platform/ainux.rs:23:64
+   |
+23 |     fn update_window(&mut self, _buffer: &[u32], width: usize, height: usize) -> Result<(), String> {
+   |                                                                ^^^^^^ help: if this is intentional, prefix it with an underscore: `_height`
+
+warning: unused variable: `exe`
+   --> src/main.rs:364:47
+    |
+364 | ...                   if let Ok(exe) = std::env::current_exe() {
+    |                                 ^^^ help: if this is intentional, prefix it with an underscore: `_exe`
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `nux` (bin "nux") generated 26 warnings
+error: could not compile `nux` (bin "nux") due to 2 previous errors; 26 warnings emitted
