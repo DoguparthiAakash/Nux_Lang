@@ -1,0 +1,265 @@
+# Nux Async I/O Library
+# Event loop and asynchronous operations (libuv-style)
+
+import "std.network";
+import "std.thread";
+
+class EventLoop {
+    var running;
+    var handles;
+    var timers;
+    var io_watchers;
+    
+    func init() {
+        this.running = 0;
+        
+        this.handles = new List();
+        this.handles.init();
+        
+        this.timers = new List();
+        this.timers.init();
+        
+        this.io_watchers = new List();
+        this.io_watchers.init();
+    }
+    
+    func run() {
+        this.running = 1;
+        
+        for (;;) {
+            if (this.running == 0) {
+                break;
+            }
+            
+            # Process timers
+            this.process_timers();
+            
+            # Process I/O
+            this.process_io();
+            
+            # Process callbacks
+            this.process_callbacks();
+            
+            if (this.handles.length() == 0) {
+                break;
+            }
+        }
+    }
+    
+    func stop() {
+        this.running = 0;
+    }
+    
+    func process_timers() {
+        var now = rdtsc();
+        
+        var i = 0;
+        for (i = 0; i < this.timers.length(); i = i + 1) {
+            var timer = this.timers.get(i);
+            
+            if (now >= timer.get("deadline")) {
+                var callback = timer.get("callback");
+                callback();
+                
+                if (timer.get("repeat") != 0) {
+                    timer.put("deadline", now + timer.get("interval"));
+                }
+            }
+        }
+    }
+    
+    func process_io() {
+        # Poll for I/O events
+        # ... (epoll/kqueue implementation)
+    }
+    
+    func process_callbacks() {
+        # Execute pending callbacks
+        # ... (implementation)
+    }
+}
+
+class AsyncHandle {
+    var loop;
+    var callback;
+    var data;
+    
+    func init(event_loop) {
+        this.loop = event_loop;
+        this.loop.handles.append(this);
+    }
+    
+    func close() {
+        # Remove from event loop
+        # ... (implementation)
+    }
+}
+
+class Timer {
+    var handle;
+    var timeout;
+    var repeat;
+    var callback;
+    
+    func init(loop) {
+        this.handle = new AsyncHandle();
+        this.handle.init(loop);
+    }
+    
+    func start(cb, timeout_ms, repeat_ms) {
+        this.callback = cb;
+        this.timeout = timeout_ms;
+        this.repeat = repeat_ms;
+        
+        var timer_info = new Map();
+        timer_info.init();
+        timer_info.put("callback", cb);
+        timer_info.put("deadline", rdtsc() + timeout_ms * 1000000);
+        timer_info.put("interval", repeat_ms * 1000000);
+        timer_info.put("repeat", repeat_ms);
+        
+        this.handle.loop.timers.append(timer_info);
+    }
+    
+    func stop() {
+        # Remove timer
+        # ... (implementation)
+    }
+}
+
+class AsyncTCP {
+    var handle;
+    var socket_id;
+    var on_connection;
+    var on_data;
+    
+    func init(loop) {
+        this.handle = new AsyncHandle();
+        this.handle.init(loop);
+    }
+    
+    func bind(host, port) {
+        this.socket_id = net_listen(port);
+    }
+    
+    func listen(callback) {
+        this.on_connection = callback;
+        
+        # Register with event loop
+        # ... (implementation)
+    }
+    
+    func accept() {
+        var client_socket = net_accept(this.socket_id);
+        
+        var client = new AsyncTCP();
+        client.init(this.handle.loop);
+        client.socket_id = client_socket;
+        
+        return client;
+    }
+    
+    func read_start(callback) {
+        this.on_data = callback;
+        
+        # Register for read events
+        # ... (implementation)
+    }
+    
+    func write(data, callback) {
+        net_send(this.socket_id, data);
+        
+        if (callback != 0) {
+            callback();
+        }
+    }
+}
+
+class AsyncFile {
+    var handle;
+    var fd;
+    var on_read;
+    
+    func init(loop) {
+        this.handle = new AsyncHandle();
+        this.handle.init(loop);
+    }
+    
+    func open(path, flags, callback) {
+        # Async file open
+        # ... (implementation)
+        
+        if (callback != 0) {
+            callback();
+        }
+    }
+    
+    func read(offset, length, callback) {
+        # Async read
+        # ... (implementation)
+    }
+    
+    func write(offset, data, callback) {
+        # Async write
+        # ... (implementation)
+    }
+}
+
+class Promise {
+    var state;
+    var value;
+    var then_callbacks;
+    var catch_callbacks;
+    
+    func init() {
+        this.state = 0;
+        this.then_callbacks = new List();
+        this.then_callbacks.init();
+        this.catch_callbacks = new List();
+        this.catch_callbacks.init();
+    }
+    
+    func then(callback) {
+        if (this.state == 1) {
+            callback(this.value);
+        }
+        if (this.state == 0) {
+            this.then_callbacks.append(callback);
+        }
+        
+        return this;
+    }
+    
+    func catch(callback) {
+        if (this.state == 2) {
+            callback(this.value);
+        }
+        if (this.state == 0) {
+            this.catch_callbacks.append(callback);
+        }
+        
+        return this;
+    }
+    
+    func resolve(val) {
+        this.state = 1;
+        this.value = val;
+        
+        var i = 0;
+        for (i = 0; i < this.then_callbacks.length(); i = i + 1) {
+            var cb = this.then_callbacks.get(i);
+            cb(val);
+        }
+    }
+    
+    func reject(err) {
+        this.state = 2;
+        this.value = err;
+        
+        var i = 0;
+        for (i = 0; i < this.catch_callbacks.length(); i = i + 1) {
+            var cb = this.catch_callbacks.get(i);
+            cb(err);
+        }
+    }
+}

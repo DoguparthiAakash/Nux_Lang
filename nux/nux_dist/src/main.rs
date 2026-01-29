@@ -1,4 +1,5 @@
 use nux::{compile_to_asm, assemble};
+use nux::vm::NuxVm;
 use std::env;
 use std::fs;
 use std::process;
@@ -10,18 +11,21 @@ fn main() {
         eprintln!("Nux Compiler v0.1.0");
         eprintln!();
         eprintln!("Usage:");
-        eprintln!("  nux <file.nux>              - Compile to assembly and display");
-        eprintln!("  nux compile <file.nux> <output.nuxi>  - Compile to bytecode");
+        eprintln!("  nux <file.nux>                  - Compile to assembly and display");
+        eprintln!("  nux compile <file.nux> <out>    - Compile to bytecode file");
+        eprintln!("  nux run <file.nux>              - Compile and Run");
         process::exit(1);
     }
     
-    let mode = if args.len() >= 3 && args[1] == "compile" {
+    let mode = if args[1] == "compile" {
         "compile"
+    } else if args[1] == "run" {
+        "run"
     } else {
         "asm"
     };
     
-    let input_file = if mode == "compile" { &args[2] } else { &args[1] };
+    let input_file = if mode == "asm" { &args[1] } else { &args[2] };
     
     // Read source file
     let source = match fs::read_to_string(input_file) {
@@ -32,7 +36,9 @@ fn main() {
         }
     };
     
-    println!("Compiling {}...", input_file);
+    if mode == "asm" {
+        println!("Compiling {}...", input_file);
+    }
     
     // Compile to assembly
     let asm = match compile_to_asm(&source) {
@@ -46,7 +52,10 @@ fn main() {
         }
     };
     
-    if mode == "compile" {
+    if mode == "asm" {
+        println!("\n--- Generated Assembly ---");
+        println!("{}", asm);
+    } else {
         // Assemble to bytecode
         let bytecode = match assemble(&asm) {
             Ok(bc) => bc,
@@ -55,18 +64,24 @@ fn main() {
                 process::exit(1);
             }
         };
-        
-        let output_file = &args[3];
-        match fs::write(output_file, bytecode) {
-            Ok(_) => println!("\n✓ Compiled to {}", output_file),
-            Err(e) => {
-                eprintln!("\nError writing output: {}", e);
-                process::exit(1);
+
+        if mode == "compile" {
+            if args.len() < 4 {
+                 eprintln!("Output file required for compile mode");
+                 process::exit(1);
             }
+            let output_file = &args[3];
+            match fs::write(output_file, bytecode) {
+                Ok(_) => println!("\n✓ Compiled to {}", output_file),
+                Err(e) => {
+                    eprintln!("\nError writing output: {}", e);
+                    process::exit(1);
+                }
+            }
+        } else if mode == "run" {
+            // Run VM
+            let mut vm = NuxVm::new(bytecode);
+            vm.run();
         }
-    } else {
-        println!("\n✓ Compilation successful!");
-        println!("\n--- Generated Assembly ---");
-        println!("{}", asm);
     }
 }

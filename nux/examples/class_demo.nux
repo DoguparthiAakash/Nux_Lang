@@ -1,0 +1,32 @@
+# Nux Class Demo
+import "std.oo_graphics";
+import "std.random";
+
+func main() {
+    println("Initializing Graphics Object...");
+    var screen = new Image();
+    screen.create(800, 600);
+    
+    println("Initializing Random Generator...");
+    var rng = new Random();
+    rng.init(12345);
+    
+    println("Drawing Random Pixels...");
+    
+    # Loop 100 times
+    for(var i=0; i<100; i=i+1) {
+        var x = rng.range(0, 800);
+        var y = rng.range(0, 600);
+        var c = rng.range(0, 16777215); # 0xFFFFFF
+        
+        screen.set(x, y, c);
+    }
+    
+    println("Done Drawing.");
+    
+    # screen.draw_at(0, 0); # Requires active display context
+    
+    screen.destroy();
+    println("Cleaned up.");
+}
+main();

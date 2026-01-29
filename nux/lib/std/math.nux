@@ -1,0 +1,36 @@
+# Nux Standard Math Library
+# Provides basic mathematical functions
+
+# Constants
+var PI = 3.14159265359;
+var E = 2.71828182846;
+
+# Power (pow is not a keyword? Check Lexer)
+# Lexer has OP_POW (Token::StarStar). No 'pow' keyword.
+func pow(base, exp) {
+    return base ** exp;
+}
+
+# Maximum of two values
+func max(a, b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+# Minimum of two values
+func min(a, b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+# Absolute value
+func abs(x) {
+    if (x < 0) {
+        return 0 - x;
+    }
+    return x;
+}

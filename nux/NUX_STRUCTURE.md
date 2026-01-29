@@ -1,102 +1,115 @@
-# Nux Distribution Structure
-
-This directory contains two separate Nux implementations:
+# Nux Project Structure
 
 ## 📦 nux_dist/ - Standalone Distribution
-**Purpose:** Nux compiler and tools for Linux/macOS/Windows
+**Purpose:** Nux compiler and tools for Linux/macOS/Windows (Standard Rust)
 
 **Contents:**
-- Standalone Nux compiler (no kernel dependencies)
-- Library API for embedding Nux in other projects
-- CLI tool for compiling Nux scripts
-- Minimal VM stub (for testing only)
+- `src/compiler.rs`: High-level Nux compiler with Import support and OO features
+- `src/vm.rs`: Standalone Nux VM implementation
+- `src/main.rs`: CLI (compile/run/asm)
 
-**Usage:**
-```bash
-cd nux_dist
-cargo build --release
-./target/release/nux script.nux
-```
+---
 
-**Target:** Developers who want to use Nux outside the kernel
+## 📚 lib/ - Standard Libraries
+**Purpose:** Official Nux libraries written in Nux
+
+### `lib/std/` (Standard)
+
+**Core Libraries:**
+- `io.nux`: Input/Output wrappers
+- `math.nux`: Mathematical functions
+- `string.nux`: String manipulation
+- `file.nux`: File System operations
+- `graphics.nux`: Image & Vision wrappers
+
+**Object-Oriented Libraries:**
+- `oo_file.nux`: OO File I/O (File class)
+- `oo_graphics.nux`: OO Graphics (Image class)
+- `random.nux`: Random number generator (Random class)
+
+**Data & Collections:**
+- `collections.nux`: List and Map classes
+- `json.nux`: JSON parsing and serialization
+- `datetime.nux`: Date and time utilities (DateTime class)
+
+**Networking & System:**
+- `network.nux`: Socket operations and HTTP
+- `system.nux`: OS interaction, environment, processes
+- `crypto.nux`: Hashing, encryption, Base64
+- `regex.nux`: Regular expressions (Regex class)
+
+### `lib/embedded/` (Embedded/IoT)
+- `gpio.nux`: GPIO control
+- `time.nux`: Timing functions
+- `analog.nux`: Analog I/O
+
+---
+
+## 📂 examples/ - Example Scripts
+**Purpose:** Sample Nux programs and demos
+
+- `std_demo.nux`: Demonstrates standard library usage
+- `class_demo.nux`: Object-oriented programming demo
+- `loop.nux`: Loop benchmarks
+- `print.nux`: Basic printing tests
+- `mem_limit.nux`: Memory management tests
+- `sec.nux`: Security features demo
 
 ---
 
 ## 🔧 nux_lang/ - Kernel Integration
 **Purpose:** Nux language implementation for Ainux kernel
 
-**Contents:**
-- Full Nux compiler with kernel integration
-- Complete VM with kernel APIs
-- Security & Data Manager intrinsics
-- File I/O, graphics, and system operations
-
-**Usage:**
-These files are integrated into the kernel at `src/nux/`
-
 **Target:** Ainux kernel development
 
 ---
 
 ## Directory Structure
-
 ```
 .
-├── nux_dist/           # Standalone distribution
-│   ├── src/
-│   │   ├── lib.rs      # Public API
-│   │   ├── main.rs     # CLI binary
-│   │   ├── lexer.rs    # Tokenizer
-│   │   ├── compiler.rs # High-level compiler
-│   │   ├── assembler.rs# Bytecode assembler
-│   │   └── vm.rs       # Minimal VM stub
-│   ├── Cargo.toml
-│   └── README.md
-│
-└── nux_lang/           # Kernel integration
-    ├── lexer.rs        # Tokenizer (kernel version)
-    ├── high_level.rs   # Compiler (kernel version)
-    ├── compiler.rs     # Assembler (kernel version)
-    ├── vm.rs           # Full VM with kernel APIs
-    ├── mod.rs          # Module declarations
-    └── README.md
+├── nux_dist/           # Standalone compiler & VM
+├── lib/
+│   ├── std/            # Standard Libs
+│   │   ├── io.nux
+│   │   ├── math.nux
+│   │   ├── string.nux
+│   │   ├── file.nux
+│   │   ├── graphics.nux
+│   │   ├── oo_file.nux
+│   │   ├── oo_graphics.nux
+│   │   ├── random.nux
+│   │   ├── collections.nux
+│   │   ├── json.nux
+│   │   ├── datetime.nux
+│   │   ├── network.nux
+│   │   ├── system.nux
+│   │   ├── crypto.nux
+│   │   └── regex.nux
+│   └── embedded/       # Embedded Libs
+│       ├── gpio.nux
+│       ├── time.nux
+│       └── analog.nux
+├── examples/           # Example Scripts
+│   ├── std_demo.nux
+│   ├── class_demo.nux
+│   ├── loop.nux
+│   └── ...
+└── nux_lang/           # Kernel Source
 ```
 
----
+## Library Categories
 
-## Key Differences
+### 🎯 Core (Essential)
+Basic I/O, math, strings, files
 
-| Feature | nux_dist | nux_lang |
-|---------|----------|----------|
-| **Environment** | std Rust (Linux/macOS/Windows) | no_std (Ainux kernel) |
-| **VM** | Stub only | Full implementation |
-| **Kernel APIs** | None | VFS, drivers, security, etc. |
-| **File I/O** | Disabled | Full VFS integration |
-| **Graphics** | None | Kernel video driver |
-| **Security** | None | UserManager integration |
-| **Data Manager** | None | DataManager integration |
-| **Use Case** | Compiler testing, development | Production kernel use |
+### 🎨 Object-Oriented
+Classes for cleaner API design
 
----
+### 📊 Data Structures
+Collections, JSON, DateTime
 
-## Development Workflow
+### 🌐 Networking & System
+HTTP, sockets, OS interaction
 
-1. **Test compiler changes** in `nux_dist/` (faster iteration)
-2. **Port fixes** to `nux_lang/` for kernel integration
-3. **Verify** in kernel with QEMU
-
----
-
-## Building
-
-### Standalone Distribution
-```bash
-cd nux_dist
-cargo build --release
-```
-
-### Kernel Integration
-```bash
-# Automatically built with kernel
-./build_iso.sh
-```
+### 🔐 Security
+Crypto, hashing, encoding

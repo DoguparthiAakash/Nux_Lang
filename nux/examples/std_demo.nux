@@ -1,0 +1,31 @@
+# Test Nux Standard Library
+
+import "std.io";
+import "std.math";
+import "std.string";
+
+func main() {
+    println("Testing Standard Library...");
+
+    # Test I/O
+    print(" 1. I/O: ");
+    println("OK");
+
+    # Test Math
+    var r = sqrt(16.0);
+    print(" 2. Math (sqrt 16): ");
+    println(r);
+    
+    var m = max(10, 20);
+    print("    Math (max 10, 20): ");
+    println(m);
+
+    # Test String
+    var s = to_upper("hello");
+    print(" 3. String (upper): ");
+    println(s);
+
+    println("Done.");
+}
+
+main();

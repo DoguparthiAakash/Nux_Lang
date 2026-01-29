@@ -1,0 +1,64 @@
+# Nux File I/O Library
+
+# File Modes
+var FILE_READ = 0;
+var FILE_WRITE = 1;
+var FILE_APPEND = 2;
+
+# Open a file (returns file ID/handle)
+func fopen(path, mode) {
+    asm {
+        path
+        mode
+        FILE_OPEN
+    }
+}
+
+# Close a file
+func fclose(handle) {
+    asm {
+        handle
+        FILE_CLOSE
+    }
+}
+
+# Read content from file
+func fread(handle) {
+    asm {
+        handle
+        FILE_READ
+    }
+}
+
+# Write content to file
+func fwrite(handle, content) {
+    asm {
+        handle
+        content
+        FILE_WRITE
+    }
+}
+
+# Check if file exists
+func fexists(path) {
+    asm {
+        path
+        FILE_EXISTS
+    }
+}
+
+# Delete a file
+func fdelete(path) {
+    asm {
+        path
+        OP_FILE_DELETE
+    }
+}
+
+# Create directory
+func mkdir(path) {
+    asm {
+        path
+        OP_FILE_MKDIR
+    }
+}

@@ -97,6 +97,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "SYSTEM" => ops.push(0x81),
 
             "SLEEP" => ops.push(0x30),
+            "OP_SLEEP" => ops.push(0x30),
             "PRINT_CHAR" => ops.push(0x51),
             "INPUT" => ops.push(0x52),
             "PRINT_VAL" => ops.push(0x53),
@@ -115,9 +116,15 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "GFX_RECT" => ops.push(0x3D),
             "PEEK8" => ops.push(0x42),
             "POKE8" => ops.push(0x43),
-            "GET_LOCAL" => {
+            "OP_FSIN" => ops.push(0x2A),
+            "OP_FCOS" => ops.push(0x2B),
+            "OP_FSQRT" => ops.push(0x2C),
+            "OP_TO_UPPER" => ops.push(0x69),
+            "OP_TO_LOWER" => ops.push(0x6A),
+            
+            "OP_GET_LOCAL" => {
                 ops.push(0x44);
-                if parts.len() < 2 { return Err(format!("GET_LOCAL missing offset")); }
+                if parts.len() < 2 { return Err(format!("OP_GET_LOCAL missing offset")); }
                 let val = parts[1].parse::<i64>().map_err(|_| "Invalid number")?;
                 ops.extend_from_slice(&val.to_le_bytes());
             },

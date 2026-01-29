@@ -1,0 +1,71 @@
+# Nux Crypto Library
+# Cryptography and hashing utilities
+
+# Hashing functions
+func hash_md5(data) {
+    asm {
+        data
+        OP_HASH_MD5
+    }
+}
+
+func hash_sha256(data) {
+    asm {
+        data
+        OP_HASH_SHA256
+    }
+}
+
+func hash_sha512(data) {
+    asm {
+        data
+        OP_HASH_SHA512
+    }
+}
+
+# Encryption (AES)
+func encrypt_aes(data, key) {
+    asm {
+        data
+        key
+        OP_ENCRYPT_AES
+    }
+}
+
+func decrypt_aes(encrypted, key) {
+    asm {
+        encrypted
+        key
+        OP_DECRYPT_AES
+    }
+}
+
+# Base64 encoding
+func base64_encode(data) {
+    asm {
+        data
+        OP_BASE64_ENCODE
+    }
+}
+
+func base64_decode(encoded) {
+    asm {
+        encoded
+        OP_BASE64_DECODE
+    }
+}
+
+# Random bytes
+func random_bytes(count) {
+    asm {
+        count
+        OP_RANDOM_BYTES
+    }
+}
+
+# UUID generation
+func uuid() {
+    asm {
+        OP_UUID
+    }
+}

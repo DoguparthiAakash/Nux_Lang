@@ -1,0 +1,17 @@
+# Nux Standard String Library
+# Provides string manipulation functions
+
+func to_upper(s) {
+    return UpperCase(s);
+}
+
+func to_lower(s) {
+    return LowerCase(s);
+}
+
+# Get length of string (placeholder - assumes intrinsic or loop)
+# Currently relying on VM handling or future intrinsic
+func len(s) {
+    # TODO: Implement string length intrinsic
+    return 0;
+}

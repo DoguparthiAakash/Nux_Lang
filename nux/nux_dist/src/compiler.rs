@@ -91,6 +91,8 @@ pub struct Parser {
     local_offset: i64, 
     bound_types: BTreeMap<String, (i64, i64)>,
     classes: BTreeMap<String, ClassInfo>,
+    current_class_name: Option<String>,
+    current_class_fields: BTreeMap<String, u32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -121,6 +123,8 @@ impl Parser {
             local_offset: 0,
             bound_types: BTreeMap::new(),
             classes: BTreeMap::new(),
+            current_class_name: None,
+            current_class_fields: BTreeMap::new(),
         }
     }
 
@@ -248,8 +252,11 @@ impl Parser {
                     // Fallback check for root/lib prefix if user provided it manually?
                     // User asked for "by name".
                     
-                    // File imports not supported in standalone version
-                    let src_content: Option<String> = None;
+                    // File imports support enabled for standalone version
+                    let src_content: Option<String> = match std::fs::read_to_string(&path) {
+                        Ok(content) => Some(content),
+                        Err(_) => None,
+                    };
                     
                     if let Some(src) = src_content {
                         // 3. Nested Parse
@@ -348,13 +355,20 @@ impl Parser {
         
         // Manual loop over sub_parser
         loop {
+            // println!("DEBUG: Import token: {:?}", sub_parser.current_token);
             match sub_parser.current_token {
                 Token::EOF => break,
                 Token::Class => {
-                    if let Err(_) = sub_parser.parse_class(definitions) { break; }
+                    if let Err(e) = sub_parser.parse_class(definitions) {
+                         eprintln!("Import Parse Error (Class): {:?}", e);
+                         break;
+                    }
                 },
                 Token::Func => {
-                    if let Err(_) = sub_parser.parse_func(definitions, "") { break; }
+                    if let Err(e) = sub_parser.parse_func(definitions, "") {
+                         eprintln!("Import Parse Error (Func): {:?}", e);
+                         break;
+                    }
                 },
                 Token::Import => { 
                     // Transitive imports!
@@ -374,6 +388,8 @@ impl Parser {
                 _ => { sub_parser.advance(); } // Skip top level statements in imports (Globals skipped?)
             }
         }
+        
+
         
         // Merge Classes (if any)
         for (k, v) in sub_parser.classes {
@@ -395,7 +411,11 @@ impl Parser {
             Token::Identifier(s) => s.clone(),
             _ => return self.error("Expected class name".to_string()),
         };
+        println!("DEBUG: Found class {}", name);
         self.advance();
+        
+        self.current_class_name = Some(name.clone());
+        self.current_class_fields.clear();
         
         if self.current_token != Token::LBrace { return self.error("Expected '{' after class name".to_string()); }
         self.advance();
@@ -413,6 +433,7 @@ impl Parser {
                     _ => return self.error("Expected field name".to_string())
                 };
                 self.advance();
+                self.current_class_fields.insert(field_name.clone(), offset);
                 fields.insert(field_name, offset);
                 offset += 1; 
                 if self.current_token == Token::Colon {
@@ -428,6 +449,10 @@ impl Parser {
         
         if self.current_token != Token::RBrace { return self.error("Expected '}'".to_string()); }
         self.advance();
+        
+        self.current_class_name = None;
+        self.current_class_fields.clear();
+        
         Ok(())
     }
 
@@ -526,6 +551,10 @@ impl Parser {
         
         self.enter_scope(); 
         
+        if !class_prefix.is_empty() {
+             args.insert(0, "this".to_string());
+        }
+
         let num_args = args.len() as i64;
         self.local_offset = num_args; 
         
@@ -721,18 +750,34 @@ impl Parser {
                           else if self.current_token == Token::SemiColon { self.advance(); }
                           out.push_str("POKE\n");
                       } else if self.current_token == Token::LParen {
-                          self.advance();
-                          let mut arg_count = 0;
-                          if self.current_token != Token::RParen {
-                               loop {
-                                   self.parse_expression(out)?; arg_count += 1; 
-                                   if self.current_token == Token::Comma { self.advance(); } else { break; }
+                           let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                           let cname = if let Type::Class(n) = typ { 
+                               n 
+                           } else {
+                               if let Some(ref cn) = self.current_class_name {
+                                   cn.clone()
+                               } else {
+                                   return self.error(format!("Variable '{}' is not an object", part1));
                                }
-                          }
-                          self.advance(); // )
-                          if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
-                          else if self.current_token == Token::SemiColon { self.advance(); }
-                          out.push_str(&format!("CALL {}_{} {}\nPOP\n", part1, member, arg_count));
+                           };
+
+                           match loc {
+                               VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
+                               VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n", idx)); }
+                           }
+
+                           self.advance();
+                           let mut arg_count = 1; 
+                           if self.current_token != Token::RParen {
+                                loop {
+                                    self.parse_expression(out)?; arg_count += 1; 
+                                    if self.current_token == Token::Comma { self.advance(); } else { break; }
+                                }
+                           }
+                           self.advance(); 
+                           if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                           else if self.current_token == Token::SemiColon { self.advance(); }
+                           out.push_str(&format!("CALL {}_{} {}\nPOP\n", cname, member, arg_count));
                       } else {
                            return self.error("Expected = or ( after member name".to_string());
                       }
@@ -1273,11 +1318,21 @@ impl Parser {
                         let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
                         self.advance();
                         let offset = if let Type::Class(cname) = &typ {
-                             if let Some(cinfo) = self.classes.get(cname) { *cinfo.fields.get(&member).unwrap() } else { return self.error(format!("Unknown class '{}'", cname)); }
+                             if let Some(cinfo) = self.classes.get(cname) { 
+                                 if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                             } else { return self.error(format!("Unknown class '{}'", cname)); }
                         } else {
-                             let mut found = None; for (cname, cinfo) in &self.classes { if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); } }
-                             if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
+                             // Fallback: Check current class context first?
+                             // If `this` is Type::Int (arg), we don't know it's a class instance.
+                             // But we can check `current_class_fields`.
+                             if let Some(off) = self.current_class_fields.get(&member) {
+                                 *off
+                             } else {
+                                 let mut found = None; for (cname, cinfo) in &self.classes { if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); } }
+                                 if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
+                             }
                         };
+
                         out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset)); typ = Type::Unknown;
                     }
                     Ok(typ)
