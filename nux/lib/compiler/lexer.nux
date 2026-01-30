@@ -1,0 +1,350 @@
+// Nux Compiler - Lexer
+// Self-hosting compiler component written in Nux
+
+// ===== TOKEN TYPES =====
+
+fn token_create(type, value, line, col) {
+    return {
+        type: type,
+        value: value,
+        line: line,
+        col: col
+    };
+}
+
+// ===== LEXER STATE =====
+
+fn lexer_create(source) {
+    return {
+        source: source,
+        pos: 0,
+        line: 1,
+        col: 1,
+        length: str_length(source)
+    };
+}
+
+fn lexer_current(lexer) {
+    if (lexer.pos >= lexer.length) {
+        return "\0";
+    }
+    return str_charAt(lexer.source, lexer.pos);
+}
+
+fn lexer_peek(lexer, offset) {
+    let pos = lexer.pos + offset;
+    if (pos >= lexer.length) {
+        return "\0";
+    }
+    return str_charAt(lexer.source, pos);
+}
+
+fn lexer_advance(lexer) {
+    if (lexer.pos < lexer.length) {
+        let ch = str_charAt(lexer.source, lexer.pos);
+        lexer.pos = lexer.pos + 1;
+        
+        if (ch == "\n") {
+            lexer.line = lexer.line + 1;
+            lexer.col = 1;
+        } else {
+            lexer.col = lexer.col + 1;
+        }
+        
+        return ch;
+    }
+    return "\0";
+}
+
+// ===== CHARACTER CLASSIFICATION =====
+
+fn lexer_isWhitespace(ch) {
+    return ch == " " || ch == "\t" || ch == "\n" || ch == "\r";
+}
+
+fn lexer_isDigit(ch) {
+    return ch >= "0" && ch <= "9";
+}
+
+fn lexer_isAlpha(ch) {
+    return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch == "_";
+}
+
+fn lexer_isAlphaNumeric(ch) {
+    return lexer_isAlpha(ch) || lexer_isDigit(ch);
+}
+
+// ===== SKIP WHITESPACE =====
+
+fn lexer_skipWhitespace(lexer) {
+    while (lexer_isWhitespace(lexer_current(lexer))) {
+        lexer_advance(lexer);
+    }
+}
+
+fn lexer_skipComment(lexer) {
+    // Single-line comment: //
+    if (lexer_current(lexer) == "/" && lexer_peek(lexer, 1) == "/") {
+        while (lexer_current(lexer) != "\n" && lexer_current(lexer) != "\0") {
+            lexer_advance(lexer);
+        }
+        return true;
+    }
+    
+    // Multi-line comment: /* */
+    if (lexer_current(lexer) == "/" && lexer_peek(lexer, 1) == "*") {
+        lexer_advance(lexer);  // /
+        lexer_advance(lexer);  // *
+        
+        while (true) {
+            if (lexer_current(lexer) == "\0") {
+                break;
+            }
+            
+            if (lexer_current(lexer) == "*" && lexer_peek(lexer, 1) == "/") {
+                lexer_advance(lexer);  // *
+                lexer_advance(lexer);  // /
+                break;
+            }
+            
+            lexer_advance(lexer);
+        }
+        
+        return true;
+    }
+    
+    return false;
+}
+
+// ===== TOKENIZE NUMBER =====
+
+fn lexer_number(lexer) {
+    let startLine = lexer.line;
+    let startCol = lexer.col;
+    let numStr = "";
+    let isFloat = false;
+    
+    while (lexer_isDigit(lexer_current(lexer))) {
+        numStr = numStr + lexer_current(lexer);
+        lexer_advance(lexer);
+    }
+    
+    // Check for decimal point
+    if (lexer_current(lexer) == "." && lexer_isDigit(lexer_peek(lexer, 1))) {
+        isFloat = true;
+        numStr = numStr + ".";
+        lexer_advance(lexer);
+        
+        while (lexer_isDigit(lexer_current(lexer))) {
+            numStr = numStr + lexer_current(lexer);
+            lexer_advance(lexer);
+        }
+    }
+    
+    if (isFloat) {
+        return token_create("FLOAT", str_toFloat(numStr), startLine, startCol);
+    } else {
+        return token_create("NUMBER", str_toInt(numStr), startLine, startCol);
+    }
+}
+
+// ===== TOKENIZE STRING =====
+
+fn lexer_string(lexer) {
+    let startLine = lexer.line;
+    let startCol = lexer.col;
+    let quote = lexer_current(lexer);
+    lexer_advance(lexer);  // Skip opening quote
+    
+    let str = "";
+    
+    while (lexer_current(lexer) != quote && lexer_current(lexer) != "\0") {
+        if (lexer_current(lexer) == "\\") {
+            lexer_advance(lexer);
+            
+            let escaped = lexer_current(lexer);
+            if (escaped == "n") {
+                str = str + "\n";
+            } else if (escaped == "t") {
+                str = str + "\t";
+            } else if (escaped == "\\") {
+                str = str + "\\";
+            } else if (escaped == quote) {
+                str = str + quote;
+            } else {
+                str = str + escaped;
+            }
+            
+            lexer_advance(lexer);
+        } else {
+            str = str + lexer_current(lexer);
+            lexer_advance(lexer);
+        }
+    }
+    
+    if (lexer_current(lexer) == quote) {
+        lexer_advance(lexer);  // Skip closing quote
+    }
+    
+    return token_create("STRING", str, startLine, startCol);
+}
+
+// ===== TOKENIZE IDENTIFIER =====
+
+fn lexer_identifier(lexer) {
+    let startLine = lexer.line;
+    let startCol = lexer.col;
+    let ident = "";
+    
+    while (lexer_isAlphaNumeric(lexer_current(lexer))) {
+        ident = ident + lexer_current(lexer);
+        lexer_advance(lexer);
+    }
+    
+    // Check for keywords
+    let type = lexer_getKeywordType(ident);
+    
+    return token_create(type, ident, startLine, startCol);
+}
+
+fn lexer_getKeywordType(ident) {
+    // Keywords
+    if (ident == "fn") return "FN";
+    if (ident == "func") return "FUNC";
+    if (ident == "let") return "LET";
+    if (ident == "var") return "VAR";
+    if (ident == "const") return "CONST";
+    if (ident == "return") return "RETURN";
+    if (ident == "if") return "IF";
+    if (ident == "else") return "ELSE";
+    if (ident == "while") return "WHILE";
+    if (ident == "for") return "FOR";
+    if (ident == "do") return "DO";
+    if (ident == "break") return "BREAK";
+    if (ident == "continue") return "CONTINUE";
+    if (ident == "class") return "CLASS";
+    if (ident == "new") return "NEW";
+    if (ident == "true") return "TRUE";
+    if (ident == "false") return "FALSE";
+    if (ident == "null") return "NULL";
+    if (ident == "print") return "PRINT";
+    if (ident == "println") return "PRINTLN";
+    
+    // Type keywords
+    if (ident == "int") return "TYPE_INT";
+    if (ident == "float") return "TYPE_FLOAT";
+    if (ident == "string") return "TYPE_STRING";
+    if (ident == "bool") return "TYPE_BOOL";
+    
+    return "IDENTIFIER";
+}
+
+// ===== NEXT TOKEN =====
+
+fn lexer_nextToken(lexer) {
+    // Skip whitespace and comments
+    while (true) {
+        lexer_skipWhitespace(lexer);
+        
+        if (!lexer_skipComment(lexer)) {
+            break;
+        }
+    }
+    
+    let startLine = lexer.line;
+    let startCol = lexer.col;
+    let ch = lexer_current(lexer);
+    
+    // EOF
+    if (ch == "\0") {
+        return token_create("EOF", null, startLine, startCol);
+    }
+    
+    // Numbers
+    if (lexer_isDigit(ch)) {
+        return lexer_number(lexer);
+    }
+    
+    // Strings
+    if (ch == "\"" || ch == "'") {
+        return lexer_string(lexer);
+    }
+    
+    // Identifiers and keywords
+    if (lexer_isAlpha(ch)) {
+        return lexer_identifier(lexer);
+    }
+    
+    // Operators and punctuation
+    lexer_advance(lexer);
+    
+    // Two-character operators
+    if (ch == "=" && lexer_current(lexer) == "=") {
+        lexer_advance(lexer);
+        return token_create("EQ_EQ", "==", startLine, startCol);
+    }
+    
+    if (ch == "!" && lexer_current(lexer) == "=") {
+        lexer_advance(lexer);
+        return token_create("NOT_EQ", "!=", startLine, startCol);
+    }
+    
+    if (ch == "<" && lexer_current(lexer) == "=") {
+        lexer_advance(lexer);
+        return token_create("LT_EQ", "<=", startLine, startCol);
+    }
+    
+    if (ch == ">" && lexer_current(lexer) == "=") {
+        lexer_advance(lexer);
+        return token_create("GT_EQ", ">=", startLine, startCol);
+    }
+    
+    if (ch == "*" && lexer_current(lexer) == "*") {
+        lexer_advance(lexer);
+        return token_create("STAR_STAR", "**", startLine, startCol);
+    }
+    
+    // Single-character operators
+    if (ch == "+") return token_create("PLUS", "+", startLine, startCol);
+    if (ch == "-") return token_create("MINUS", "-", startLine, startCol);
+    if (ch == "*") return token_create("STAR", "*", startLine, startCol);
+    if (ch == "/") return token_create("SLASH", "/", startLine, startCol);
+    if (ch == "%") return token_create("PERCENT", "%", startLine, startCol);
+    if (ch == "=") return token_create("EQ", "=", startLine, startCol);
+    if (ch == "<") return token_create("LT", "<", startLine, startCol);
+    if (ch == ">") return token_create("GT", ">", startLine, startCol);
+    if (ch == "!") return token_create("NOT", "!", startLine, startCol);
+    
+    // Punctuation
+    if (ch == "(") return token_create("LPAREN", "(", startLine, startCol);
+    if (ch == ")") return token_create("RPAREN", ")", startLine, startCol);
+    if (ch == "{") return token_create("LBRACE", "{", startLine, startCol);
+    if (ch == "}") return token_create("RBRACE", "}", startLine, startCol);
+    if (ch == "[") return token_create("LBRACKET", "[", startLine, startCol);
+    if (ch == "]") return token_create("RBRACKET", "]", startLine, startCol);
+    if (ch == ";") return token_create("SEMICOLON", ";", startLine, startCol);
+    if (ch == ",") return token_create("COMMA", ",", startLine, startCol);
+    if (ch == ".") return token_create("DOT", ".", startLine, startCol);
+    if (ch == ":") return token_create("COLON", ":", startLine, startCol);
+    
+    // Unknown character
+    return token_create("UNKNOWN", ch, startLine, startCol);
+}
+
+// ===== TOKENIZE ALL =====
+
+fn lexer_tokenize(source) {
+    let lexer = lexer_create(source);
+    let tokens = [];
+    
+    while (true) {
+        let token = lexer_nextToken(lexer);
+        arr_push(tokens, token);
+        
+        if (token.type == "EOF") {
+            break;
+        }
+    }
+    
+    return tokens;
+}

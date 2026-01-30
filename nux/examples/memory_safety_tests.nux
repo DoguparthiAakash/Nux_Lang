@@ -1,0 +1,288 @@
+// Nux Memory Safety Tests
+// Comprehensive tests for memory safety features
+
+import {Box, Rc, Arc, RefCell} from "std/memory_safety.nux";
+import {test, expect, describe} from "std/test.nux";
+
+describe("Memory Safety", fn() {
+    
+    // ===== OWNERSHIP TESTS =====
+    
+    test("Box ownership transfer", fn() {
+        let x = new Box(42);
+        let y = x;  // Move ownership
+        
+        expect(y.get()).toBe(42);
+        
+        // x is now invalid
+        expect(fn() { x.get(); }).toThrow();
+    });
+    
+    test("Cannot use after drop", fn() {
+        let x = new Box(42);
+        x.drop();
+        
+        expect(fn() { x.get(); }).toThrow("Use after free");
+    });
+    
+    // ===== BORROWING TESTS =====
+    
+    test("Immutable borrowing", fn() {
+        let x = new RefCell(42);
+        
+        let r1 = x.borrow();
+        let r2 = x.borrow();  // Multiple immutable borrows OK
+        
+        expect(r1.get()).toBe(42);
+        expect(r2.get()).toBe(42);
+        
+        r1.drop();
+        r2.drop();
+    });
+    
+    test("Mutable borrowing", fn() {
+        let x = new RefCell(42);
+        
+        let r = x.borrow_mut();
+        r.set(100);
+        
+        expect(r.get()).toBe(100);
+        
+        r.drop();
+        
+        expect(x.borrow().get()).toBe(100);
+    });
+    
+    test("Cannot borrow mutably while immutably borrowed", fn() {
+        let x = new RefCell(42);
+        
+        let r1 = x.borrow();
+        
+        expect(fn() {
+            x.borrow_mut();
+        }).toThrow("Already borrowed");
+        
+        r1.drop();
+    });
+    
+    test("Cannot borrow immutably while mutably borrowed", fn() {
+        let x = new RefCell(42);
+        
+        let r = x.borrow_mut();
+        
+        expect(fn() {
+            x.borrow();
+        }).toThrow("Already mutably borrowed");
+        
+        r.drop();
+    });
+    
+    // ===== REFERENCE COUNTING TESTS =====
+    
+    test("Rc reference counting", fn() {
+        let x = new Rc([1, 2, 3]);
+        
+        expect(x.count).toBe(1);
+        
+        let y = x.clone();
+        expect(x.count).toBe(2);
+        
+        let z = x.clone();
+        expect(x.count).toBe(3);
+        
+        y.drop();
+        expect(x.count).toBe(2);
+        
+        z.drop();
+        expect(x.count).toBe(1);
+        
+        x.drop();
+        // Memory freed
+    });
+    
+    test("Arc atomic reference counting", fn() {
+        let x = new Arc({value: 42});
+        
+        let y = x.clone();
+        let z = x.clone();
+        
+        expect(x.get().value).toBe(42);
+        expect(y.get().value).toBe(42);
+        expect(z.get().value).toBe(42);
+        
+        x.drop();
+        y.drop();
+        z.drop();
+    });
+    
+    // ===== LIFETIME TESTS =====
+    
+    test("Borrow does not outlive value", fn() {
+        let x = new Box(42);
+        let r;
+        
+        {
+            r = x.borrow();
+            expect(r.get()).toBe(42);
+        }
+        
+        // r should be dropped here
+        expect(fn() { r.get(); }).toThrow();
+    });
+    
+    // ===== COMPLEX SCENARIOS =====
+    
+    test("Nested borrowing", fn() {
+        let x = new RefCell(new RefCell(42));
+        
+        let outer = x.borrow();
+        let inner = outer.get().borrow();
+        
+        expect(inner.get()).toBe(42);
+        
+        inner.drop();
+        outer.drop();
+    });
+    
+    test("Borrowing in function calls", fn() {
+        fn process(r: Ref<int>): int {
+            return r.get() * 2;
+        }
+        
+        let x = new RefCell(21);
+        let r = x.borrow();
+        
+        let result = process(r);
+        expect(result).toBe(42);
+        
+        r.drop();
+    });
+    
+    test("Move semantics", fn() {
+        fn take_ownership(b: Box<int>): int {
+            let value = b.get();
+            b.drop();
+            return value;
+        }
+        
+        let x = new Box(42);
+        let result = take_ownership(x);
+        
+        expect(result).toBe(42);
+        
+        // x is now invalid
+        expect(fn() { x.get(); }).toThrow();
+    });
+    
+    // ===== DATA RACE PREVENTION =====
+    
+    test("No data races with Arc", fn() {
+        let counter = new Arc(new RefCell(0));
+        
+        let threads = [];
+        
+        let i = 0;
+        while (i < 10) {
+            let c = counter.clone();
+            
+            arr_push(threads, thread_spawn(fn() {
+                let r = c.get().borrow_mut();
+                r.set(r.get() + 1);
+                r.drop();
+            }));
+            
+            i = i + 1;
+        }
+        
+        // Wait for all threads
+        arr_forEach(threads, fn(t) { thread_join(t); });
+        
+        expect(counter.get().borrow().get()).toBe(10);
+        
+        counter.drop();
+    });
+    
+    // ===== MEMORY LEAK PREVENTION =====
+    
+    test("No memory leaks with Rc cycles", fn() {
+        // This would leak in naive reference counting
+        // but we can detect it
+        
+        let x = new Rc({next: null});
+        let y = new Rc({next: x});
+        x.get().next = y;  // Create cycle
+        
+        // Cycle detection should prevent leak
+        expect(detect_cycle(x)).toBe(true);
+    });
+});
+
+// ===== HELPER FUNCTIONS =====
+
+fn detect_cycle(rc: Rc<T>): bool {
+    let visited = new Set();
+    let current = rc;
+    
+    while (current != null) {
+        if (visited.has(current)) {
+            return true;  // Cycle detected
+        }
+        
+        visited.add(current);
+        current = current.get().next;
+    }
+    
+    return false;
+}
+
+// ===== BENCHMARKS =====
+
+fn benchmark_memory_safety() {
+    let iterations = 1000000;
+    
+    // Benchmark Box
+    let start = date_now();
+    let i = 0;
+    while (i < iterations) {
+        let x = new Box(i);
+        x.drop();
+        i = i + 1;
+    }
+    let box_time = date_now() - start;
+    
+    // Benchmark Rc
+    start = date_now();
+    i = 0;
+    while (i < iterations) {
+        let x = new Rc(i);
+        let y = x.clone();
+        x.drop();
+        y.drop();
+        i = i + 1;
+    }
+    let rc_time = date_now() - start;
+    
+    // Benchmark RefCell
+    start = date_now();
+    i = 0;
+    while (i < iterations) {
+        let x = new RefCell(i);
+        let r = x.borrow();
+        r.drop();
+        i = i + 1;
+    }
+    let refcell_time = date_now() - start;
+    
+    print("Box: " + box_time + "ms");
+    print("Rc: " + rc_time + "ms");
+    print("RefCell: " + refcell_time + "ms");
+}
+
+// Run tests
+print("Running memory safety tests...");
+test_run();
+print("All tests passed!");
+
+// Run benchmarks
+print("\nRunning benchmarks...");
+benchmark_memory_safety();

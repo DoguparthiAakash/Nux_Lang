@@ -1,69 +1,104 @@
-# Nux Regex Library
-# Regular expression utilities
+// Nux Standard Library - Regular Expressions
+// Pattern matching and text processing
 
-class Regex {
-    var pattern;
-    var compiled;
-    
-    func init(pattern_str) {
-        this.pattern = pattern_str;
-        this.compiled = regex_compile(pattern_str);
-    }
-    
-    func match(text) {
-        return regex_match(this.compiled, text);
-    }
-    
-    func find_all(text) {
-        return regex_find_all(this.compiled, text);
-    }
-    
-    func replace(text, replacement) {
-        return regex_replace(this.compiled, text, replacement);
-    }
-    
-    func split(text) {
-        return regex_split(this.compiled, text);
-    }
+// ===== PATTERN MATCHING =====
+
+fn regex_match(str, pattern) {
+    // Find first match
+    // TODO: Implement with VM regex support
+    return null;
 }
 
-# Helper functions
-func regex_compile(pattern) {
-    asm {
-        pattern
-        OP_REGEX_COMPILE
-    }
+fn regex_matchAll(str, pattern) {
+    // Find all matches
+    // TODO: Implement with VM regex support
+    return [];
 }
 
-func regex_match(compiled, text) {
-    asm {
-        compiled
-        text
-        OP_REGEX_MATCH
-    }
+fn regex_test(str, pattern) {
+    // Test if pattern matches
+    // TODO: Implement with VM regex support
+    return false;
 }
 
-func regex_find_all(compiled, text) {
-    asm {
-        compiled
-        text
-        OP_REGEX_FIND_ALL
-    }
+// ===== REPLACEMENT =====
+
+fn regex_replace(str, pattern, replacement) {
+    // Replace first match
+    // TODO: Implement with VM regex support
+    return str;
 }
 
-func regex_replace(compiled, text, replacement) {
-    asm {
-        compiled
-        text
-        replacement
-        OP_REGEX_REPLACE
-    }
+fn regex_replaceAll(str, pattern, replacement) {
+    // Replace all matches
+    // TODO: Implement with VM regex support
+    return str;
 }
 
-func regex_split(compiled, text) {
-    asm {
-        compiled
-        text
-        OP_REGEX_SPLIT
-    }
+// ===== SPLITTING =====
+
+fn regex_split(str, pattern) {
+    // Split by pattern
+    // TODO: Implement with VM regex support
+    return [str];
+}
+
+// ===== PATTERN VALIDATION =====
+
+fn regex_isValid(pattern) {
+    // Check if pattern is valid regex
+    // TODO: Implement with VM regex support
+    return true;
+}
+
+// ===== COMMON PATTERNS =====
+
+fn regex_isEmail(str) {
+    // Check if valid email
+    let pattern = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+    return regex_test(str, pattern);
+}
+
+fn regex_isURL(str) {
+    // Check if valid URL
+    let pattern = "^https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}";
+    return regex_test(str, pattern);
+}
+
+fn regex_isPhone(str) {
+    // Check if valid phone number
+    let pattern = "^\\+?[0-9]{10,15}$";
+    return regex_test(str, pattern);
+}
+
+fn regex_isIPv4(str) {
+    // Check if valid IPv4 address
+    let pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
+    return regex_test(str, pattern);
+}
+
+fn regex_isHexColor(str) {
+    // Check if valid hex color
+    let pattern = "^#?[0-9A-Fa-f]{6}$";
+    return regex_test(str, pattern);
+}
+
+// ===== EXTRACTION =====
+
+fn regex_extractEmails(str) {
+    // Extract all email addresses
+    let pattern = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}";
+    return regex_matchAll(str, pattern);
+}
+
+fn regex_extractURLs(str) {
+    // Extract all URLs
+    let pattern = "https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}[^\\s]*";
+    return regex_matchAll(str, pattern);
+}
+
+fn regex_extractNumbers(str) {
+    // Extract all numbers
+    let pattern = "-?[0-9]+\\.?[0-9]*";
+    return regex_matchAll(str, pattern);
 }

@@ -1,0 +1,221 @@
+// Nux Type System Examples
+// Demonstrating type annotations, inference, and checking
+
+// ===== BASIC TYPE ANNOTATIONS =====
+
+// Explicit type annotations
+fn add(a: int, b: int): int {
+    return a + b;
+}
+
+fn greet(name: string): string {
+    return "Hello, " + name;
+}
+
+// Variables with type annotations
+let age: int = 25;
+let price: float = 19.99;
+let message: string = "Nux is awesome!";
+let isActive: bool = true;
+
+// ===== TYPE INFERENCE =====
+
+// Compiler infers types automatically
+let x = 42;              // inferred as int
+let y = 3.14;            // inferred as float
+let name = "Nux";        // inferred as string
+let flag = true;         // inferred as bool
+
+// Function return type inference
+fn multiply(a, b) {
+    return a * b;        // inferred as int or float
+}
+
+// ===== ARRAY TYPES =====
+
+// Array with type annotation
+let numbers: int[] = [1, 2, 3, 4, 5];
+let names: string[] = ["Alice", "Bob", "Charlie"];
+
+// Inferred array types
+let scores = [95, 87, 92];           // inferred as int[]
+let colors = ["red", "green", "blue"]; // inferred as string[]
+
+// ===== OBJECT TYPES =====
+
+// Object type annotation
+type Person = {
+    name: string,
+    age: int,
+    email: string
+};
+
+let user: Person = {
+    name: "Alice",
+    age: 30,
+    email: "alice@example.com"
+};
+
+// Inferred object types
+let point = {x: 10, y: 20};  // inferred as {x: int, y: int}
+
+// ===== FUNCTION TYPES =====
+
+// Function type annotation
+type BinaryOp = (int, int) => int;
+
+let subtract: BinaryOp = fn(a, b) {
+    return a - b;
+};
+
+// Higher-order functions
+fn map<T, U>(arr: T[], fn: (T) => U): U[] {
+    let result: U[] = [];
+    let i = 0;
+    while (i < arr_length(arr)) {
+        arr_push(result, fn(arr[i]));
+        i = i + 1;
+    }
+    return result;
+}
+
+// ===== GENERIC TYPES =====
+
+// Generic function
+fn identity<T>(value: T): T {
+    return value;
+}
+
+let num = identity<int>(42);
+let str = identity<string>("hello");
+
+// Generic data structures
+fn first<T>(arr: T[]): T {
+    return arr[0];
+}
+
+let firstNum = first<int>([1, 2, 3]);      // returns 1
+let firstName = first<string>(["a", "b"]); // returns "a"
+
+// ===== UNION TYPES =====
+
+// Union type annotation
+type StringOrNumber = string | int;
+
+fn process(value: StringOrNumber): string {
+    if (typeof(value) == "string") {
+        return value;
+    } else {
+        return str_fromInt(value);
+    }
+}
+
+// ===== TYPE ALIASES =====
+
+type UserId = int;
+type Coordinate = {x: float, y: float};
+type Result<T> = {ok: bool, value: T, error: string};
+
+fn divide(a: float, b: float): Result<float> {
+    if (b == 0) {
+        return {ok: false, value: 0, error: "Division by zero"};
+    }
+    return {ok: true, value: a / b, error: ""};
+}
+
+// ===== TYPE CHECKING EXAMPLES =====
+
+// This will pass type checking
+fn validExample() {
+    let x: int = 10;
+    let y: int = 20;
+    let sum: int = x + y;  // ✓ OK
+    print(sum);
+}
+
+// This will fail type checking
+fn invalidExample() {
+    let x: int = 10;
+    let y: string = "hello";
+    let sum: int = x + y;  // ✗ ERROR: Cannot add int and string
+}
+
+// ===== COMPLEX EXAMPLE =====
+
+type Point = {x: float, y: float};
+type Circle = {center: Point, radius: float};
+
+fn distance(p1: Point, p2: Point): float {
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    return math_sqrt(dx * dx + dy * dy);
+}
+
+fn circleArea(circle: Circle): float {
+    return 3.14159 * circle.radius * circle.radius;
+}
+
+fn circleContains(circle: Circle, point: Point): bool {
+    let dist = distance(circle.center, point);
+    return dist <= circle.radius;
+}
+
+// Usage
+let myCircle: Circle = {
+    center: {x: 0, y: 0},
+    radius: 5
+};
+
+let testPoint: Point = {x: 3, y: 4};
+
+let area = circleArea(myCircle);
+let contains = circleContains(myCircle, testPoint);
+
+print("Area: " + area);
+print("Contains point: " + contains);
+
+// ===== TYPE INFERENCE IN ACTION =====
+
+fn fibonacci(n) {
+    // Type inference determines:
+    // - n is int
+    // - return type is int
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+fn factorial(n) {
+    // Inferred types throughout
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+// ===== MAIN =====
+
+fn main() {
+    print("Nux Type System Examples");
+    print("========================");
+    
+    // Type annotations
+    let result1: int = add(5, 3);
+    print("5 + 3 = " + result1);
+    
+    // Type inference
+    let result2 = multiply(4, 7);
+    print("4 * 7 = " + result2);
+    
+    // Generics
+    let id1 = identity<int>(42);
+    let id2 = identity<string>("hello");
+    print("Identity: " + id1 + ", " + id2);
+    
+    // Complex types
+    print("Fibonacci(10) = " + fibonacci(10));
+    print("Factorial(5) = " + factorial(5));
+}
+
+main();

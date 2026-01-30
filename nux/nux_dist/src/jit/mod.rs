@@ -4,6 +4,10 @@
 use crate::nvm::bytecode::{Opcode, BytecodeChunk};
 use std::collections::HashMap;
 
+pub mod optimizer;
+
+pub use optimizer::{AdvancedOptimizer, OptimizationStats, RegisterAllocator, Register};
+
 /// JIT Compiler with tiered compilation
 pub struct JitCompiler {
     hot_functions: HashMap<usize, HotSpot>,

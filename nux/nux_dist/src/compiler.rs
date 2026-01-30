@@ -213,7 +213,7 @@ impl Parser {
                           self.synchronize();
                      }
                 },
-                Token::Func => {
+                Token::Func | Token::Fn => {
                      if let Err(e) = self.parse_func(&mut definitions, "") {
                          self.errors.push(e);
                          self.synchronize();
@@ -221,7 +221,7 @@ impl Parser {
                 },
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
-                Token::Var | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
+                Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
                 Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
                     if let Err(e) = self.parse_statement_or_expr(&mut main_body) {
                         self.errors.push(e);
@@ -601,11 +601,11 @@ impl Parser {
         match &self.current_token {
              Token::Print => {
                  self.advance();
-                 self.parse_print(out, false)?;
+                 self.parse_print(out, true)?;  // Now adds newline by default
              },
              Token::Println => {
                  self.advance();
-                 self.parse_print(out, true)?;
+                 self.parse_print(out, false)?;  // Legacy: no newline
              },
              Token::Identifier(name) => {
                  let part1 = name.clone();
@@ -795,7 +795,7 @@ impl Parser {
                 else if self.current_token == Token::SemiColon { self.advance(); }
                 out.push_str("INPUT\n");
              },
-              Token::Var => { self.parse_var_decl(out, Type::Unknown)?; },
+              Token::Var | Token::Let | Token::Const => { self.parse_var_decl(out, Type::Unknown)?; },
               Token::KwInt => { self.parse_var_decl(out, Type::Int)?; },
               Token::KwFloat => { self.parse_var_decl(out, Type::Float)?; },
               Token::KwByte => { self.parse_var_decl(out, Type::Byte)?; },

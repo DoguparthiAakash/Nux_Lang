@@ -1,0 +1,63 @@
+// Nux Compiler - Main Driver
+// Self-hosting compiler entry point
+
+fn compile(source) {
+    // Lexical analysis
+    let tokens = lexer_tokenize(source);
+    
+    // Syntax analysis
+    let ast = parser_parse(tokens);
+    
+    // Code generation
+    let gen = codegen_generate(ast);
+    
+    return gen;
+}
+
+fn run(source) {
+    // Compile
+    let gen = compile(source);
+    
+    // Execute
+    let vm = vm_create();
+    let result = vm_execute(vm, gen);
+    
+    return result;
+}
+
+fn compileToFile(source, outputPath) {
+    let gen = compile(source);
+    
+    // Write bytecode to file
+    file_write(outputPath, gen.bytecode);
+    
+    // Write constants
+    file_write(outputPath + ".const", gen.constants);
+}
+
+fn runFile(path) {
+    let source = file_read(path);
+    return run(source);
+}
+
+// ===== REPL =====
+
+fn repl() {
+    print("Nux REPL v1.0 (Self-Hosting)");
+    print("Type 'exit' to quit");
+    
+    while (true) {
+        print("> ");
+        let input = input();
+        
+        if (input == "exit") {
+            break;
+        }
+        
+        let result = run(input);
+        
+        if (result != null) {
+            print(result);
+        }
+    }
+}

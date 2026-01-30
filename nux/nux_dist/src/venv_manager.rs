@@ -185,15 +185,20 @@ impl VenvManager {
 
     /// Install a language runtime in the virtual environment
     pub fn install_runtime(&mut self, id: &str, language: Language) -> Result<(), VenvError> {
-        let venv = self.venvs.get_mut(id)
-            .ok_or_else(|| VenvError::NotFound(id.to_string()))?;
+        // Clone the venv to avoid borrow checker issues
+        let mut venv = self.venvs.get(id)
+            .ok_or_else(|| VenvError::NotFound(id.to_string()))?
+            .clone();
         
         match language {
-            Language::Python => self.install_python(venv)?,
-            Language::JavaScript => self.install_nodejs(venv)?,
-            Language::Rust => self.install_rust(venv)?,
-            Language::C => self.install_c_compiler(venv)?,
+            Language::Python => self.install_python(&mut venv)?,
+            Language::JavaScript => self.install_nodejs(&mut venv)?,
+            Language::Rust => self.install_rust(&mut venv)?,
+            Language::C => self.install_c_compiler(&mut venv)?,
         }
+        
+        // Update the venv in the map
+        self.venvs.insert(id.to_string(), venv);
         
         Ok(())
     }

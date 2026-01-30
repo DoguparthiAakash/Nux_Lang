@@ -1,265 +1,397 @@
-# Nux Async I/O Library
-# Event loop and asynchronous operations (libuv-style)
+// Nux Async/Await System
+// Modern asynchronous programming
 
-import "std.network";
-import "std.thread";
-
-class EventLoop {
-    var running;
-    var handles;
-    var timers;
-    var io_watchers;
-    
-    func init() {
-        this.running = 0;
-        
-        this.handles = new List();
-        this.handles.init();
-        
-        this.timers = new List();
-        this.timers.init();
-        
-        this.io_watchers = new List();
-        this.io_watchers.init();
-    }
-    
-    func run() {
-        this.running = 1;
-        
-        for (;;) {
-            if (this.running == 0) {
-                break;
-            }
-            
-            # Process timers
-            this.process_timers();
-            
-            # Process I/O
-            this.process_io();
-            
-            # Process callbacks
-            this.process_callbacks();
-            
-            if (this.handles.length() == 0) {
-                break;
-            }
-        }
-    }
-    
-    func stop() {
-        this.running = 0;
-    }
-    
-    func process_timers() {
-        var now = rdtsc();
-        
-        var i = 0;
-        for (i = 0; i < this.timers.length(); i = i + 1) {
-            var timer = this.timers.get(i);
-            
-            if (now >= timer.get("deadline")) {
-                var callback = timer.get("callback");
-                callback();
-                
-                if (timer.get("repeat") != 0) {
-                    timer.put("deadline", now + timer.get("interval"));
-                }
-            }
-        }
-    }
-    
-    func process_io() {
-        # Poll for I/O events
-        # ... (epoll/kqueue implementation)
-    }
-    
-    func process_callbacks() {
-        # Execute pending callbacks
-        # ... (implementation)
-    }
-}
-
-class AsyncHandle {
-    var loop;
-    var callback;
-    var data;
-    
-    func init(event_loop) {
-        this.loop = event_loop;
-        this.loop.handles.append(this);
-    }
-    
-    func close() {
-        # Remove from event loop
-        # ... (implementation)
-    }
-}
-
-class Timer {
-    var handle;
-    var timeout;
-    var repeat;
-    var callback;
-    
-    func init(loop) {
-        this.handle = new AsyncHandle();
-        this.handle.init(loop);
-    }
-    
-    func start(cb, timeout_ms, repeat_ms) {
-        this.callback = cb;
-        this.timeout = timeout_ms;
-        this.repeat = repeat_ms;
-        
-        var timer_info = new Map();
-        timer_info.init();
-        timer_info.put("callback", cb);
-        timer_info.put("deadline", rdtsc() + timeout_ms * 1000000);
-        timer_info.put("interval", repeat_ms * 1000000);
-        timer_info.put("repeat", repeat_ms);
-        
-        this.handle.loop.timers.append(timer_info);
-    }
-    
-    func stop() {
-        # Remove timer
-        # ... (implementation)
-    }
-}
-
-class AsyncTCP {
-    var handle;
-    var socket_id;
-    var on_connection;
-    var on_data;
-    
-    func init(loop) {
-        this.handle = new AsyncHandle();
-        this.handle.init(loop);
-    }
-    
-    func bind(host, port) {
-        this.socket_id = net_listen(port);
-    }
-    
-    func listen(callback) {
-        this.on_connection = callback;
-        
-        # Register with event loop
-        # ... (implementation)
-    }
-    
-    func accept() {
-        var client_socket = net_accept(this.socket_id);
-        
-        var client = new AsyncTCP();
-        client.init(this.handle.loop);
-        client.socket_id = client_socket;
-        
-        return client;
-    }
-    
-    func read_start(callback) {
-        this.on_data = callback;
-        
-        # Register for read events
-        # ... (implementation)
-    }
-    
-    func write(data, callback) {
-        net_send(this.socket_id, data);
-        
-        if (callback != 0) {
-            callback();
-        }
-    }
-}
-
-class AsyncFile {
-    var handle;
-    var fd;
-    var on_read;
-    
-    func init(loop) {
-        this.handle = new AsyncHandle();
-        this.handle.init(loop);
-    }
-    
-    func open(path, flags, callback) {
-        # Async file open
-        # ... (implementation)
-        
-        if (callback != 0) {
-            callback();
-        }
-    }
-    
-    func read(offset, length, callback) {
-        # Async read
-        # ... (implementation)
-    }
-    
-    func write(offset, data, callback) {
-        # Async write
-        # ... (implementation)
-    }
-}
+// ===== PROMISE =====
 
 class Promise {
-    var state;
-    var value;
-    var then_callbacks;
-    var catch_callbacks;
-    
-    func init() {
-        this.state = 0;
-        this.then_callbacks = new List();
-        this.then_callbacks.init();
-        this.catch_callbacks = new List();
-        this.catch_callbacks.init();
+    fn constructor(executor) {
+        this.state = "pending";  // pending, fulfilled, rejected
+        this.value = null;
+        this.error = null;
+        this.callbacks = [];
+        
+        let resolve = fn(value) {
+            if (this.state == "pending") {
+                this.state = "fulfilled";
+                this.value = value;
+                this._executeCallbacks();
+            }
+        };
+        
+        let reject = fn(error) {
+            if (this.state == "pending") {
+                this.state = "rejected";
+                this.error = error;
+                this._executeCallbacks();
+            }
+        };
+        
+        try {
+            executor(resolve, reject);
+        } catch (e) {
+            reject(e);
+        }
     }
     
-    func then(callback) {
-        if (this.state == 1) {
-            callback(this.value);
+    fn then(onFulfilled, onRejected) {
+        return new Promise(fn(resolve, reject) {
+            let callback = {
+                onFulfilled: onFulfilled,
+                onRejected: onRejected,
+                resolve: resolve,
+                reject: reject
+            };
+            
+            if (this.state == "pending") {
+                arr_push(this.callbacks, callback);
+            } else {
+                this._executeCallback(callback);
+            }
+        });
+    }
+    
+    fn catch(onRejected) {
+        return this.then(null, onRejected);
+    }
+    
+    fn finally(onFinally) {
+        return this.then(
+            fn(value) {
+                onFinally();
+                return value;
+            },
+            fn(error) {
+                onFinally();
+                throw error;
+            }
+        );
+    }
+    
+    fn _executeCallbacks() {
+        arr_forEach(this.callbacks, fn(callback) {
+            this._executeCallback(callback);
+        });
+        this.callbacks = [];
+    }
+    
+    fn _executeCallback(callback) {
+        if (this.state == "fulfilled") {
+            if (callback.onFulfilled) {
+                try {
+                    let result = callback.onFulfilled(this.value);
+                    callback.resolve(result);
+                } catch (e) {
+                    callback.reject(e);
+                }
+            } else {
+                callback.resolve(this.value);
+            }
+        } else if (this.state == "rejected") {
+            if (callback.onRejected) {
+                try {
+                    let result = callback.onRejected(this.error);
+                    callback.resolve(result);
+                } catch (e) {
+                    callback.reject(e);
+                }
+            } else {
+                callback.reject(this.error);
+            }
         }
-        if (this.state == 0) {
-            this.then_callbacks.append(callback);
+    }
+}
+
+// ===== PROMISE STATIC METHODS =====
+
+Promise.resolve = fn(value) {
+    return new Promise(fn(resolve, reject) {
+        resolve(value);
+    });
+};
+
+Promise.reject = fn(error) {
+    return new Promise(fn(resolve, reject) {
+        reject(error);
+    });
+};
+
+Promise.all = fn(promises) {
+    return new Promise(fn(resolve, reject) {
+        let results = [];
+        let completed = 0;
+        
+        if (arr_length(promises) == 0) {
+            resolve(results);
+            return;
         }
         
+        let i = 0;
+        while (i < arr_length(promises)) {
+            let index = i;
+            
+            promises[i].then(
+                fn(value) {
+                    results[index] = value;
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                },
+                fn(error) {
+                    reject(error);
+                }
+            );
+            
+            i = i + 1;
+        }
+    });
+};
+
+Promise.race = fn(promises) {
+    return new Promise(fn(resolve, reject) {
+        arr_forEach(promises, fn(promise) {
+            promise.then(resolve, reject);
+        });
+    });
+};
+
+Promise.allSettled = fn(promises) {
+    return new Promise(fn(resolve, reject) {
+        let results = [];
+        let completed = 0;
+        
+        if (arr_length(promises) == 0) {
+            resolve(results);
+            return;
+        }
+        
+        let i = 0;
+        while (i < arr_length(promises)) {
+            let index = i;
+            
+            promises[i].then(
+                fn(value) {
+                    results[index] = {status: "fulfilled", value: value};
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                },
+                fn(error) {
+                    results[index] = {status: "rejected", reason: error};
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                }
+            );
+            
+            i = i + 1;
+        }
+    });
+};
+
+// ===== ASYNC/AWAIT =====
+
+fn async(fn) {
+    return fn() {
+        return new Promise(fn(resolve, reject) {
+            try {
+                let result = fn();
+                resolve(result);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+}
+
+fn await(promise) {
+    // This would be implemented by the compiler/VM
+    // to suspend execution until promise resolves
+    return promise.value;
+}
+
+// ===== ASYNC UTILITIES =====
+
+fn sleep(ms) {
+    return new Promise(fn(resolve, reject) {
+        setTimeout(resolve, ms);
+    });
+}
+
+fn timeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise(fn(resolve, reject) {
+            setTimeout(fn() {
+                reject(new TimeoutError("Operation timed out", ms));
+            }, ms);
+        })
+    ]);
+}
+
+fn retry_async(fn, maxAttempts, delayMs) {
+    return new Promise(fn(resolve, reject) {
+        let attempt = 0;
+        
+        let tryOnce = fn() {
+            fn().then(resolve, fn(error) {
+                attempt = attempt + 1;
+                
+                if (attempt >= maxAttempts) {
+                    reject(error);
+                } else {
+                    sleep(delayMs).then(tryOnce);
+                }
+            });
+        };
+        
+        tryOnce();
+    });
+}
+
+// ===== ASYNC QUEUE =====
+
+class AsyncQueue {
+    fn constructor(concurrency) {
+        this.concurrency = concurrency || 1;
+        this.running = 0;
+        this.queue = [];
+    }
+    
+    fn add(fn) {
+        return new Promise(fn(resolve, reject) {
+            arr_push(this.queue, {fn: fn, resolve: resolve, reject: reject});
+            this._process();
+        });
+    }
+    
+    fn _process() {
+        while (this.running < this.concurrency && arr_length(this.queue) > 0) {
+            let task = arr_shift(this.queue);
+            this.running = this.running + 1;
+            
+            task.fn().then(
+                fn(value) {
+                    this.running = this.running - 1;
+                    task.resolve(value);
+                    this._process();
+                },
+                fn(error) {
+                    this.running = this.running - 1;
+                    task.reject(error);
+                    this._process();
+                }
+            );
+        }
+    }
+}
+
+// ===== ASYNC ITERATORS =====
+
+fn async_map(arr, fn) {
+    let promises = arr_map(arr, fn);
+    return Promise.all(promises);
+}
+
+fn async_filter(arr, fn) {
+    return async_map(arr, fn).then(fn(results) {
+        let filtered = [];
+        let i = 0;
+        while (i < arr_length(arr)) {
+            if (results[i]) {
+                arr_push(filtered, arr[i]);
+            }
+            i = i + 1;
+        }
+        return filtered;
+    });
+}
+
+fn async_reduce(arr, fn, initial) {
+    return new Promise(fn(resolve, reject) {
+        let acc = initial;
+        let i = 0;
+        
+        let next = fn() {
+            if (i >= arr_length(arr)) {
+                resolve(acc);
+                return;
+            }
+            
+            fn(acc, arr[i], i).then(fn(result) {
+                acc = result;
+                i = i + 1;
+                next();
+            }, reject);
+        };
+        
+        next();
+    });
+}
+
+// ===== ASYNC GENERATORS =====
+
+class AsyncGenerator {
+    fn constructor(generatorFn) {
+        this.generatorFn = generatorFn;
+        this.iterator = null;
+    }
+    
+    fn next() {
+        if (this.iterator == null) {
+            this.iterator = this.generatorFn();
+        }
+        
+        return this.iterator.next();
+    }
+    
+    fn [Symbol.asyncIterator]() {
         return this;
     }
-    
-    func catch(callback) {
-        if (this.state == 2) {
-            callback(this.value);
-        }
-        if (this.state == 0) {
-            this.catch_callbacks.append(callback);
-        }
-        
-        return this;
+}
+
+// ===== EVENT EMITTER =====
+
+class AsyncEventEmitter {
+    fn constructor() {
+        this.listeners = {};
     }
     
-    func resolve(val) {
-        this.state = 1;
-        this.value = val;
-        
-        var i = 0;
-        for (i = 0; i < this.then_callbacks.length(); i = i + 1) {
-            var cb = this.then_callbacks.get(i);
-            cb(val);
+    fn on(event, listener) {
+        if (this.listeners[event] == null) {
+            this.listeners[event] = [];
+        }
+        arr_push(this.listeners[event], listener);
+    }
+    
+    fn once(event, listener) {
+        let wrapper = fn(...args) {
+            this.off(event, wrapper);
+            return listener(...args);
+        };
+        this.on(event, wrapper);
+    }
+    
+    fn off(event, listener) {
+        if (this.listeners[event]) {
+            this.listeners[event] = arr_filter(this.listeners[event], fn(l) {
+                return l != listener;
+            });
         }
     }
     
-    func reject(err) {
-        this.state = 2;
-        this.value = err;
-        
-        var i = 0;
-        for (i = 0; i < this.catch_callbacks.length(); i = i + 1) {
-            var cb = this.catch_callbacks.get(i);
-            cb(err);
+    fn emit(event, ...args) {
+        if (this.listeners[event]) {
+            let promises = arr_map(this.listeners[event], fn(listener) {
+                return Promise.resolve(listener(...args));
+            });
+            return Promise.all(promises);
         }
+        return Promise.resolve([]);
     }
 }
