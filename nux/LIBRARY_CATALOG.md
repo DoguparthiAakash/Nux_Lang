@@ -1,7 +1,7 @@
 # Nux Library Catalog
-**Complete Reference Guide - 61 Libraries**
+**Complete Reference Guide - 79 Libraries**
 
-## 📚 Standard Libraries (`lib/std/`) - 41 Libraries
+## 📚 Standard Libraries (`lib/std/`) - 47 Libraries
 
 ### Core Utilities
 - **`io.nux`** - Input/Output wrappers
@@ -26,6 +26,14 @@
 - **`multimedia.nux`** - Audio/video encoding, H.264, MP4
 - **`arvr.nux`** - AR/VR, 3D graphics, spatial audio
 - **`gamedev.nux`** - 2D physics, sprites, particles
+
+### Game Development 🎮 (NEW)
+- **`gameengine.nux`** - ECS (Entity-Component-System), input, audio, resources, scenes
+- **`physics2d.nux`** - 2D physics engine (Box2D-like): rigid bodies, shapes, collision, joints
+- **`physics3d.nux`** - 3D physics: Vec3, Quaternion, GJK collision, 3D rigid bodies
+- **`animation.nux`** - Tweening, keyframes, skeletal animation, state machines, timelines
+- **`pathfinding.nux`** - A*, Dijkstra, steering behaviors (seek, flee, flocking), path following
+- **`tilemap.nux`** - Tile-based levels, layers, parallax scrolling, autotiling
 
 ### Networking & Web
 - **`network.nux`** - Socket operations and HTTP
@@ -76,7 +84,7 @@
 
 ---
 
-## 🤖 AI/ML Libraries (`lib/ai/`) - 9 Libraries
+## 🤖 AI/ML Libraries (`lib/ai/`) - 15 Libraries
 
 ### Core ML
 - **`tensor.nux`** - Multi-dimensional arrays, matrix operations
@@ -89,9 +97,31 @@
 - **`nlp.nux`** - Tokenization, embeddings, LSTM, transformers
 - **`rl.nux`** - Reinforcement learning, DQN, replay buffer
 
-### Advanced
+### Advanced Deep Learning 🧠 (NEW)
+- **`autograd.nux`** - Automatic differentiation, computation graph, backward pass, optimizers (SGD, Adam)
+- **`transformer.nux`** - Multi-head attention, positional encoding (sinusoidal, RoPE), GPT with generation
+- **`gan.nux`** - Generators (Linear, DCGAN), discriminators, BCE/Wasserstein/hinge loss, WGAN-GP
+- **`diffusion.nux`** - Noise scheduling, U-Net, DDPM/DDIM samplers, text/class conditioning
+- **`agents.nux`** - Memory systems, tool registry, RAG (vector store), ReAct/CoT/ToT planning
+- **`rl_advanced.nux`** - Prioritized replay, Double/Dueling DQN, PPO, SAC, TD3, MBPO
+
+### Scientific
 - **`datascience.nux`** - Statistics, regression, K-means, PCA
 - **`quantum.nux`** - Quantum state simulation, gates, Grover's algorithm
+
+---
+
+## 🖥️ Operating System Libraries (`lib/os/`) - 6 Libraries (NEW)
+
+### Kernel & System
+- **`kernel.nux`** - IDT/interrupt handling, paging, frame allocator, spinlock/mutex/semaphore, syscalls
+- **`scheduler.nux`** - PCB, scheduling algorithms (Round Robin, Priority, MLFQ, CFS), process/thread managers
+- **`memman.nux`** - Heap allocators (bump, first-fit, buddy, slab), VMA, mmap/munmap, page fault handling
+
+### Hardware & I/O
+- **`driver.nux`** - Device abstraction, block/char devices, IRQ handling, PCI bus, DMA, example drivers
+- **`vfs.nux`** - Inodes, dentries, file operations, superblocks, mount/unmount, ramfs implementation
+- **`bootloader.nux`** - Multiboot parsing, GDT setup, A20 line, protected/long mode switching, VGA console
 
 ---
 
