@@ -25,6 +25,15 @@ run_script() {
         exit 1
     fi
     
+    # Check if script requires root
+    if [ "$script_name" = "install.sh" ] || [ "$script_name" = "repair.sh" ] || [ "$script_name" = "uninstall.sh" ]; then
+        if [ "$(id -u)" -ne 0 ]; then
+            echo "${YELLOW}Administrator privileges required for this action.${NC}"
+            sudo sh "$script_path"
+            return
+        fi
+    fi
+    
     sh "$script_path"
 }
 

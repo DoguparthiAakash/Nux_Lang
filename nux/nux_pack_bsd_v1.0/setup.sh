@@ -13,7 +13,7 @@ NUX_HOME="$HOME/.nux"
 REPO_URL="https://github.com/Nux-Lang/Nux_BSD.git"
 
 # Detect if running remotely (no local lib dir)
-if [ ! -d "$(dirname "$0")/../lib" ]; then
+if [ -z "$NUX_INSTALLER_RUNNING" ] && [ ! -d "$(dirname "$0")/../lib" ]; then
     echo "Remote installation detected..."
     if ! command -v git >/dev/null 2>&1; then
         echo "Error: git is required for remote installation."
@@ -26,6 +26,7 @@ if [ ! -d "$(dirname "$0")/../lib" ]; then
     
     echo "Running installer from temporary directory..."
     # Execute the script from the cloned directory, preserving arguments
+    export NUX_INSTALLER_RUNNING=1
     sh "$TEMP_DIR/nux_pack_bsd_v1.0/setup.sh" "$@"
     
     # Cleanup

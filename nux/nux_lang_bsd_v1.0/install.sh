@@ -236,9 +236,25 @@ install_runtime() {
     print_section "${WRENCH} Installing Runtime"
     echo ""
     
-    status_info "Creating Nux launcher..."
-    
-    cat > "$INSTALL_DIR/bin/nux" <<'LAUNCHER'
+    # Check for binaries in package
+    if [ -f "../bin/nux" ]; then
+        status_info "Installing binaries..."
+        
+        # Copy nux interpreter
+        cp "../bin/nux" "$INSTALL_DIR/bin/"
+        chmod +x "$INSTALL_DIR/bin/nux"
+        status_ok "Installed 'nux' interpreter"
+        
+        # Copy nuxc compiler if exists
+        if [ -f "../bin/nuxc" ]; then
+            cp "../bin/nuxc" "$INSTALL_DIR/bin/"
+            chmod +x "$INSTALL_DIR/bin/nuxc"
+            status_ok "Installed 'nuxc' compiler"
+        fi
+    else
+        status_warn "Binaries not found. Creating fallback launcher..."
+        # Create launcher
+        cat > "$INSTALL_DIR/bin/nux" <<'LAUNCHER'
 #!/bin/sh
 NUX_HOME="${NUX_HOME:-$HOME/.nux}"
 NUX_LIB="/usr/local/lib/nux"
@@ -261,14 +277,13 @@ case "${1:-repl}" in
     *) echo "Running $1..." ;;
 esac
 LAUNCHER
-    chmod +x "$INSTALL_DIR/bin/nux"
-    
-    status_ok "Nux runtime installed"
+        chmod +x "$INSTALL_DIR/bin/nux"
+        status_ok "Fallback runtime installed"
+    fi
     
     status_info "Creating symlinks..."
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nux"
-    ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nuxc"
-    ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nuxr"
+    [ -f "$INSTALL_DIR/bin/nuxc" ] && ln -sf "$INSTALL_DIR/bin/nuxc" "$BIN_DIR/nuxc"
     status_ok "Symlinks created"
 }
 

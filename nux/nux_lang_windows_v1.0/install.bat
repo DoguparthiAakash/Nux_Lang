@@ -150,43 +150,56 @@ goto :eof
 call :print_section "🔧 Installing Runtime"
 echo.
 
-call :status_info "Creating Nux launcher..."
+call :status_info "Installing binaries..."
 
-:: Create batch launcher with colors
-(
-echo @echo off
-echo setlocal
-echo set "ESC="
-echo set "CYAN=%%ESC%%[96m"
-echo set "YELLOW=%%ESC%%[93m"
-echo set "NC=%%ESC%%[0m"
-echo.
-echo if "%%1"=="" goto :repl
-echo if "%%1"=="repl" goto :repl
-echo if "%%1"=="--help" goto :help
-echo if "%%1"=="-h" goto :help
-echo if "%%1"=="--version" goto :version
-echo if "%%1"=="-v" goto :version
-echo.
-echo echo Running %%1...
-echo goto :eof
-echo.
-echo :repl
-echo echo %%CYAN%%Nux REPL v1.0.0%%NC%%
-echo echo Type 'exit' to quit
-echo goto :eof
-echo.
-echo :help
-echo echo Nux Programming Language v1.0.0
-echo echo Usage: nux [file.nux] ^| repl ^| compile ^| run
-echo goto :eof
-echo.
-echo :version
-echo echo Nux v1.0.0 ^(Windows^)
-echo goto :eof
-) > "%INSTALL_DIR%\bin\nux.bat"
+:: Check for binaries in package
+if exist "..\bin\nux.exe" (
+    copy /Y "..\bin\nux.exe" "%INSTALL_DIR%\bin\" >nul
+    call :status_ok "Installed 'nux.exe'"
 
-call :status_ok "Nux runtime installed"
+    if exist "..\bin\nuxc.exe" (
+        copy /Y "..\bin\nuxc.exe" "%INSTALL_DIR%\bin\" >nul
+        call :status_ok "Installed 'nuxc.exe'"
+    )
+) else (
+    call :status_warn "Binaries not found. Creating fallback launcher..."
+    
+    :: Create batch launcher with colors
+    (
+    echo @echo off
+    echo setlocal
+    echo set "ESC="
+    echo set "CYAN=%%ESC%%[96m"
+    echo set "YELLOW=%%ESC%%[93m"
+    echo set "NC=%%ESC%%[0m"
+    echo.
+    echo if "%%1"=="" goto :repl
+    echo if "%%1"=="repl" goto :repl
+    echo if "%%1"=="--help" goto :help
+    echo if "%%1"=="-h" goto :help
+    echo if "%%1"=="--version" goto :version
+    echo if "%%1"=="-v" goto :version
+    echo.
+    echo echo Running %%1...
+    echo goto :eof
+    echo.
+    echo :repl
+    echo echo %%CYAN%%Nux REPL v1.0.0%%NC%%
+    echo echo Type 'exit' to quit
+    echo goto :eof
+    echo.
+    echo :help
+    echo echo Nux Programming Language v1.0.0
+    echo echo Usage: nux [file.nux] ^| repl ^| compile ^| run
+    echo goto :eof
+    echo.
+    echo :version
+    echo echo Nux v1.0.0 ^(Windows^)
+    echo goto :eof
+    ) > "%INSTALL_DIR%\bin\nux.bat"
+    
+    call :status_ok "Fallback runtime installed"
+)
 goto :eof
 
 :install_libraries
