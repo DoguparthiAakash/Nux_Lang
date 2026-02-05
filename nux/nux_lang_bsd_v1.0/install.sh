@@ -1,6 +1,6 @@
-#!/bin/bash
-# Nux Programming Language - macOS Setup Script
-# Beautiful installer with enhanced UI
+#!/bin/sh
+# Nux Programming Language - BSD Setup Script
+# Beautiful installer with enhanced UI for FreeBSD, OpenBSD, NetBSD
 
 set -e
 
@@ -8,30 +8,8 @@ VERSION="1.0.0"
 INSTALL_DIR="/usr/local/nux"
 BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/nux"
-CONFIG_DIR="/etc/nux"
+CONFIG_DIR="/usr/local/etc/nux"
 NUX_HOME="$HOME/.nux"
-REPO_URL="https://github.com/Nux-Lang/Nux_Mac.git"
-
-# Detect if running remotely (no local lib dir)
-if [ ! -d "$(dirname "$0")/../lib" ]; then
-    echo "Remote installation detected..."
-    if ! command -v git &> /dev/null; then
-        echo "Error: git is required for remote installation."
-        exit 1
-    fi
-    
-    TEMP_DIR=$(mktemp -d)
-    echo "Cloning repository to $TEMP_DIR..."
-    git clone --depth 1 "$REPO_URL" "$TEMP_DIR"
-    
-    echo "Running installer from temporary directory..."
-    # Execute the script from the cloned directory, preserving arguments
-    bash "$TEMP_DIR/nux_pack_macos_v1.0/setup.sh" "$@"
-    
-    # Cleanup
-    rm -rf "$TEMP_DIR"
-    exit $?
-fi
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                        COLORS & STYLES                        ║
@@ -53,13 +31,13 @@ DIM='\033[2m'
 CHECK="✓"
 CROSS="✗"
 ARROW="➜"
-APPLE=""
+STAR="★"
+GEAR="⚙"
+PACKAGE="📦"
 ROCKET="🚀"
 FOLDER="📁"
 WRENCH="🔧"
 SPARKLE="✨"
-GEAR="⚙"
-PACKAGE="📦"
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                        UI FUNCTIONS                           ║
@@ -94,15 +72,11 @@ print_banner() {
     echo "    ║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║"
     echo "    ║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║"
     echo "    ║                                                                   ║"
-    echo "    ║            ${WHITE}Programming Language${CYAN} v${VERSION} (${GREEN}${APPLE} macOS Installer${CYAN})      ║"
+    echo "    ║          ${WHITE}Programming Language${CYAN} v${VERSION} (${GREEN}BSD Installer${CYAN})         ║"
     echo "    ╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo ""
 }
-
-# ... (rest of file) ...
-
-
 
 print_section() {
     local title="$1"
@@ -110,22 +84,6 @@ print_section() {
     echo -e "    ${CYAN}┌──────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "    ${CYAN}│${NC}  ${BOLD}${WHITE}$title${NC}"
     echo -e "    ${CYAN}└──────────────────────────────────────────────────────────────────┘${NC}"
-}
-
-spinner() {
-    local pid=$1
-    local message="$2"
-    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    local i=0
-    
-    hide_cursor
-    while kill -0 $pid 2>/dev/null; do
-        local char="${spin:$i:1}"
-        printf "\r    ${CYAN}${char}${NC}  ${message}"
-        i=$(( (i + 1) % 10 ))
-        sleep 0.1
-    done
-    show_cursor
 }
 
 progress_bar() {
@@ -163,7 +121,7 @@ status_info() {
 # ╚══════════════════════════════════════════════════════════════╝
 
 check_root() {
-    if [[ $EUID -ne 0 ]]; then
+    if [ "$(id -u)" -ne 0 ]; then
         echo ""
         echo -e "    ${RED}╔═══════════════════════════════════════════════╗${NC}"
         echo -e "    ${RED}║  ${CROSS} Error: Root privileges required            ║${NC}"
@@ -175,51 +133,73 @@ check_root() {
     fi
 }
 
-show_system_info() {
-    print_section "${GEAR} System Information"
-    echo ""
-    
-    # macOS version
-    local macos_version=$(sw_vers -productVersion 2>/dev/null || echo "Unknown")
-    local macos_name=$(sw_vers -productName 2>/dev/null || echo "macOS")
-    local build=$(sw_vers -buildVersion 2>/dev/null || echo "")
-    
-    # Chip info
-    local chip="Intel"
-    if [[ $(uname -m) == "arm64" ]]; then
-        chip="Apple Silicon"
+detect_bsd() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        BSD_TYPE="$NAME"
+    else
+        BSD_TYPE=$(uname -s)
     fi
     
-    echo -e "    ${GRAY}├─${NC} ${WHITE}OS:${NC}          $macos_name $macos_version ($build)"
-    echo -e "    ${GRAY}├─${NC} ${WHITE}Chip:${NC}        $chip ($(uname -m))"
-    echo -e "    ${GRAY}├─${NC} ${WHITE}Shell:${NC}       $(basename $SHELL)"
+    case "$BSD_TYPE" in
+        *FreeBSD*) BSD_VARIANT="FreeBSD" ;;
+        *OpenBSD*) BSD_VARIANT="OpenBSD" ;;
+        *NetBSD*)  BSD_VARIANT="NetBSD" ;;
+        *DragonFly*) BSD_VARIANT="DragonFlyBSD" ;;
+        *) BSD_VARIANT="BSD" ;;
+    esac
+}
+
+show_system_info() {
+    detect_bsd
+    print_section "${GEAR} System Information"
+    echo ""
+    echo -e "    ${GRAY}├─${NC} ${WHITE}OS:${NC}          $BSD_VARIANT $(uname -r)"
+    echo -e "    ${GRAY}├─${NC} ${WHITE}Kernel:${NC}      $(uname -v | cut -d' ' -f1-2)"
+    echo -e "    ${GRAY}├─${NC} ${WHITE}Arch:${NC}        $(uname -m)"
     echo -e "    ${GRAY}└─${NC} ${WHITE}User:${NC}        ${SUDO_USER:-$USER}"
 }
 
-check_xcode() {
-    print_section "${WRENCH} Checking Xcode Tools"
+check_dependencies() {
+    print_section "${PACKAGE} Checking Dependencies"
     echo ""
     
-    if xcode-select -p &>/dev/null; then
-        local xcode_path=$(xcode-select -p)
-        status_ok "Command Line Tools installed"
-        echo -e "    ${GRAY}   Path: $xcode_path${NC}"
-    else
-        status_warn "Command Line Tools not found"
-        status_info "Installing Xcode Command Line Tools..."
-        xcode-select --install
-        echo ""
-        echo -e "    ${YELLOW}Please run this script again after installation.${NC}"
-        exit 0
-    fi
-}
-
-check_homebrew() {
+    local deps="gcc make git"
+    local missing=""
+    local total=3
+    local current=0
+    
+    for dep in $deps; do
+        current=$((current + 1))
+        sleep 0.2
+        
+        if command -v "$dep" >/dev/null 2>&1; then
+            status_ok "$dep $(command -v $dep | xargs dirname)"
+        else
+            status_warn "$dep not found"
+            missing="$missing $dep"
+        fi
+        progress_bar $current $total
+    done
     echo ""
-    if command -v brew &>/dev/null; then
-        status_ok "Homebrew found: $(brew --version | head -1)"
-    else
-        status_info "Homebrew not installed (optional)"
+    
+    if [ -n "$missing" ]; then
+        echo ""
+        status_info "Installing missing:$missing"
+        
+        case "$BSD_VARIANT" in
+            FreeBSD)
+                pkg install -y $missing >/dev/null 2>&1 || true
+                ;;
+            OpenBSD)
+                pkg_add $missing >/dev/null 2>&1 || true
+                ;;
+            NetBSD)
+                pkgin -y install $missing >/dev/null 2>&1 || true
+                ;;
+        esac
+        
+        status_ok "Dependencies installed"
     fi
 }
 
@@ -227,30 +207,29 @@ create_directories() {
     print_section "${FOLDER} Creating Directories"
     echo ""
     
-    local dirs=(
-        "$INSTALL_DIR"
-        "$INSTALL_DIR/bin"
-        "$INSTALL_DIR/lib"
-        "$INSTALL_DIR/include"
-        "$INSTALL_DIR/Frameworks"
-        "$LIB_DIR/std"
-        "$LIB_DIR/ai"
-        "$LIB_DIR/os"
-        "$LIB_DIR/embedded"
-        "$CONFIG_DIR"
-    )
+    local dirs="
+        $INSTALL_DIR
+        $INSTALL_DIR/bin
+        $INSTALL_DIR/lib
+        $INSTALL_DIR/include
+        $LIB_DIR/std
+        $LIB_DIR/ai
+        $LIB_DIR/os
+        $LIB_DIR/embedded
+        $CONFIG_DIR
+    "
     
-    local total=${#dirs[@]}
+    local total=9
     local current=0
     
-    for dir in "${dirs[@]}"; do
+    for dir in $dirs; do
         current=$((current + 1))
-        mkdir -p "$dir" 2>/dev/null
+        mkdir -p "$dir" 2>/dev/null || true
         progress_bar $current $total
-        sleep 0.03
+        sleep 0.05
     done
     echo ""
-    status_ok "Created ${#dirs[@]} directories"
+    status_ok "Created $total directories"
 }
 
 install_runtime() {
@@ -259,22 +238,22 @@ install_runtime() {
     
     status_info "Creating Nux launcher..."
     
-    cat > "$INSTALL_DIR/bin/nux" << 'LAUNCHER'
-#!/bin/bash
+    cat > "$INSTALL_DIR/bin/nux" <<'LAUNCHER'
+#!/bin/sh
 NUX_HOME="${NUX_HOME:-$HOME/.nux}"
 NUX_LIB="/usr/local/lib/nux"
 
 case "${1:-repl}" in
     repl)
-        echo -e "\033[0;36mNux REPL v1.0.0 (macOS)\033[0m"
+        echo -e "\033[0;36mNux REPL v1.0.0 (BSD)\033[0m"
         echo "Type 'exit' to quit"
         while true; do
-            echo -n -e "\033[0;33mnux>\033[0m "
+            printf "\033[0;33mnux> \033[0m"
             read -r line
             [ "$line" = "exit" ] && break
         done
         ;;
-    --version|-v) echo "Nux v1.0.0 (macOS)" ;;
+    --version|-v) echo "Nux v1.0.0 (BSD)" ;;
     --help|-h)
         echo "Nux Programming Language v1.0.0"
         echo "Usage: nux [file.nux] | repl | compile | run"
@@ -290,7 +269,7 @@ LAUNCHER
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nux"
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nuxc"
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nuxr"
-    status_ok "Symlinks created in /usr/local/bin"
+    status_ok "Symlinks created"
 }
 
 install_libraries() {
@@ -302,7 +281,7 @@ install_libraries() {
     if [ -d "../lib" ]; then
         for dir in std ai os embedded; do
             if [ -d "../lib/$dir" ]; then
-                local count=$(find "../lib/$dir" -name "*.nux" 2>/dev/null | wc -l | tr -d ' ')
+                count=$(find "../lib/$dir" -name "*.nux" 2>/dev/null | wc -l | tr -d ' ')
                 if [ "$count" -gt 0 ]; then
                     cp -r ../lib/$dir/* "$LIB_DIR/$dir/" 2>/dev/null || true
                     lib_count=$((lib_count + count))
@@ -315,74 +294,40 @@ install_libraries() {
     if [ $lib_count -eq 0 ]; then
         status_warn "No library files found (will be installed separately)"
     else
-        status_ok "Total: $lib_count library files"
+        status_ok "Total: $lib_count library files installed"
     fi
 }
 
-configure_shell() {
-    print_section "${GEAR} Configuring Shell"
+configure_environment() {
+    print_section "${GEAR} Configuring Environment"
     echo ""
     
-    ACTUAL_USER="${SUDO_USER:-$USER}"
-    ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
-    SHELL_NAME=$(basename "$SHELL")
+    # Create system config
+    cat > "$CONFIG_DIR/nux.conf" <<EOF
+# Nux Configuration
+[paths]
+lib_path = /usr/local/lib/nux
+[runtime]
+max_memory = 1024M
+EOF
+    status_ok "System config created"
     
-    case "$SHELL_NAME" in
-        zsh)  PROFILE="$ACTUAL_HOME/.zshrc" ;;
-        bash) PROFILE="$ACTUAL_HOME/.bash_profile" ;;
-        *)    PROFILE="$ACTUAL_HOME/.profile" ;;
-    esac
-    
-    status_info "Shell: $SHELL_NAME"
-    
-    if ! grep -q "NUX_HOME" "$PROFILE" 2>/dev/null; then
-        cat >> "$PROFILE" << 'EOF'
-
-# Nux Programming Language
+    # Create profile script
+    cat > /etc/profile.d/nux.sh <<'EOF'
 export NUX_HOME="$HOME/.nux"
 export NUX_LIB="/usr/local/lib/nux"
 export PATH="$PATH:/usr/local/nux/bin"
 EOF
-        chown "$ACTUAL_USER" "$PROFILE"
-        status_ok "Added to $PROFILE"
-    else
-        status_ok "Already in $PROFILE"
-    fi
+    chmod +x /etc/profile.d/nux.sh 2>/dev/null || true
+    status_ok "Shell profile configured"
     
-    # Create user directory
+    # Setup user directory
+    ACTUAL_USER="${SUDO_USER:-$USER}"
+    ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
+    
     mkdir -p "$ACTUAL_HOME/.nux"/{lib,cache,projects}
-    chown -R "$ACTUAL_USER" "$ACTUAL_HOME/.nux"
-    status_ok "User directory: ~/.nux"
-}
-
-register_uti() {
-    print_section "${WRENCH} Registering File Types"
-    echo ""
-    
-    cat > "$INSTALL_DIR/Info.plist" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>UTExportedTypeDeclarations</key>
-    <array>
-        <dict>
-            <key>UTTypeIdentifier</key>
-            <string>org.nux-lang.source</string>
-            <key>UTTypeDescription</key>
-            <string>Nux Source File</string>
-            <key>UTTypeTagSpecification</key>
-            <dict>
-                <key>public.filename-extension</key>
-                <array><string>nux</string></array>
-            </dict>
-        </dict>
-    </array>
-</dict>
-</plist>
-EOF
-    /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f "$INSTALL_DIR" 2>/dev/null || true
-    status_ok ".nux file type registered"
+    chown -R "$ACTUAL_USER" "$ACTUAL_HOME/.nux" 2>/dev/null || true
+    status_ok "User directory created: ~/.nux"
 }
 
 print_success() {
@@ -392,7 +337,6 @@ print_success() {
     echo -e "    ${GREEN}║   ${SPARKLE} ${WHITE}Installation Complete!${GREEN}                                     ║${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}║    ████     ██████████████      ███╗    ██╗██╗    ██╗██╗    ██╗   ║${NC}"
     echo -e "    ${GREEN}║    ████     ██████████████      ████╗   ██║██║    ██║╚██╗  ██╔╝   ║${NC}"
@@ -405,26 +349,15 @@ print_success() {
     echo -e "    ${GREEN}║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║${NC}"
     echo -e "    ${GREEN}║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║            ${WHITE}Programming Language${GREEN} v${VERSION} (${APPLE} macOS Installer)      ║${NC}"
+    echo -e "    ${GREEN}║          ${WHITE}Programming Language${GREEN} v${VERSION} (BSD Installer)         ║${NC}"
     echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}║   ${ROCKET} ${CYAN}Get Started:${GREEN}                                               ║${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║      ${WHITE}1.${NC} Restart Terminal or run: ${YELLOW}source ~/.zshrc${GREEN}            ║${NC}"
+    echo -e "    ${GREEN}║      ${WHITE}1.${NC} Restart terminal or run: ${YELLOW}source /etc/profile.d/nux.sh${GREEN}  ║${NC}"
     echo -e "    ${GREEN}║      ${WHITE}2.${NC} Verify: ${YELLOW}nux --version${GREEN}                                 ║${NC}"
     echo -e "    ${GREEN}║      ${WHITE}3.${NC} Start REPL: ${YELLOW}nux repl${GREEN}                                  ║${NC}"
     echo -e "    ${GREEN}║      ${WHITE}4.${NC} Run script: ${YELLOW}nux hello.nux${GREEN}                             ║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║   ${FOLDER} ${WHITE}Paths:${GREEN}                                                     ║${NC}"
-    echo -e "    ${GREEN}║      ${GRAY}Install:${NC}   /usr/local/nux                               ${GREEN}║${NC}"
-    echo -e "    ${GREEN}║      ${GRAY}Libraries:${NC} /usr/local/lib/nux                           ${GREEN}║${NC}"
-    echo -e "    ${GREEN}║      ${GRAY}Config:${NC}    ~/.nux/config                                ${GREEN}║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║   ${APPLE} ${WHITE}Features:${GREEN}                                                  ║${NC}"
-    echo -e "    ${GREEN}║      ${GRAY}•${NC} Universal Binary (Intel + Apple Silicon)              ${GREEN}║${NC}"
-    echo -e "    ${GREEN}║      ${GRAY}•${NC} Grand Central Dispatch integration                    ${GREEN}║${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
@@ -440,13 +373,11 @@ main() {
     print_banner
     check_root
     show_system_info
-    check_xcode
-    check_homebrew
+    check_dependencies
     create_directories
     install_runtime
     install_libraries
-    configure_shell
-    register_uti
+    configure_environment
     print_success
 }
 
@@ -458,6 +389,7 @@ if [ "$1" = "uninstall" ]; then
     rm -rf "$LIB_DIR" && status_ok "Removed $LIB_DIR"
     rm -rf "$CONFIG_DIR" && status_ok "Removed $CONFIG_DIR"
     rm -f "$BIN_DIR/nux" "$BIN_DIR/nuxc" "$BIN_DIR/nuxr"
+    rm -f /etc/profile.d/nux.sh
     status_ok "Nux has been uninstalled"
     echo ""
     exit 0

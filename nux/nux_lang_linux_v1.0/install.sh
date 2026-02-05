@@ -1,6 +1,6 @@
-#!/bin/sh
-# Nux Programming Language - BSD Setup Script
-# Beautiful installer with enhanced UI for FreeBSD, OpenBSD, NetBSD
+#!/bin/bash
+# Nux Programming Language - Linux Setup Script
+# Beautiful installer with enhanced UI
 
 set -e
 
@@ -8,30 +8,8 @@ VERSION="1.0.0"
 INSTALL_DIR="/usr/local/nux"
 BIN_DIR="/usr/local/bin"
 LIB_DIR="/usr/local/lib/nux"
-CONFIG_DIR="/usr/local/etc/nux"
+CONFIG_DIR="/etc/nux"
 NUX_HOME="$HOME/.nux"
-REPO_URL="https://github.com/Nux-Lang/Nux_BSD.git"
-
-# Detect if running remotely (no local lib dir)
-if [ ! -d "$(dirname "$0")/../lib" ]; then
-    echo "Remote installation detected..."
-    if ! command -v git >/dev/null 2>&1; then
-        echo "Error: git is required for remote installation."
-        exit 1
-    fi
-    
-    TEMP_DIR=$(mktemp -d)
-    echo "Cloning repository to $TEMP_DIR..."
-    git clone --depth 1 "$REPO_URL" "$TEMP_DIR"
-    
-    echo "Running installer from temporary directory..."
-    # Execute the script from the cloned directory, preserving arguments
-    sh "$TEMP_DIR/nux_pack_bsd_v1.0/setup.sh" "$@"
-    
-    # Cleanup
-    rm -rf "$TEMP_DIR"
-    exit $?
-fi
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                        COLORS & STYLES                        ║
@@ -77,6 +55,10 @@ show_cursor() {
     printf "\033[?25h"
 }
 
+move_cursor() {
+    printf "\033[%d;%dH" "$1" "$2"
+}
+
 print_banner() {
     clear_screen
     echo ""
@@ -94,11 +76,44 @@ print_banner() {
     echo "    ║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║"
     echo "    ║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║"
     echo "    ║                                                                   ║"
-    echo "    ║          ${WHITE}Programming Language${CYAN} v${VERSION} (${GREEN}BSD Installer${CYAN})         ║"
+    echo "    ║               ${WHITE}Programming Language${CYAN} v${VERSION}                    ║"
+    echo "    ║                                                                   ║"
     echo "    ╚═══════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo ""
 }
+
+# ... (rest of file) ...
+
+
+
+# ... (rest of file) ...
+
+print_success() {
+    echo ""
+    echo -e "    ${GREEN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}║   ${SPARKLE} ${WHITE}Installation Complete!${GREEN}                                     ║${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}║    ████     ██████████████      ███╗    ██╗██╗    ██╗██╗    ██╗   ║${NC}"
+    echo -e "    ${GREEN}║    ████     ██████████████      ████╗   ██║██║    ██║╚██╗  ██╔╝   ║${NC}"
+    echo -e "    ${GREEN}║    ████     ████                ██╔██╗  ██║██║    ██║ ╚██╗██╔╝    ║${NC}"
+    echo -e "    ${GREEN}║    ████     ████                ██║╚██╗ ██║██║    ██║  ╚███╔╝     ║${NC}"
+    echo -e "    ${GREEN}║    ██████████████████████       ██║ ╚██╗██║██║    ██║   ███║      ║${NC}"
+    echo -e "    ${GREEN}║    ██████████████████████       ██║  ╚████║██║    ██║  ██╔██╗     ║${NC}"
+    echo -e "    ${GREEN}║             ████     ████       ██║   ╚███║██║    ██║ ██╔╝╚██╗    ║${NC}"
+    echo -e "    ${GREEN}║             ████     ████       ██║    ╚██║██║    ██║██╔╝  ╚██╗   ║${NC}"
+    echo -e "    ${GREEN}║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║${NC}"
+    echo -e "    ${GREEN}║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}║               ${WHITE}Programming Language${GREEN} v${VERSION}                    ║${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}║   ${ROCKET} ${CYAN}Get Started:${GREEN}                                               ║${NC}"
+
 
 print_section() {
     local title="$1"
@@ -108,6 +123,24 @@ print_section() {
     echo -e "    ${CYAN}└──────────────────────────────────────────────────────────────────┘${NC}"
 }
 
+# Animated spinner
+spinner() {
+    local pid=$1
+    local message="$2"
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    
+    hide_cursor
+    while kill -0 $pid 2>/dev/null; do
+        local char="${spin:$i:1}"
+        printf "\r    ${CYAN}${char}${NC}  ${message}"
+        i=$(( (i + 1) % 10 ))
+        sleep 0.1
+    done
+    show_cursor
+}
+
+# Progress bar
 progress_bar() {
     local current=$1
     local total=$2
@@ -122,6 +155,16 @@ progress_bar() {
     printf "]${NC} ${WHITE}%3d%%${NC}" $percent
 }
 
+# Step indicator
+step() {
+    local num=$1
+    local total=$2
+    local message="$3"
+    echo ""
+    echo -e "    ${MAGENTA}[${num}/${total}]${NC} ${BOLD}${message}${NC}"
+}
+
+# Status messages
 status_ok() {
     echo -e "\r    ${GREEN}${CHECK}${NC}  $1"
 }
@@ -138,12 +181,38 @@ status_info() {
     echo -e "    ${BLUE}${ARROW}${NC}  $1"
 }
 
+# Animated task
+run_task() {
+    local message="$1"
+    shift
+    local command="$@"
+    
+    printf "    ${CYAN}⠋${NC}  ${message}"
+    
+    # Run command in background and capture output
+    local output
+    output=$($command 2>&1) &
+    local pid=$!
+    
+    spinner $pid "$message"
+    wait $pid
+    local status=$?
+    
+    if [ $status -eq 0 ]; then
+        status_ok "$message"
+    else
+        status_fail "$message"
+        echo -e "    ${DIM}${output}${NC}"
+        return 1
+    fi
+}
+
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                     INSTALLATION STEPS                        ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 check_root() {
-    if [ "$(id -u)" -ne 0 ]; then
+    if [[ $EUID -ne 0 ]]; then
         echo ""
         echo -e "    ${RED}╔═══════════════════════════════════════════════╗${NC}"
         echo -e "    ${RED}║  ${CROSS} Error: Root privileges required            ║${NC}"
@@ -155,29 +224,27 @@ check_root() {
     fi
 }
 
-detect_bsd() {
+detect_distro() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        BSD_TYPE="$NAME"
+        DISTRO="$NAME"
+        DISTRO_ID="$ID"
+    elif [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        DISTRO="$DISTRIB_DESCRIPTION"
+        DISTRO_ID="$DISTRIB_ID"
     else
-        BSD_TYPE=$(uname -s)
+        DISTRO="Unknown Linux"
+        DISTRO_ID="linux"
     fi
-    
-    case "$BSD_TYPE" in
-        *FreeBSD*) BSD_VARIANT="FreeBSD" ;;
-        *OpenBSD*) BSD_VARIANT="OpenBSD" ;;
-        *NetBSD*)  BSD_VARIANT="NetBSD" ;;
-        *DragonFly*) BSD_VARIANT="DragonFlyBSD" ;;
-        *) BSD_VARIANT="BSD" ;;
-    esac
 }
 
 show_system_info() {
-    detect_bsd
+    detect_distro
     print_section "${GEAR} System Information"
     echo ""
-    echo -e "    ${GRAY}├─${NC} ${WHITE}OS:${NC}          $BSD_VARIANT $(uname -r)"
-    echo -e "    ${GRAY}├─${NC} ${WHITE}Kernel:${NC}      $(uname -v | cut -d' ' -f1-2)"
+    echo -e "    ${GRAY}├─${NC} ${WHITE}OS:${NC}          $DISTRO"
+    echo -e "    ${GRAY}├─${NC} ${WHITE}Kernel:${NC}      $(uname -r)"
     echo -e "    ${GRAY}├─${NC} ${WHITE}Arch:${NC}        $(uname -m)"
     echo -e "    ${GRAY}└─${NC} ${WHITE}User:${NC}        ${SUDO_USER:-$USER}"
 }
@@ -186,40 +253,36 @@ check_dependencies() {
     print_section "${PACKAGE} Checking Dependencies"
     echo ""
     
-    local deps="gcc make git"
-    local missing=""
-    local total=3
+    local deps=("gcc" "make" "git")
+    local missing=()
+    local total=${#deps[@]}
     local current=0
     
-    for dep in $deps; do
+    for dep in "${deps[@]}"; do
         current=$((current + 1))
         sleep 0.2
         
-        if command -v "$dep" >/dev/null 2>&1; then
+        if command -v "$dep" &> /dev/null; then
             status_ok "$dep $(command -v $dep | xargs dirname)"
         else
             status_warn "$dep not found"
-            missing="$missing $dep"
+            missing+=("$dep")
         fi
         progress_bar $current $total
     done
     echo ""
     
-    if [ -n "$missing" ]; then
+    if [ ${#missing[@]} -ne 0 ]; then
         echo ""
-        status_info "Installing missing:$missing"
+        status_info "Installing missing: ${missing[*]}"
         
-        case "$BSD_VARIANT" in
-            FreeBSD)
-                pkg install -y $missing >/dev/null 2>&1 || true
-                ;;
-            OpenBSD)
-                pkg_add $missing >/dev/null 2>&1 || true
-                ;;
-            NetBSD)
-                pkgin -y install $missing >/dev/null 2>&1 || true
-                ;;
-        esac
+        if command -v apt-get &> /dev/null; then
+            apt-get update -qq && apt-get install -y -qq "${missing[@]}" >/dev/null 2>&1
+        elif command -v dnf &> /dev/null; then
+            dnf install -y -q "${missing[@]}" >/dev/null 2>&1
+        elif command -v pacman &> /dev/null; then
+            pacman -S --noconfirm --quiet "${missing[@]}" >/dev/null 2>&1
+        fi
         
         status_ok "Dependencies installed"
     fi
@@ -229,53 +292,54 @@ create_directories() {
     print_section "${FOLDER} Creating Directories"
     echo ""
     
-    local dirs="
-        $INSTALL_DIR
-        $INSTALL_DIR/bin
-        $INSTALL_DIR/lib
-        $INSTALL_DIR/include
-        $LIB_DIR/std
-        $LIB_DIR/ai
-        $LIB_DIR/os
-        $LIB_DIR/embedded
-        $CONFIG_DIR
-    "
+    local dirs=(
+        "$INSTALL_DIR"
+        "$INSTALL_DIR/bin"
+        "$INSTALL_DIR/lib"
+        "$INSTALL_DIR/include"
+        "$LIB_DIR/std"
+        "$LIB_DIR/ai"
+        "$LIB_DIR/os"
+        "$LIB_DIR/embedded"
+        "$CONFIG_DIR"
+    )
     
-    local total=9
+    local total=${#dirs[@]}
     local current=0
     
-    for dir in $dirs; do
+    for dir in "${dirs[@]}"; do
         current=$((current + 1))
-        mkdir -p "$dir" 2>/dev/null || true
+        mkdir -p "$dir" 2>/dev/null
         progress_bar $current $total
         sleep 0.05
     done
     echo ""
-    status_ok "Created $total directories"
+    status_ok "Created ${#dirs[@]} directories"
 }
 
 install_runtime() {
     print_section "${WRENCH} Installing Runtime"
     echo ""
     
+    # Create launcher
     status_info "Creating Nux launcher..."
     
-    cat > "$INSTALL_DIR/bin/nux" <<'LAUNCHER'
-#!/bin/sh
+    cat > "$INSTALL_DIR/bin/nux" << 'LAUNCHER'
+#!/bin/bash
 NUX_HOME="${NUX_HOME:-$HOME/.nux}"
 NUX_LIB="/usr/local/lib/nux"
 
 case "${1:-repl}" in
     repl)
-        echo -e "\033[0;36mNux REPL v1.0.0 (BSD)\033[0m"
+        echo -e "\033[0;36mNux REPL v1.0.0\033[0m"
         echo "Type 'exit' to quit"
         while true; do
-            printf "\033[0;33mnux> \033[0m"
+            echo -n -e "\033[0;33mnux>\033[0m "
             read -r line
             [ "$line" = "exit" ] && break
         done
         ;;
-    --version|-v) echo "Nux v1.0.0 (BSD)" ;;
+    --version|-v) echo "Nux v1.0.0 (Linux)" ;;
     --help|-h)
         echo "Nux Programming Language v1.0.0"
         echo "Usage: nux [file.nux] | repl | compile | run"
@@ -287,6 +351,7 @@ LAUNCHER
     
     status_ok "Nux runtime installed"
     
+    # Create symlinks
     status_info "Creating symlinks..."
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nux"
     ln -sf "$INSTALL_DIR/bin/nux" "$BIN_DIR/nuxc"
@@ -303,7 +368,7 @@ install_libraries() {
     if [ -d "../lib" ]; then
         for dir in std ai os embedded; do
             if [ -d "../lib/$dir" ]; then
-                count=$(find "../lib/$dir" -name "*.nux" 2>/dev/null | wc -l | tr -d ' ')
+                local count=$(find "../lib/$dir" -name "*.nux" 2>/dev/null | wc -l)
                 if [ "$count" -gt 0 ]; then
                     cp -r ../lib/$dir/* "$LIB_DIR/$dir/" 2>/dev/null || true
                     lib_count=$((lib_count + count))
@@ -325,7 +390,7 @@ configure_environment() {
     echo ""
     
     # Create system config
-    cat > "$CONFIG_DIR/nux.conf" <<EOF
+    cat > "$CONFIG_DIR/nux.conf" << EOF
 # Nux Configuration
 [paths]
 lib_path = /usr/local/lib/nux
@@ -335,12 +400,12 @@ EOF
     status_ok "System config created"
     
     # Create profile script
-    cat > /etc/profile.d/nux.sh <<'EOF'
+    cat > /etc/profile.d/nux.sh << 'EOF'
 export NUX_HOME="$HOME/.nux"
 export NUX_LIB="/usr/local/lib/nux"
 export PATH="$PATH:/usr/local/nux/bin"
 EOF
-    chmod +x /etc/profile.d/nux.sh 2>/dev/null || true
+    chmod +x /etc/profile.d/nux.sh
     status_ok "Shell profile configured"
     
     # Setup user directory
@@ -348,42 +413,11 @@ EOF
     ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
     
     mkdir -p "$ACTUAL_HOME/.nux"/{lib,cache,projects}
-    chown -R "$ACTUAL_USER" "$ACTUAL_HOME/.nux" 2>/dev/null || true
+    chown -R "$ACTUAL_USER:$ACTUAL_USER" "$ACTUAL_HOME/.nux"
     status_ok "User directory created: ~/.nux"
 }
 
-print_success() {
-    echo ""
-    echo -e "    ${GREEN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║   ${SPARKLE} ${WHITE}Installation Complete!${GREEN}                                     ║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║    ████     ██████████████      ███╗    ██╗██╗    ██╗██╗    ██╗   ║${NC}"
-    echo -e "    ${GREEN}║    ████     ██████████████      ████╗   ██║██║    ██║╚██╗  ██╔╝   ║${NC}"
-    echo -e "    ${GREEN}║    ████     ████                ██╔██╗  ██║██║    ██║ ╚██╗██╔╝    ║${NC}"
-    echo -e "    ${GREEN}║    ████     ████                ██║╚██╗ ██║██║    ██║  ╚███╔╝     ║${NC}"
-    echo -e "    ${GREEN}║    ██████████████████████       ██║ ╚██╗██║██║    ██║   ███║      ║${NC}"
-    echo -e "    ${GREEN}║    ██████████████████████       ██║  ╚████║██║    ██║  ██╔██╗     ║${NC}"
-    echo -e "    ${GREEN}║             ████     ████       ██║   ╚███║██║    ██║ ██╔╝╚██╗    ║${NC}"
-    echo -e "    ${GREEN}║             ████     ████       ██║    ╚██║██║    ██║██╔╝  ╚██╗   ║${NC}"
-    echo -e "    ${GREEN}║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║${NC}"
-    echo -e "    ${GREEN}║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║          ${WHITE}Programming Language${GREEN} v${VERSION} (BSD Installer)         ║${NC}"
-    echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║   ${ROCKET} ${CYAN}Get Started:${GREEN}                                               ║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}║      ${WHITE}1.${NC} Restart terminal or run: ${YELLOW}source /etc/profile.d/nux.sh${GREEN}  ║${NC}"
-    echo -e "    ${GREEN}║      ${WHITE}2.${NC} Verify: ${YELLOW}nux --version${GREEN}                                 ║${NC}"
-    echo -e "    ${GREEN}║      ${WHITE}3.${NC} Start REPL: ${YELLOW}nux repl${GREEN}                                  ║${NC}"
-    echo -e "    ${GREEN}║      ${WHITE}4.${NC} Run script: ${YELLOW}nux hello.nux${GREEN}                             ║${NC}"
-    echo -e "    ${GREEN}║                                                                   ║${NC}"
-    echo -e "    ${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-}
+
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                          MAIN                                 ║

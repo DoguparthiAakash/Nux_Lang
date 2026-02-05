@@ -1,4 +1,20 @@
-# Nux Programming Language 🚀
+# Nux Programming Language
+
+```
+████     ██████████████      ███╗    ██╗██╗    ██╗██╗    ██╗
+████     ██████████████      ████╗   ██║██║    ██║╚██╗  ██╔╝
+████     ████                ██╔██╗  ██║██║    ██║ ╚██╗██╔╝
+████     ████                ██║╚██╗ ██║██║    ██║  ╚███╔╝
+██████████████████████       ██║ ╚██╗██║██║    ██║   ███║
+██████████████████████       ██║  ╚████║██║    ██║  ██╔██╗
+         ████     ████       ██║   ╚███║██║    ██║ ██╔╝╚██╗
+         ████     ████       ██║    ╚██║██║    ██║██╔╝  ╚██╗
+█████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║
+█████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝
+```
+
+**Version:** 1.0.0
+**Platforms:** Linux, macOS, Windows, BSD
 
 **The Ultimate Programming Language with Revolutionary Features**
 
@@ -156,7 +172,31 @@ See [LIBRARY_CATALOG.md](LIBRARY_CATALOG.md) for the complete list.
 
 ## 🚀 Quick Start
 
-### Installation
+### 📦 Official Distributions
+
+Ready-to-use installers for your platform:
+
+### **Linux** (x86_64, ARM64)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nux-Lang/Nux_Linux/main/nux_pack_linux_v1.0/setup.sh | sudo bash
+```
+
+### **macOS** (Intel & Apple Silicon)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nux-Lang/Nux_Mac/main/nux_pack_macos_v1.0/setup.sh | sudo bash
+```
+
+### **Windows** (10/11)
+```powershell
+iwr https://raw.githubusercontent.com/Nux-Lang/Nux_Windows/main/nux_pack_windows_v1.0/setup.bat -useb | iex
+```
+
+### **BSD** (FreeBSD, OpenBSD, NetBSD)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nux-Lang/Nux_BSD/main/nux_pack_bsd_v1.0/setup.sh | sudo sh
+```
+
+### Source Installation
 
 ```bash
 # Clone repository
@@ -210,27 +250,6 @@ fn process_file(path: string) {
 }
 ```
 
----
-
-## 💪 Language Comparison
-
-| Feature | Python | JS | Rust | TS | Haskell | **Nux** |
-|---------|--------|----|----|----|----|---------|
-| Libraries | 50 | 60 | 40 | 60 | 30 | **123** 🏆 |
-| Type System | ❌ | ❌ | ✅ | ✅ | ✅ | **✅** |
-| Dependent Types | ❌ | ❌ | ❌ | ❌ | ⭐ | **✅** |
-| Linear Types | ❌ | ❌ | ✅ | ❌ | ❌ | **✅** |
-| Algebraic Effects | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
-| Memory Safety | ❌ | ❌ | ✅ | ❌ | ✅ | **✅** |
-| Async/Await | ✅ | ✅ | ✅ | ✅ | ⭐ | **✅** |
-| Decorators | ✅ | ❌ | ❌ | ✅ | ❌ | **✅** |
-| Macros | ❌ | ❌ | ✅ | ❌ | ❌ | **✅** |
-| Self-Hosting | ✅ | ✅ | ✅ | ❌ | ✅ | **✅** |
-| Performance | 1x | 10x | 50x | 10x | 20x | **50x** |
-
-**Nux wins in 10/10 categories!** 🏆
-
----
 
 ## 📊 Statistics
 

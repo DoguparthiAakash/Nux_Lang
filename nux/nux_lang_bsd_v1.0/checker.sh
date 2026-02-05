@@ -1,0 +1,42 @@
+#!/bin/sh
+# Nux Health Checker (BSD)
+
+INSTALL_DIR="/usr/local/nux"
+BIN_DIR="/usr/local/bin"
+
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo "${CYAN}Checking Nux Installation Health...${NC}"
+
+ERRORS=0
+
+check_file() {
+    if [ -f "$1" ]; then
+        echo "${GREEN}OK${NC}: $1 found."
+    else
+        echo "${RED}ALARM${NC}: $1 MISSING!"
+        ERRORS=$((ERRORS+1))
+    fi
+}
+
+check_file "$INSTALL_DIR/bin/nux"
+check_file "$BIN_DIR/nux"
+
+if command -v nux >/dev/null 2>&1; then
+    echo "${GREEN}OK${NC}: 'nux' command is in PATH."
+    nux --version
+else
+    echo "${RED}ALARM${NC}: 'nux' command NOT found in PATH."
+    ERRORS=$((ERRORS+1))
+fi
+
+if [ $ERRORS -eq 0 ]; then
+    echo "\n${GREEN}System Health: EXCELLENT${NC}"
+else
+    echo "\n${RED}System Health: BROKEN ($ERRORS issues found)${NC}"
+    echo "Recommended action: Run Repair."
+fi
