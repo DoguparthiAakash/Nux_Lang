@@ -1,7 +1,7 @@
 # Nux Graph Library
 # Graph algorithms and data structures
 
-import "std.collections";
+import "nux.collections";
 
 class Graph {
     var vertices;

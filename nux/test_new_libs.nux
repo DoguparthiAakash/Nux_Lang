@@ -1,7 +1,7 @@
-import "io";
-import "time";
-import "math";
-import "collections";
+import "nux.io";
+import "external.embedded.time";
+import "nux.math";
+import "nux.collections";
 
 func main() {
     println("Testing Nux Extensions...");

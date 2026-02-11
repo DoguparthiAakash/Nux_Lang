@@ -1,9 +1,9 @@
 # Nux JIT Compiler Library
 # Just-In-Time compilation with hot spot optimization
 
-import "std.vm";
-import "std.bytecode";
-import "std.memory";
+import "nux.vm";
+import "nux.bytecode";
+import "nux.memory";
 
 class JITCompiler {
     var vm;

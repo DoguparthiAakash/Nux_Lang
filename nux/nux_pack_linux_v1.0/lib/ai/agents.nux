@@ -1,7 +1,7 @@
 # Nux AI Agents Library
 # LLM agents, tool calling, RAG, and planning
 
-import "std.math";
+import "nux.math";
 
 # ============================================================
 # MEMORY SYSTEMS

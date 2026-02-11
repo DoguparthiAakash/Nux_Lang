@@ -1,7 +1,7 @@
 # Nux Data Science Library
 # Statistical analysis and data processing
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # Descriptive statistics
 func mean(data, n) {

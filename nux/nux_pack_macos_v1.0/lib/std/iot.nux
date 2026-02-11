@@ -1,7 +1,7 @@
 # Nux IoT Library
 # Internet of Things protocols and device management
 
-import "std.network";
+import "nux.network";
 
 # MQTT Client
 class MQTTClient {

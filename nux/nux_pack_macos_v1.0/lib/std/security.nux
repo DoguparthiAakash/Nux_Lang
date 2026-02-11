@@ -1,7 +1,7 @@
 # Nux Security Protocols Library
 # Advanced cryptographic protocols and security
 
-import "std.crypto";
+import "external.security.crypto";
 
 # TLS/SSL handshake
 class TLSConnection {

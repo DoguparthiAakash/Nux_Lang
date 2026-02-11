@@ -1,5 +1,5 @@
 # Nux OO File Library
-import "std.file";
+import "nux.file";
 
 class File {
     var handle;

@@ -13,7 +13,7 @@ fn parser_create(tokens) {
 
 fn parser_current(parser) {
     if (parser.pos >= parser.length) {
-        return parser.tokens[parser.length - 1];  // EOF
+        return parser.tokens[parser.length - 1];  # EOF
     }
     return parser.tokens[parser.pos];
 }
@@ -107,6 +107,10 @@ fn parser_statement(parser) {
         return ast_continue();
     }
     
+    if (token.type == "CLASS") {
+        return parser_class(parser);
+    }
+    
     if (token.type == "LBRACE") {
         return parser_block(parser);
     }
@@ -114,19 +118,120 @@ fn parser_statement(parser) {
     return parser_exprStmt(parser);
 }
 
-fn parser_function(parser) {
-    parser_advance(parser);  // fn/func
+fn parser_class(parser) {
+    parser_advance(parser);  # class
     
     let nameToken = parser_expect(parser, "IDENTIFIER");
     let name = nameToken.value;
+    
+    # Optional Type Parameters: <T>
+    let typeParams = parser_typeParams(parser);
+    
+    # Optional Inheritance: extends Base
+    let baseClass = null;
+    if (parser_match(parser, "EXTENDS")) {
+        baseClass = parser_expect(parser, "IDENTIFIER").value;
+    }
+    
+    parser_expect(parser, "LBRACE");
+    
+    let members = [];
+    while (parser_current(parser).type != "RBRACE" && parser_current(parser).type != "EOF") {
+        let memberToken = parser_current(parser);
+        
+        if (memberToken.type == "FN" || memberToken.type == "FUNC") {
+            arr_push(members, parser_function(parser));
+        } else if (memberToken.type == "VAR" || memberToken.type == "LET" || memberToken.type == "CONST") {
+            arr_push(members, parser_varDecl(parser));
+        } else {
+            # Unexpected token in class
+            parser_advance(parser);
+        }
+    }
+    
+    parser_expect(parser, "RBRACE");
+    
+    return ast_classDecl(name, typeParams, members, baseClass);
+}
+
+// ===== PARSE TYPES =====
+
+fn parser_type(parser) {
+    let baseToken = parser_current(parser);
+    let type = null;
+    
+    if (baseToken.type == "TYPE_INT" || baseToken.type == "TYPE_FLOAT" || 
+        baseToken.type == "TYPE_STRING" || baseToken.type == "TYPE_BOOL" ||
+        baseToken.type == "VOID" || baseToken.type == "ANY") {
+        type = type_primitive(baseToken.value);
+        parser_advance(parser);
+    } else if (baseToken.type == "IDENTIFIER") {
+        type = type_generic(baseToken.value, []);
+        parser_advance(parser);
+        
+        # Generic instantiation: Name<Args>
+        if (parser_match(parser, "LT")) {
+            let args = [];
+            while (true) {
+                arr_push(args, parser_type(parser));
+                if (parser_current(parser).type != "COMMA") break;
+                parser_advance(parser);
+            }
+            parser_expect(parser, "GT");
+            type = type_instance(type, args);
+        }
+    }
+    
+    # Array: Type[]
+    while (parser_match(parser, "LBRACKET")) {
+        parser_expect(parser, "RBRACKET");
+        type = type_array(type);
+    }
+    
+    return type;
+}
+
+fn parser_typeParams(parser) {
+    let params = [];
+    if (parser_match(parser, "LT")) {
+        while (true) {
+            let param = parser_expect(parser, "IDENTIFIER");
+            arr_push(params, param.value);
+            if (parser_current(parser).type != "COMMA") break;
+            parser_advance(parser);
+        }
+        parser_expect(parser, "GT");
+    }
+    return params;
+}
+
+// ===== PARSE STATEMENTS =====
+
+fn parser_function(parser) {
+    parser_advance(parser);  # fn/func
+    
+    let nameToken = parser_expect(parser, "IDENTIFIER");
+    let name = nameToken.value;
+    
+    # Optional Type Parameters: <T, U>
+    let typeParams = parser_typeParams(parser);
     
     parser_expect(parser, "LPAREN");
     
     let params = [];
     if (parser_current(parser).type != "RPAREN") {
         while (true) {
-            let param = parser_expect(parser, "IDENTIFIER");
-            arr_push(params, param.value);
+            let paramName = parser_expect(parser, "IDENTIFIER").value;
+            let typeAnnotation = null;
+            
+            if (parser_match(parser, "COLON")) {
+                typeAnnotation = parser_type(parser);
+            }
+            
+            arr_push(params, {
+                name: paramName,
+                typeAnnotation: typeAnnotation
+            });
             
             if (parser_current(parser).type != "COMMA") {
                 break;
@@ -137,17 +242,28 @@ fn parser_function(parser) {
     
     parser_expect(parser, "RPAREN");
     
+    # Optional Return Type: : Type
+    let returnType = null;
+    if (parser_match(parser, "COLON")) {
+        returnType = parser_type(parser);
+    }
+    
     let body = parser_block(parser);
     
-    return ast_functionDecl(name, params, body);
+    return ast_functionDecl(name, params, body, typeParams, returnType);
 }
 
 fn parser_varDecl(parser) {
     let isConst = parser_current(parser).type == "CONST";
-    parser_advance(parser);  // let/var/const
+    parser_advance(parser);  # let/var/const
     
     let nameToken = parser_expect(parser, "IDENTIFIER");
     let name = nameToken.value;
+    
+    let typeAnnotation = null;
+    if (parser_match(parser, "COLON")) {
+        typeAnnotation = parser_type(parser);
+    }
     
     let initializer = null;
     if (parser_match(parser, "EQ")) {
@@ -156,11 +272,11 @@ fn parser_varDecl(parser) {
     
     parser_match(parser, "SEMICOLON");
     
-    return ast_varDecl(name, initializer, isConst);
+    return ast_varDecl(name, initializer, isConst, typeAnnotation);
 }
 
 fn parser_return(parser) {
-    parser_advance(parser);  // return
+    parser_advance(parser);  # return
     
     let value = null;
     if (parser_current(parser).type != "SEMICOLON") {
@@ -173,7 +289,7 @@ fn parser_return(parser) {
 }
 
 fn parser_if(parser) {
-    parser_advance(parser);  // if
+    parser_advance(parser);  # if
     
     parser_expect(parser, "LPAREN");
     let condition = parser_expression(parser);
@@ -190,7 +306,7 @@ fn parser_if(parser) {
 }
 
 fn parser_while(parser) {
-    parser_advance(parser);  // while
+    parser_advance(parser);  # while
     
     parser_expect(parser, "LPAREN");
     let condition = parser_expression(parser);
@@ -202,7 +318,7 @@ fn parser_while(parser) {
 }
 
 fn parser_for(parser) {
-    parser_advance(parser);  // for
+    parser_advance(parser);  # for
     
     parser_expect(parser, "LPAREN");
     
@@ -434,6 +550,22 @@ fn parser_primary(parser) {
     if (token.type == "NULL") {
         parser_advance(parser);
         return ast_literal(null, "null");
+    }
+    
+    if (token.type == "NEW") {
+        parser_advance(parser);
+        let typeExpr = parser_type(parser);
+        parser_expect(parser, "LPAREN");
+        let args = [];
+        if (parser_current(parser).type != "RPAREN") {
+            while (true) {
+                arr_push(args, parser_expression(parser));
+                if (parser_current(parser).type != "COMMA") break;
+                parser_advance(parser);
+            }
+        }
+        parser_expect(parser, "RPAREN");
+        return ast_new(typeExpr, args);
     }
     
     if (token.type == "IDENTIFIER") {

@@ -1,7 +1,7 @@
 # Nux LLVM Library
 # LLVM IR generation and optimization
 
-import "std.compiler";
+import "external.tools.compiler";
 
 class LLVMContext {
     var context_ptr;

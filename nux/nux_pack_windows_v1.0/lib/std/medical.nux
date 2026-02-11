@@ -1,7 +1,7 @@
 # Nux Medical Imaging Library
 # DICOM and medical image processing
 
-import "std.collections";
+import "nux.collections";
 
 class DICOMImage {
     var width;

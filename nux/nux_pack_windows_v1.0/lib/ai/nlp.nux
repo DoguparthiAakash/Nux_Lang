@@ -1,7 +1,7 @@
 # Nux NLP Library
 # Natural Language Processing
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 class Tokenizer {
     var vocab_size;

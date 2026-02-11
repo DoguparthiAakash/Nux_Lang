@@ -1,7 +1,7 @@
 # Nux Scientific Computing Library
 # Numerical methods and scientific algorithms
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # Numerical integration
 func trapezoidal_rule(f, a, b, n) {

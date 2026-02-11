@@ -238,12 +238,18 @@ impl Parser {
                     if self.current_token == Token::SemiColon { self.advance(); }
                     
                     // 1. Resolve Path
-                    let mut path = String::from("lib/");
-                    // "util.io" -> "util/io.nux"
-                    // "sys" -> "sys.nux"
                     let rel = raw_name.replace(".", "/");
-                    path.push_str(&rel);
-                    path.push_str(".nux");
+                    let mut path_buf = if let Ok(nux_lib) = std::env::var("NUX_LIB") {
+                        let mut p = std::path::PathBuf::from(nux_lib);
+                        p.push(&rel);
+                        p
+                    } else {
+                        let mut p = std::path::PathBuf::from("lib");
+                        p.push(&rel);
+                        p
+                    };
+                    path_buf.set_extension("nux");
+                    let path = path_buf.to_string_lossy().to_string();
                     
                     // Fallback check for root/lib prefix if user provided it manually?
                     // User asked for "by name".
@@ -375,10 +381,18 @@ impl Parser {
                      if let Token::String(s) = &sub_parser.current_token {
                          let raw_name = s.clone();
                          // Resolve Path logic (Duplicate from parse_to_asm)
-                         let mut path = String::from("lib/");
-                         let rel = raw_name.replace(".", "/");
-                         path.push_str(&rel);
-                         path.push_str(".nux");
+                         let rel = raw_name.replace(".", "/"); // Restore definition
+                         let mut path_buf = if let Ok(nux_lib) = std::env::var("NUX_LIB") {
+                             let mut p = std::path::PathBuf::from(nux_lib);
+                             p.push(&rel);
+                             p
+                         } else {
+                             let mut p = std::path::PathBuf::from("lib");
+                             p.push(&rel);
+                             p
+                         };
+                         path_buf.set_extension("nux");
+                         let path = path_buf.to_string_lossy().to_string();
                          
                          let src_content = match std::fs::read_to_string(&path) {
                             Ok(c) => Some(c),

@@ -1,7 +1,7 @@
 # Nux Signal Processing Library
 # Digital Signal Processing (DSP)
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # Fast Fourier Transform
 func fft(real, imag, n) {

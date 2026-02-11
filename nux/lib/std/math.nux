@@ -1,353 +1,334 @@
-// Nux Standard Library - Math Functions
-// Comprehensive mathematical operations
+// Math Library - Comprehensive mathematical functions
 
-// ===== CONSTANTS =====
+// ============= BASIC MATH =============
 
-const PI = 3.14159265358979323846;
-const E = 2.71828182845904523536;
-const TAU = 6.28318530717958647692;  // 2 * PI
+func abs(x: int) -> int {
+    return if (x < 0) -x else x;
+}
 
-// ===== BASIC ARITHMETIC =====
+func abs_float(x: float) -> float {
+    return if (x < 0.0) -x else x;
+}
 
-fn abs(x) {
-    if (x < 0) {
-        return -x;
+func min(a: int, b: int) -> int {
+    return if (a < b) a else b;
+}
+
+func max(a: int, b: int) -> int {
+    return if (a > b) a else b;
+}
+
+func min_float(a: float, b: float) -> float {
+    return if (a < b) a else b;
+}
+
+func max_float(a: float, b: float) -> float {
+    return if (a > b) a else b;
+}
+
+func clamp(x: int, min_val: int, max_val: int) -> int {
+    if (x < min_val) {
+        return min_val;
+    }
+    if (x > max_val) {
+        return max_val;
     }
     return x;
 }
 
-fn ceil(x) {
-    let int_part = floor(x);
-    if (x > int_part) {
-        return int_part + 1;
-    }
-    return int_part;
-}
+// ============= POWER AND ROOTS =============
 
-fn floor(x) {
-    // Convert to int (truncates towards zero)
-    let int_x = x;  // Assuming implicit conversion
-    if (x < 0 && x != int_x) {
-        return int_x - 1;
-    }
-    return int_x;
-}
-
-fn round(x) {
-    if (x >= 0) {
-        return floor(x + 0.5);
-    } else {
-        return ceil(x - 0.5);
-    }
-}
-
-fn trunc(x) {
-    if (x >= 0) {
-        return floor(x);
-    } else {
-        return ceil(x);
-    }
-}
-
-// ===== POWER AND ROOTS =====
-
-fn pow(base, exponent) {
-    if (exponent == 0) {
-        return 1;
+func pow(base: float, exp: int) -> float {
+    if (exp == 0) {
+        return 1.0;
     }
     
-    if (exponent < 0) {
-        return 1 / pow(base, -exponent);
+    var result = 1.0;
+    var positive_exp = abs(exp);
+    
+    for (var i = 0; i < positive_exp; i++) {
+        result *= base;
     }
     
-    let result = 1;
-    let i = 0;
-    
-    while (i < exponent) {
-        result = result * base;
-        i = i + 1;
-    }
-    
-    return result;
+    return if (exp < 0) 1.0 / result else result;
 }
 
-fn sqrt(x) {
-    if (x < 0) {
-        return 0;  // NaN equivalent
+func sqrt(x: float) -> float {
+    if (x < 0.0) {
+        return 0.0;  // NaN equivalent
     }
     
-    if (x == 0) {
-        return 0;
+    if (x == 0.0) {
+        return 0.0;
     }
     
     // Newton's method
-    let guess = x / 2;
-    let epsilon = 0.00001;
-    let iterations = 0;
-    let maxIterations = 100;
+    var guess = x / 2.0;
+    var epsilon = 0.00001;
     
-    while (iterations < maxIterations) {
-        let newGuess = (guess + x / guess) / 2;
+    for (var i = 0; i < 50; i++) {
+        var next = (guess + x / guess) / 2.0;
         
-        if (abs(newGuess - guess) < epsilon) {
-            return newGuess;
+        if (abs_float(next - guess) < epsilon) {
+            return next;
         }
         
-        guess = newGuess;
-        iterations = iterations + 1;
+        guess = next;
     }
     
     return guess;
 }
 
-fn cbrt(x) {
-    let sign = 1;
-    if (x < 0) {
-        sign = -1;
-        x = -x;
-    }
+func cbrt(x: float) -> float {
+    var negative = x < 0.0;
+    x = abs_float(x);
     
-    // Newton's method for cube root
-    let guess = x / 3;
-    let epsilon = 0.00001;
-    let iterations = 0;
-    let maxIterations = 100;
+    var guess = x / 3.0;
+    var epsilon = 0.00001;
     
-    while (iterations < maxIterations) {
-        let newGuess = (2 * guess + x / (guess * guess)) / 3;
+    for (var i = 0; i < 50; i++) {
+        var next = (2.0 * guess + x / (guess * guess)) / 3.0;
         
-        if (abs(newGuess - guess) < epsilon) {
-            return sign * newGuess;
+        if (abs_float(next - guess) < epsilon) {
+            return if (negative) -next else next;
         }
         
-        guess = newGuess;
-        iterations = iterations + 1;
+        guess = next;
     }
     
-    return sign * guess;
+    return if (negative) -guess else guess;
 }
 
-fn exp(x) {
-    // e^x using Taylor series
-    let result = 1;
-    let term = 1;
-    let i = 1;
+// ============= TRIGONOMETRY =============
+
+const PI: float = 3.14159265358979323846;
+const E: float = 2.71828182845904523536;
+
+func sin(x: float) -> float {
+    // Taylor series approximation
+    x = x % (2.0 * PI);
     
-    while (i < 50) {
-        term = term * x / i;
-        result = result + term;
-        
-        if (abs(term) < 0.00001) {
-            break;
-        }
-        
-        i = i + 1;
+    var result = x;
+    var term = x;
+    
+    for (var n = 1; n < 10; n++) {
+        term *= -x * x / ((2.0 * n) * (2.0 * n + 1.0));
+        result += term;
     }
     
     return result;
 }
 
-fn log(x) {
-    if (x <= 0) {
-        return 0;  // NaN equivalent
-    }
-    
-    // Natural logarithm using series expansion
-    // ln(x) = 2 * ((x-1)/(x+1) + 1/3*((x-1)/(x+1))^3 + ...)
-    let y = (x - 1) / (x + 1);
-    let y2 = y * y;
-    let result = 0;
-    let term = y;
-    let i = 1;
-    
-    while (i < 50) {
-        result = result + term / i;
-        term = term * y2;
-        i = i + 2;
-        
-        if (abs(term / i) < 0.00001) {
-            break;
-        }
-    }
-    
-    return 2 * result;
+func cos(x: float) -> float {
+    return sin(x + PI / 2.0);
 }
 
-fn log10(x) {
-    return log(x) / log(10);
+func tan(x: float) -> float {
+    return sin(x) / cos(x);
 }
 
-fn log2(x) {
-    return log(x) / log(2);
+func asin(x: float) -> float {
+    // Approximation
+    return x + (x * x * x) / 6.0 + (3.0 * x * x * x * x * x) / 40.0;
 }
 
-// ===== TRIGONOMETRY =====
+func acos(x: float) -> float {
+    return PI / 2.0 - asin(x);
+}
 
-fn sin(x) {
-    // Normalize to [-PI, PI]
-    while (x > PI) {
-        x = x - TAU;
-    }
-    while (x < -PI) {
-        x = x + TAU;
+func atan(x: float) -> float {
+    // Taylor series
+    if (abs_float(x) > 1.0) {
+        return PI / 2.0 - atan(1.0 / x);
     }
     
-    // Taylor series for sin(x)
-    let result = 0;
-    let term = x;
-    let i = 1;
+    var result = x;
+    var term = x;
     
-    while (i < 20) {
-        result = result + term;
-        term = -term * x * x / ((2 * i) * (2 * i + 1));
-        i = i + 1;
-        
-        if (abs(term) < 0.00001) {
-            break;
-        }
+    for (var n = 1; n < 10; n++) {
+        term *= -x * x;
+        result += term / (2.0 * n + 1.0);
     }
     
     return result;
 }
 
-fn cos(x) {
-    // cos(x) = sin(x + PI/2)
-    return sin(x + PI / 2);
+func atan2(y: float, x: float) -> float {
+    if (x > 0.0) {
+        return atan(y / x);
+    } else if (x < 0.0 && y >= 0.0) {
+        return atan(y / x) + PI;
+    } else if (x < 0.0 && y < 0.0) {
+        return atan(y / x) - PI;
+    } else if (x == 0.0 && y > 0.0) {
+        return PI / 2.0;
+    } else if (x == 0.0 && y < 0.0) {
+        return -PI / 2.0;
+    }
+    return 0.0;  // Undefined
 }
 
-fn tan(x) {
-    let cosVal = cos(x);
-    if (abs(cosVal) < 0.00001) {
-        return 0;  // Infinity equivalent
+// ============= EXPONENTIAL AND LOGARITHM =============
+
+func exp(x: float) -> float {
+    // Taylor series
+    var result = 1.0;
+    var term = 1.0;
+    
+    for (var n = 1; n < 20; n++) {
+        term *= x / n;
+        result += term;
     }
-    return sin(x) / cosVal;
+    
+    return result;
 }
 
-// ===== MIN/MAX =====
-
-fn min(a, b) {
-    if (a < b) {
-        return a;
+func ln(x: float) -> float {
+    if (x <= 0.0) {
+        return 0.0;  // NaN equivalent
     }
-    return b;
+    
+    // Natural logarithm using Newton's method
+    var guess = 1.0;
+    
+    for (var i = 0; i < 50; i++) {
+        var next = guess + 2.0 * (x - exp(guess)) / (x + exp(guess));
+        
+        if (abs_float(next - guess) < 0.00001) {
+            return next;
+        }
+        
+        guess = next;
+    }
+    
+    return guess;
 }
 
-fn max(a, b) {
-    if (a > b) {
-        return a;
-    }
-    return b;
+func log10(x: float) -> float {
+    return ln(x) / ln(10.0);
 }
 
-fn clamp(x, minVal, maxVal) {
-    if (x < minVal) {
-        return minVal;
-    }
-    if (x > maxVal) {
-        return maxVal;
-    }
-    return x;
+func log2(x: float) -> float {
+    return ln(x) / ln(2.0);
 }
 
-// ===== RANDOM =====
+// ============= ROUNDING =============
 
-// Note: These are placeholder implementations
-// Real implementation would use system random
+func floor(x: float) -> int {
+    var i = x as int;
+    return if (x < 0.0 && x != i) i - 1 else i;
+}
 
-let _random_seed = 12345;
+func ceil(x: float) -> int {
+    var i = x as int;
+    return if (x > 0.0 && x != i) i + 1 else i;
+}
 
-fn random() {
+func round(x: float) -> int {
+    return floor(x + 0.5);
+}
+
+func trunc(x: float) -> int {
+    return x as int;
+}
+
+// ============= RANDOM NUMBERS =============
+
+var random_seed: int = 12345;
+
+func srand(seed: int) {
+    random_seed = seed;
+}
+
+func rand() -> int {
     // Linear congruential generator
-    _random_seed = (_random_seed * 1103515245 + 12345) % 2147483648;
-    return _random_seed / 2147483648;
+    random_seed = (random_seed * 1103515245 + 12345) % 2147483648;
+    return random_seed;
 }
 
-fn randomInt(minVal, maxVal) {
-    return floor(random() * (maxVal - minVal + 1)) + minVal;
+func rand_float() -> float {
+    return rand() / 2147483648.0;
 }
 
-fn randomChoice(arr) {
-    let len = arr_length(arr);
-    if (len == 0) {
-        return null;
+func rand_range(min_val: int, max_val: int) -> int {
+    return min_val + (rand() % (max_val - min_val + 1));
+}
+
+// ============= STATISTICS =============
+
+func sum(arr: [int]) -> int {
+    var total = 0;
+    for (var x in arr) {
+        total += x;
     }
-    let index = randomInt(0, len - 1);
-    return arr[index];
+    return total;
 }
 
-// ===== UTILITY =====
-
-fn sign(x) {
-    if (x > 0) {
-        return 1;
-    }
-    if (x < 0) {
-        return -1;
-    }
-    return 0;
-}
-
-fn isEven(x) {
-    return x % 2 == 0;
-}
-
-fn isOdd(x) {
-    return x % 2 != 0;
-}
-
-fn gcd(a, b) {
-    // Greatest common divisor
-    a = abs(a);
-    b = abs(b);
-    
-    while (b != 0) {
-        let temp = b;
-        b = a % b;
-        a = temp;
+func mean(arr: [float]) -> float {
+    if (arr.len() == 0) {
+        return 0.0;
     }
     
-    return a;
+    var total = 0.0;
+    for (var x in arr) {
+        total += x;
+    }
+    return total / arr.len();
 }
 
-fn lcm(a, b) {
-    // Least common multiple
-    return abs(a * b) / gcd(a, b);
-}
-
-fn factorial(n) {
-    if (n <= 1) {
-        return 1;
+func median(arr: [float]) -> float {
+    if (arr.len() == 0) {
+        return 0.0;
     }
     
-    let result = 1;
-    let i = 2;
-    
-    while (i <= n) {
-        result = result * i;
-        i = i + 1;
-    }
-    
-    return result;
-}
-
-fn isPrime(n) {
-    if (n <= 1) {
-        return false;
-    }
-    if (n <= 3) {
-        return true;
-    }
-    if (n % 2 == 0 || n % 3 == 0) {
-        return false;
-    }
-    
-    let i = 5;
-    while (i * i <= n) {
-        if (n % i == 0 || n % (i + 2) == 0) {
-            return false;
+    // Sort array (simple bubble sort)
+    var sorted = arr;
+    for (var i = 0; i < sorted.len(); i++) {
+        for (var j = i + 1; j < sorted.len(); j++) {
+            if (sorted[i] > sorted[j]) {
+                var temp = sorted[i];
+                sorted[i] = sorted[j];
+                sorted[j] = temp;
+            }
         }
-        i = i + 6;
     }
     
-    return true;
+    var mid = sorted.len() / 2;
+    if (sorted.len() % 2 == 0) {
+        return (sorted[mid - 1] + sorted[mid]) / 2.0;
+    }
+    return sorted[mid];
+}
+
+func variance(arr: [float]) -> float {
+    if (arr.len() == 0) {
+        return 0.0;
+    }
+    
+    var avg = mean(arr);
+    var sum_sq_diff = 0.0;
+    
+    for (var x in arr) {
+        var diff = x - avg;
+        sum_sq_diff += diff * diff;
+    }
+    
+    return sum_sq_diff / arr.len();
+}
+
+func stddev(arr: [float]) -> float {
+    return sqrt(variance(arr));
+}
+
+// ============= EXAMPLE USAGE =============
+
+func math_example() {
+    println("sqrt(16) = " + json_stringify_int(sqrt(16.0) as int));
+    println("sin(PI/2) = " + json_stringify_int(sin(PI / 2.0) as int));
+    println("exp(1) = " + json_stringify_int(exp(1.0) as int));
+    println("ln(E) = " + json_stringify_int(ln(E) as int));
+    
+    var data: [float] = [1.0, 2.0, 3.0, 4.0, 5.0];
+    println("mean = " + json_stringify_int(mean(data) as int));
+    println("stddev = " + json_stringify_int(stddev(data) as int));
 }

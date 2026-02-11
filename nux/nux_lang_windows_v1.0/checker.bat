@@ -27,7 +27,7 @@ echo %CYAN%    ║             ████     ████       ██║    
 echo %CYAN%    ║    █████████████     ████       ██║     ╚█║╚██████╔╝██║      ██║  ║%NC%
 echo %CYAN%    ║    █████████████     ████       ╚═╝      ╚╝ ╚═════╝ ╚═╝      ╚═╝  ║%NC%
 echo %CYAN%    ║                                                                   ║%NC%
-echo %CYAN%    ║               %WHITE%Programming Language%CYAN% v1.0.0                          ║%NC%
+echo %CYAN%    ║               %WHITE%Programming Language%CYAN% v1.0.0            ║%NC%
 echo %CYAN%    ║                                                                   ║%NC%
 echo %CYAN%    ╚═══════════════════════════════════════════════════════════════════╝%NC%
 echo.

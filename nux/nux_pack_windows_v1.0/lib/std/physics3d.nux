@@ -1,7 +1,7 @@
 # Nux 3D Physics Library
 # 3D physics simulation
 
-import "std.math";
+import "nux.math";
 
 # ============================================================
 # 3D VECTOR

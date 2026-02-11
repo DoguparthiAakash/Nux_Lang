@@ -1,9 +1,9 @@
 # AI/ML Demo - Simple Neural Network
 # Demonstrates AI capabilities using Nux's ML libraries
 
-import "std.io";
-import "ai.neural";
-import "std.math";
+import "nux.io";
+import "external.ai.neural";
+import "nux.math";
 
 func main() {
     println("=== Nux AI/ML Demo ===");

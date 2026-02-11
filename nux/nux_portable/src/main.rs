@@ -12,7 +12,7 @@ use std::fs;
 use std::io::Write;
 
 fn main() {
-    println!("NUX COMPILER v0.3 (Vision GUI)");
+    println!("NUX COMPILER v0.3-patched (Vision GUI)");
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         print_usage();
@@ -40,7 +40,7 @@ fn main() {
             };
             
             // Debug: Dump preprocessed source
-            // println!("--- Preprocessed Source ---\n{}\n---------------------------", source);
+            println!("--- Preprocessed Source ---\n{}\n---------------------------", source);
 
             // Try High Level First (heuristic: if contains "print(")
             // Or just try compile_high_level, if error, try asm.
@@ -116,6 +116,7 @@ fn main() {
 
             // 1. Compile (Check for Errors)
             println!("Compiling {}...", path);
+            println!("DEBUG: Running source (Preprocessed):\n--- BEGIN ---\n{}\n--- END ---", source_content);
             use lexer::Span;
             use high_level::CompileError;
 
@@ -454,7 +455,10 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
             // import "filename";
             let start = trimmed.find('"').ok_or("Invalid import syntax")? + 1;
             let end = trimmed.rfind('"').ok_or("Invalid import syntax")?;
-            let mut import_path_str = trimmed[start..end].to_string();
+            let raw_import = &trimmed[start..end];
+            // Convert dots to slashes (e.g. std.gui -> std/gui.nux)
+            let mut import_path_str = raw_import.replace(".", "/");
+            
             if !import_path_str.ends_with(".nux") {
                 import_path_str.push_str(".nux");
             }
@@ -462,6 +466,12 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
             
             // Search Paths
             let mut resolved_path = None;
+            
+            // 0. Environment Variable NUX_LIB
+            if let Ok(nux_lib_env) = std::env::var("NUX_LIB") {
+                let p_env = std::path::Path::new(&nux_lib_env).join(import_param);
+                if p_env.exists() { resolved_path = Some(p_env); }
+            }
             
             // 1. Relative to current file
             let parent = path.parent().unwrap_or(std::path::Path::new("."));

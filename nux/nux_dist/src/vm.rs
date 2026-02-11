@@ -5,6 +5,12 @@ use std::vec::Vec;
 use std::string::String;
 use std::io::{self, Write};
 use std::convert::TryInto;
+#[cfg(feature = "minifb")]
+use minifb::{Window, WindowOptions, Scale};
+
+// const OP_VBE_SET_MODE: u8 = 0x3A;
+// const OP_VBE_GET_FB: u8 = 0x3B;
+// const OP_VBE_UPDATE: u8 = 0x3C;
 
 pub struct NuxVm {
     stack: Vec<i64>,
@@ -14,18 +20,30 @@ pub struct NuxVm {
     call_stack: Vec<(usize, usize)>, // (ret_ip, base_pointer)
     base_pointer: usize,
     heap_strings: Vec<String>,
+    
+    // Graphics
+    #[cfg(feature = "minifb")]
+    window: Option<Window>,
+    fb_width: usize,
+    fb_height: usize,
+    fb_addr: usize,
 }
 
 impl NuxVm {
     pub fn new(code: Vec<u8>) -> Self {
         Self {
             stack: Vec::with_capacity(1024),
-            memory: vec![0u8; 1024 * 1024], // 1MB Memory
+            memory: vec![0u8; 32 * 1024 * 1024], // Increased to 32MB for framebuffer
             code,
             ip: 0,
             call_stack: Vec::new(),
             base_pointer: 0,
             heap_strings: Vec::new(),
+            #[cfg(feature = "minifb")]
+            window: None,
+            fb_width: 0,
+            fb_height: 0,
+            fb_addr: 0,
         }
     }
     
@@ -261,6 +279,125 @@ impl NuxVm {
                      let r = f.cos();
                      self.stack.push(r.to_bits() as i64);
                 },
+                0x40 => { // PEEK
+                     let addr = self.stack.pop().unwrap() as usize;
+                     if addr + 8 <= self.memory.len() {
+                         let bytes: [u8; 8] = self.memory[addr..addr+8].try_into().unwrap();
+                         self.stack.push(i64::from_le_bytes(bytes));
+                     } else {
+                         self.stack.push(0);
+                     }
+                },
+                0x41 => { // POKE
+                     let val = self.stack.pop().unwrap();
+                     let addr = self.stack.pop().unwrap() as usize;
+                     if addr + 8 <= self.memory.len() {
+                         let bytes = val.to_le_bytes();
+                         self.memory[addr..addr+8].copy_from_slice(&bytes);
+                     }
+                },
+                
+                // Graphics / VBE Opcodes
+                0x3A => { // OP_VBE_SET_MODE
+                    #[cfg(feature = "minifb")]
+                    {
+                         let _bpp = self.stack.pop().unwrap(); // Assume 32 for now
+                         let height = self.stack.pop().unwrap() as usize;
+                         let width = self.stack.pop().unwrap() as usize;
+                         
+                         self.fb_width = width;
+                         self.fb_height = height;
+                         
+                         // Allocate FB in VM memory at a safe offset (e.g. 8MB)
+                         // 10MB Offset for safety
+                         let fb_offset = 10 * 1024 * 1024;
+                         self.fb_addr = fb_offset;
+                         
+                         // Ensure memory is large enough
+                         let required = fb_offset + (width * height * 4);
+                         if self.memory.len() < required {
+                             self.memory.resize(required, 0);
+                         }
+                         
+                         let mut window = Window::new(
+                             "Nux Standalone Window",
+                             width,
+                             height,
+                             WindowOptions::default(),
+                         ).unwrap_or_else(|e| {
+                             panic!("{}", e);
+                         });
+                         
+                         window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+                         self.window = Some(window);
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    {
+                        // Mock implementation for non-minifb builds
+                        let _bpp = self.stack.pop().unwrap();
+                        let height = self.stack.pop().unwrap() as usize;
+                        let width = self.stack.pop().unwrap() as usize;
+                        self.fb_width = width;
+                        self.fb_height = height;
+                        self.fb_addr = 10 * 1024 * 1024;
+                    }
+                },
+                0x3B => { // OP_VBE_GET_FB
+                     self.stack.push(self.fb_addr as i64);
+                },
+                0x3C => { // OP_VBE_UPDATE
+                    #[cfg(feature = "minifb")]
+                    if let Some(window) = &mut self.window {
+                        if !window.is_open() && !window.is_key_down(minifb::Key::Escape) {
+                            // Should exit?
+                        } else {
+                            // Copy from VM memory to temp u32 buffer
+                            let len = self.fb_width * self.fb_height;
+                            let mut buffer = vec![0u32; len];
+                            
+                            // Convert u8 (RGBA/BGRA) to u32
+                            // Nux assumes 32-bit integer per pixel.
+                            // If user wrote `0xAARRGGBB` to memory, it is stored as LE bytes.
+                            
+                            // Optimization: Direct cast if possible, but alignment might differ.
+                            // Let's iterate.
+                            for i in 0..len {
+                                let addr = self.fb_addr + i * 4;
+                                let b = self.memory[addr];
+                                let g = self.memory[addr+1];
+                                let r = self.memory[addr+2];
+                                let a = self.memory[addr+3]; 
+                                // Minifb expects 00RRGGBB (or ARGB?)
+                                // usually 0x00RRGGBB.
+                                buffer[i] = ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+                            }
+                            
+                            window.update_with_buffer(&buffer, self.fb_width, self.fb_height).unwrap();
+                        }
+                    }
+                },
+                
+                // Image Intrinsics (Mock/Simple)
+                0x31 => { // OP_IMG_ALLOC
+                    let h = self.stack.pop().unwrap() as usize;
+                    let w = self.stack.pop().unwrap() as usize;
+                    // Just return an address in memory.
+                    // Simple "bump" allocator from end of FB? or just use `malloc` if we had one.
+                    // For now, let's just use a fixed region after FB?
+                    // This is unsafe for real usage without a malloc.
+                    // Returning 0 for now as valid address (start of memory) is dangerous.
+                    // Let's assume user manages memory or uses specific reserved regions.
+                    // Returning a fake handle (index) is safer if we managed `Vec<Image>`.
+                    // But `gfxdriver` expects pointer?
+                    // `graphics.nux` assumes `id` is returned.
+                    
+                    // Hack: Just return a unique ID and store in a map?
+                    // `gfxdriver`: img_new -> img_alloc.
+                    // `draw` -> img_draw.
+                    // Let's unimplemented for now or just return 0 to prevent crash.
+                    self.stack.push(0); 
+                },
+                
                 _ => { 
                     // eprintln!("Unknown OpCode: 0x{:02X} at {}", op, self.ip - 1);
                 }

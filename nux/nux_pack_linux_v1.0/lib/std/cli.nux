@@ -1,7 +1,7 @@
 # Nux CLI Library
 # Command-line interface utilities
 
-import "std.collections";
+import "nux.collections";
 
 class ArgumentParser {
     var program_name;

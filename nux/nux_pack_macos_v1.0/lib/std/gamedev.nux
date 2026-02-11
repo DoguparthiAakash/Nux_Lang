@@ -1,7 +1,7 @@
 # Nux Game Development Library
 # 2D/3D game engine primitives
 
-import "std.gfxdriver";
+import "external.game.gfxdriver";
 
 class Vector2 {
     var x;

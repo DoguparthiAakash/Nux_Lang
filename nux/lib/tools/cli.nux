@@ -1,0 +1,29 @@
+#!/usr/bin/env nux
+# Nux CLI Tool
+
+import "tools/package_manager"
+import "tools/lsp"
+import "compiler/multi_compiler"
+
+func main(args: [string]) {
+    if args.length == 0 {
+        print_help()
+        return
+    }
+    
+    match args[0] {
+        "new" => cmd_new(args[1..])
+        "build" => cmd_build(args[1..])
+        "run" => cmd_run(args[1..])
+        "test" => cmd_test(args[1..])
+        "install" => cmd_install(args[1..])
+        "format" => cmd_format(args[1..])
+        "version" => println("Nux 1.0.0")
+        _ => print_help()
+    }
+}
+
+func print_help() {
+    println("Nux - Fast, complete programming language")
+    println("Commands: new, build, run, test, install, format")
+}

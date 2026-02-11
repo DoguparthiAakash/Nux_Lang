@@ -1,7 +1,7 @@
 # Nux Audio Synthesis Library
 # Sound synthesis and music generation
 
-import "std.dsp";
+import "external.science.dsp";
 
 class Oscillator {
     var frequency;

@@ -1,7 +1,7 @@
 # Nux Multimedia Library
 # Audio and video processing
 
-import "std.dsp";
+import "external.science.dsp";
 
 # Audio codec
 class AudioEncoder {

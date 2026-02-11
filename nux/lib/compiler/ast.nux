@@ -10,21 +10,35 @@ fn ast_program(statements) {
     };
 }
 
-fn ast_functionDecl(name, params, body) {
+fn ast_functionDecl(name, params, body, typeParams, returnType) {
     return {
         type: "FunctionDecl",
         name: name,
         params: params,
-        body: body
+        body: body,
+        typeParams: typeParams,
+        returnType: returnType
     };
 }
 
-fn ast_varDecl(name, initializer, isConst) {
+fn ast_varDecl(name, initializer, isConst, typeAnnotation) {
     return {
         type: "VarDecl",
         name: name,
         initializer: initializer,
-        isConst: isConst
+        isConst: isConst,
+        typeAnnotation: typeAnnotation
+    };
+}
+
+fn ast_classDecl(name, typeParams, methods, properties, baseClass) {
+    return {
+        type: "ClassDecl",
+        name: name,
+        typeParams: typeParams,
+        methods: methods,
+        properties: properties,
+        baseClass: baseClass
     };
 }
 
@@ -139,6 +153,14 @@ fn ast_identifier(name) {
     return {
         type: "Identifier",
         name: name
+    };
+}
+
+fn ast_new(typeExpr, args) {
+    return {
+        type: "New",
+        typeExpr: typeExpr,
+        arguments: args
     };
 }
 

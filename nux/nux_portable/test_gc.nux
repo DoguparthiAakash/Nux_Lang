@@ -1,6 +1,6 @@
 import "sys";
-import "memory";
-import "io";
+import "nux.memory";
+import "nux.io";
 
 func main() {
     println("GC Test");

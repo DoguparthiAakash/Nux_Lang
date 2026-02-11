@@ -1,5 +1,5 @@
 # Nux OO Graphics Library
-import "std.graphics";
+import "external.game.graphics";
 
 class Image {
     var id;

@@ -1,7 +1,7 @@
 # Nux Memory Manager Library
 # Heap allocation and virtual memory management
 
-import "os.kernel";
+import "external.os.kernel";
 
 # ============================================================
 # HEAP ALLOCATORS

@@ -1,8 +1,8 @@
 # Nux Bytecode Library
 # Bytecode generation and serialization
 
-import "std.collections";
-import "std.compiler";
+import "nux.collections";
+import "external.tools.compiler";
 
 class BytecodeGenerator {
     var instructions;

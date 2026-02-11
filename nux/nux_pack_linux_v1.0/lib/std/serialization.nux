@@ -1,7 +1,7 @@
 # Nux Serialization Library
 # Binary serialization formats
 
-import "std.collections";
+import "nux.collections";
 
 class Serializer {
     var buffer;

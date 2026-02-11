@@ -1,7 +1,7 @@
 # Nux WebAssembly Library
 # WASM module generation and execution
 
-import "std.collections";
+import "nux.collections";
 
 class WASMModule {
     var functions;

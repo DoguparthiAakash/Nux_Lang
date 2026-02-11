@@ -1,7 +1,7 @@
 # Nux Bootloader Library
 # Boot process support
 
-import "os.kernel";
+import "external.os.kernel";
 
 # ============================================================
 # MULTIBOOT HEADER

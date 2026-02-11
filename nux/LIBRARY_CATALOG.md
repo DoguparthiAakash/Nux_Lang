@@ -1,7 +1,8 @@
 # Nux Library Catalog
 **Complete Reference Guide - 79 Libraries**
 
-## 📚 Standard Libraries (`lib/std/`) - 47 Libraries
+## 📚 Core Standard Libraries (`lib/nux/`)
+Essential utilities, types, system interaction, and runtime.
 
 ### Core Utilities
 - **`io.nux`** - Input/Output wrappers
@@ -9,216 +10,110 @@
 - **`string.nux`** - String manipulation
 - **`collections.nux`** - List and Map data structures
 - **`datetime.nux`** - Date and time utilities
+- **`random.nux`** - Random number generation
+- **`regex.nux`** - Regular expression engine
+- **`error.nux`** - Error handling primitives
+- **`debug.nux`** - Debugging utilities
 
-### File & Data
+### System & Runtime
+- **`system.nux`** - OS interaction, environment, processes
+- **`thread.nux`** - Thread management, Mutex, Semaphore
+- **`memory.nux`** - Direct memory access, memory safety
+- **`vm.nux`** - VM introspection and control
+- **`gc.nux`** - Garbage collection control
+- **`module.nux`** - Module system utilities
+- **`package.nux`** - Package management helpers
+
+### File & Config
 - **`file.nux`** - File system operations
 - **`oo_file.nux`** - Object-oriented File I/O
 - **`json.nux`** - JSON parsing and serialization
-- **`config.nux`** - Configuration file management (INI, TOML)
-- **`serialization.nux`** - Binary serialization (MessagePack)
-- **`database.nux`** - In-memory database with B-Tree indexing
+- **`config.nux`** - Configuration file management
+- **`serialization.nux`** - Binary serialization
 
-### Graphics & Multimedia
+---
+
+## 🌍 External Libraries (`lib/external/`)
+Domain-specific extensions and powerful frameworks.
+
+### 🎮 Game Development (`lib/external/game/`)
+- **`gameengine.nux`** - ECS, input, audio, resources, scenes
 - **`graphics.nux`** - Image & Vision wrappers
-- **`oo_graphics.nux`** - OO Graphics (Image class)
-- **`gfxdriver.nux`** - VGA text mode, framebuffer, VBE
-- **`audio.nux`** - AC97 and Intel HD Audio drivers
-- **`multimedia.nux`** - Audio/video encoding, H.264, MP4
-- **`arvr.nux`** - AR/VR, 3D graphics, spatial audio
-- **`gamedev.nux`** - 2D physics, sprites, particles
+- **`graphics3d.nux`** - 3D rendering basics
+- **`physics2d.nux`** - 2D physics engine (Box2D-like)
+- **`physics3d.nux`** - 3D physics engine
+- **`animation.nux`** - Tweening, skeletal animation
+- **`audio.nux`** - Audio drivers and synthesis
+- **`pathfinding.nux`** - A*, Dijkstra, navigation meshes
+- **`tilemap.nux`** - Tile-based levels
+- **`arvr.nux`** - AR/VR support
 
-### Game Development 🎮 (NEW)
-- **`gameengine.nux`** - ECS (Entity-Component-System), input, audio, resources, scenes
-- **`physics2d.nux`** - 2D physics engine (Box2D-like): rigid bodies, shapes, collision, joints
-- **`physics3d.nux`** - 3D physics: Vec3, Quaternion, GJK collision, 3D rigid bodies
-- **`animation.nux`** - Tweening, keyframes, skeletal animation, state machines, timelines
-- **`pathfinding.nux`** - A*, Dijkstra, steering behaviors (seek, flee, flocking), path following
-- **`tilemap.nux`** - Tile-based levels, layers, parallax scrolling, autotiling
+### 🤖 AI & Machine Learning (`lib/external/ai/`)
+- **`tensor.nux`** - Multi-dimensional arrays
+- **`neuralnet.nux`** - Neural network layers
+- **`optimizer.nux`** - SGD, Adam, RMSprop
+- **`vision.nux`** - Computer vision models
+- **`nlp.nux`** - Natural Language Processing
+- **`rl.nux`** - Reinforcement Learning basics
+- **`transformer.nux`** - Transformer models (GPT-like)
+- **`diffusion.nux`** - Diffusion models
+- **`agents.nux`** - AI Agent frameworks
 
-### Networking & Web
-- **`network.nux`** - Socket operations and HTTP
-- **`netstack.nux`** - Full TCP/IP stack (Ethernet, IPv4, TCP, UDP)
-- **`webframework.nux`** - HTTP server, routing, sessions
-- **`iot.nux`** - MQTT, CoAP, LoRaWAN protocols
-- **`cloud.nux`** - Load balancing, distributed cache, MapReduce
+### 🖥️ Operating System (`lib/external/os/`)
+- **`kernel.nux`** - Kernel primitives
+- **`driver.nux`** - Device driver framework
+- **`scheduler.nux`** - Process scheduling
+- **`vfs.nux`** - Virtual File System
+- **`bootloader.nux`** - Bootloader code
+- **`pci.nux`** - PCI bus enumeration
+- **`usb.nux`** - USB stack
+- **`filesystem.nux`** - Filesystem implementations (FAT32, Ext4)
 
-### Hardware & System
-- **`memory.nux`** - Direct memory access, DMA, cache control
-- **`cpu.nux`** - CPUID, MSR, control registers, I/O ports
-- **`atomic.nux`** - Lock-free operations, spinlocks
-- **`interrupt.nux`** - IDT, PIC/APIC, IRQ handling
-- **`pci.nux`** - PCI/PCIe device enumeration
-- **`usb.nux`** - XHCI controller, USB HID
-- **`disk.nux`** - ATA, AHCI, NVMe drivers
-- **`filesystem.nux`** - Ext4 and FAT32 drivers
-- **`acpi.nux`** - ACPI tables, power management
-- **`system.nux`** - OS interaction, environment, processes
+### 🌐 Web & Network (`lib/external/web/`)
+- **`webframework.nux`** - HTTP server and routing
+- **`netstack.nux`** - TCP/IP stack implementation
+- **`http.nux`** - HTTP client/server utilities
+- **`cloud.nux`** - Cloud computing patterns
+- **`iot.nux`** - IoT protocols (MQTT, CoAP)
 
-### Concurrency & Threading
-- **`thread.nux`** - Thread management, Mutex, Semaphore, RWLock
-- **`simd.nux`** - SSE/AVX vector operations
+### 📊 Data & Persistence (`lib/external/data/`)
+- **`database.nux`** - In-memory B-Tree database
+- **`sql.nux`** - SQL parser and engine
+- **`blockchain.nux`** - Blockchain primitives
 
-### Security & Cryptography
-- **`crypto.nux`** - Hashing, AES encryption, Base64, UUID
-- **`security.nux`** - TLS/SSL, OAuth 2.0, JWT, TOTP
-- **`blockchain.nux`** - Proof-of-work, transactions, Merkle trees
+### 🔬 Science (`lib/external/science/`)
+- **`scientific.nux`** - Numerical analysis
+- **`dsp.nux`** - Digital Signal Processing
+- **`bioinformatics.nux`** - DNA/RNA sequencing logic
+- **`quantum.nux`** - Quantum computing simulation
 
-### Scientific & Engineering
-- **`dsp.nux`** - FFT, FIR/IIR filters, spectrograms
-- **`scientific.nux`** - Numerical integration, ODE solvers, linear algebra
-- **`robotics.nux`** - PID control, Kalman filter, A* planning, SLAM
-- **`bioinformatics.nux`** - DNA/RNA operations, sequence alignment
+### 🔐 Security (`lib/external/security/`)
+- **`crypto.nux`** - Hashing, encryption, signing
+- **`security.nux`** - Auth, TLS, JWT
 
-### Development Tools
-- **`compiler.nux`** - Lexer, parser, AST, code generation, JIT
-- **`testing.nux`** - Test suites, assertions, mocking, benchmarks
-- **`logging.nux`** - Structured logging, metrics, tracing
-- **`cli.nux`** - Argument parsing, progress bars, tables
-- **`regex.nux`** - Regular expression engine
+### 🪟 GUI (`lib/external/gui/`)
+- **`gui.nux`** - Immediate or Retained mode GUI
 
-### Finance & Business
-- **`finance.nux`** - Time series, trading strategies, Black-Scholes, VaR
+### 🔧 Tools (`lib/external/tools/`)
+- **`compiler.nux`** - Nux compiler in Nux
+- **`llvm.nux`** - LLVM IR generation
+- **`wasm.nux`** - WebAssembly generation
+- **`cli.nux`** - CLI application framework
 
-### Miscellaneous
-- **`random.nux`** - Random number generation (LCG, Xorshift)
+### ⚡ Embedded (`lib/external/embedded/`)
+- **`gpio.nux`**, **`time.nux`**, **`analog.nux`**
 
----
-
-## 🤖 AI/ML Libraries (`lib/ai/`) - 15 Libraries
-
-### Core ML
-- **`tensor.nux`** - Multi-dimensional arrays, matrix operations
-- **`neuralnet.nux`** - Dense, Conv2D, pooling, dropout, batch norm
-- **`optimizer.nux`** - SGD, Adam, RMSprop, learning rate schedulers
-- **`loss.nux`** - MSE, cross-entropy, hinge, focal, contrastive
-
-### Applications
-- **`vision.nux`** - Image processing, ResNet, YOLO, augmentation
-- **`nlp.nux`** - Tokenization, embeddings, LSTM, transformers
-- **`rl.nux`** - Reinforcement learning, DQN, replay buffer
-
-### Advanced Deep Learning 🧠 (NEW)
-- **`autograd.nux`** - Automatic differentiation, computation graph, backward pass, optimizers (SGD, Adam)
-- **`transformer.nux`** - Multi-head attention, positional encoding (sinusoidal, RoPE), GPT with generation
-- **`gan.nux`** - Generators (Linear, DCGAN), discriminators, BCE/Wasserstein/hinge loss, WGAN-GP
-- **`diffusion.nux`** - Noise scheduling, U-Net, DDPM/DDIM samplers, text/class conditioning
-- **`agents.nux`** - Memory systems, tool registry, RAG (vector store), ReAct/CoT/ToT planning
-- **`rl_advanced.nux`** - Prioritized replay, Double/Dueling DQN, PPO, SAC, TD3, MBPO
-
-### Scientific
-- **`datascience.nux`** - Statistics, regression, K-means, PCA
-- **`quantum.nux`** - Quantum state simulation, gates, Grover's algorithm
-
----
-
-## 🖥️ Operating System Libraries (`lib/os/`) - 6 Libraries (NEW)
-
-### Kernel & System
-- **`kernel.nux`** - IDT/interrupt handling, paging, frame allocator, spinlock/mutex/semaphore, syscalls
-- **`scheduler.nux`** - PCB, scheduling algorithms (Round Robin, Priority, MLFQ, CFS), process/thread managers
-- **`memman.nux`** - Heap allocators (bump, first-fit, buddy, slab), VMA, mmap/munmap, page fault handling
-
-### Hardware & I/O
-- **`driver.nux`** - Device abstraction, block/char devices, IRQ handling, PCI bus, DMA, example drivers
-- **`vfs.nux`** - Inodes, dentries, file operations, superblocks, mount/unmount, ramfs implementation
-- **`bootloader.nux`** - Multiboot parsing, GDT setup, A20 line, protected/long mode switching, VGA console
-
----
-
-## ⚡ Embedded/IoT Libraries (`lib/embedded/`) - 3 Libraries
-
-- **`gpio.nux`** - GPIO control
-- **`time.nux`** - Timing functions
-- **`analog.nux`** - Analog I/O
+### 🧠 Advanced Concepts (`lib/external/advanced/`)
+- **`dependent.nux`**, **`linear.nux`**, **`effects.nux`**
+- **`verification.nux`**, **`synthesis.nux`**
+- **`typetheory.nux`**, **`category.nux`**
 
 ---
 
 ## 📊 Library Statistics
+**Total Libraries:** ~80
+**Lines of Code:** ~20,000+
+**Coverage:** Core, OS, AI, Game, Web, Science, Advanced Theory
 
-**Total Libraries:** 61
-- Standard: 41
-- AI/ML: 9  
-- Embedded: 3
-- Examples: 8+
+**Nux: Built for everything.** 🚀
 
-**Lines of Code:** ~15,000+
-**Coverage Areas:** 20+ domains
-
----
-
-## 🎯 Domain Coverage
-
-### Systems Programming
-✅ OS Development, Kernel, Drivers, Hardware Control
-
-### Artificial Intelligence
-✅ Deep Learning, Computer Vision, NLP, Reinforcement Learning
-
-### Web & Cloud
-✅ HTTP Servers, Distributed Systems, Microservices
-
-### IoT & Embedded
-✅ MQTT, Edge Computing, Sensor Networks
-
-### Finance & Trading
-✅ Algorithmic Trading, Risk Analysis, Portfolio Management
-
-### Scientific Computing
-✅ Numerical Methods, Simulations, Data Analysis
-
-### Security
-✅ Cryptography, Authentication, Blockchain
-
-### Multimedia
-✅ Audio/Video Processing, 3D Graphics, AR/VR
-
-### Development
-✅ Testing, Logging, CLI Tools, Compilers
-
----
-
-## 🚀 Quick Start Examples
-
-### Web Server
-```nux
-import "std.webframework";
-
-var server = new WebServer();
-server.init(8080);
-
-server.router.get("/", func(req) {
-    var res = new HTTPResponse();
-    res.body = "Hello, World!";
-    return res;
-});
-
-server.listen();
-```
-
-### Machine Learning
-```nux
-import "ai.neuralnet";
-import "ai.optimizer";
-
-var model = new DenseLayer();
-model.init(784, 10, 1);
-
-var optimizer = new Adam();
-optimizer.init(0.001, 0.9, 0.999, 1e-8);
-```
-
-### Hardware Control
-```nux
-import "std.cpu";
-import "std.memory";
-
-var tsc = rdtsc();
-var cr3 = read_cr3();
-
-var mem = mem_alloc_aligned(4096, 4096);
-mem_write64(mem, 0xDEADBEEF);
-```
-
----
-
-**Nux: From Bare Metal to AI** 🔥

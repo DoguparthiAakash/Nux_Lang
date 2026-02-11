@@ -1,5 +1,5 @@
-import "memory";
-import "io";
+import "nux.memory";
+import "nux.io";
 import "sys";
 
 func main() {

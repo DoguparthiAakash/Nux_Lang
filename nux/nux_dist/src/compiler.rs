@@ -242,21 +242,33 @@ impl Parser {
                     if self.current_token == Token::SemiColon { self.advance(); }
                     
                     // 1. Resolve Path
-                    let mut path = String::from("lib/");
-                    // "util.io" -> "util/io.nux"
-                    // "sys" -> "sys.nux"
                     let rel = raw_name.replace(".", "/");
-                    path.push_str(&rel);
-                    path.push_str(".nux");
+                    let file_name = format!("{}.nux", rel);
+                    
+                    // Search Paths:
+                    // 1. $NUX_LIB_PATH/file_name
+                    // 2. lib/file_name
+                    
+                    let mut src_content: Option<String> = None;
+                    
+                    if let Ok(env_path) = std::env::var("NUX_LIB_PATH") {
+                        let path = std::path::Path::new(&env_path).join(&file_name);
+                        if path.exists() {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                src_content = Some(content);
+                            }
+                        }
+                    }
+                    
+                    if src_content.is_none() {
+                         let path = std::path::Path::new("lib").join(&file_name);
+                         if let Ok(content) = std::fs::read_to_string(&path) {
+                             src_content = Some(content);
+                         }
+                    }
                     
                     // Fallback check for root/lib prefix if user provided it manually?
                     // User asked for "by name".
-                    
-                    // File imports support enabled for standalone version
-                    let src_content: Option<String> = match std::fs::read_to_string(&path) {
-                        Ok(content) => Some(content),
-                        Err(_) => None,
-                    };
                     
                     if let Some(src) = src_content {
                         // 3. Nested Parse
@@ -287,7 +299,7 @@ impl Parser {
                         self.parse_imported_source(&src, &mut definitions);
                         
                     } else {
-                        self.errors.push(CompileError::new(format!("Import not found: {}", path), self.prev_span));
+                        self.errors.push(CompileError::new(format!("Import not found: {} (Searched in NUX_LIB_PATH and lib/)", file_name), self.prev_span));
                     }
                 },
                 Token::SemiColon => self.advance(), 
@@ -372,15 +384,42 @@ impl Parser {
                 },
                 Token::Import => { 
                     // Transitive imports!
-                    // This creates recursion. 
-                    // We need to handle it.
-                    // For now, call logic?
-                     sub_parser.advance();
-                     if let Token::String(s) = &sub_parser.current_token {
-                         // .... Recurse logic ....
-                         // Copy paste logic or Refactor?
-                         // Refactor `resolve_import` later.
-                         // For now, skip transitive imports in this simple impl.
+                     if let Token::String(raw_name) = &sub_parser.current_token {
+                        let rel = raw_name.replace(".", "/");
+                        let file_name = format!("{}.nux", rel);
+                        
+                        let mut src_content: Option<String> = None;
+                        
+                        // Check NUX_LIB_PATH first
+                        if let Ok(env_path) = std::env::var("NUX_LIB_PATH") {
+                            let path = std::path::Path::new(&env_path).join(&file_name);
+                            if path.exists() {
+                                if let Ok(content) = std::fs::read_to_string(&path) {
+                                    src_content = Some(content);
+                                }
+                            }
+                        }
+                        
+                        // Fallback to local lib/
+                        if src_content.is_none() {
+                             let path = std::path::Path::new("lib").join(&file_name);
+                             if let Ok(content) = std::fs::read_to_string(&path) {
+                                 src_content = Some(content);
+                             }
+                        }
+                        
+                        if let Some(src) = src_content {
+                             // Recurse
+                             // Note: infinite recursion possible if cyclic imports exist.
+                             // For now, we trust the user. 
+                             // Ideally we pass a "visited" set.
+                             // But since we are appending definitions, we might define things twice?
+                             // No, duplicate keys in BTreeMap overwrite or we should check?
+                             // Current parser structs overwrite.
+                             self.parse_imported_source(&src, definitions);
+                        } else {
+                             eprintln!("Warning: Transitive import not found: {}", raw_name);
+                        }
                      }
                      sub_parser.advance();
                      if sub_parser.current_token == Token::SemiColon { sub_parser.advance(); }
@@ -411,7 +450,7 @@ impl Parser {
             Token::Identifier(s) => s.clone(),
             _ => return self.error("Expected class name".to_string()),
         };
-        println!("DEBUG: Found class {}", name);
+        // println!("DEBUG: Found class {}", name);
         self.advance();
         
         self.current_class_name = Some(name.clone());

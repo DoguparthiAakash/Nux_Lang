@@ -110,16 +110,16 @@ fn codegen_statement(gen, node) {
     
     if (node.type == "ExprStmt") {
         codegen_expression(gen, node.expression);
-        codegen_emit(gen, OP_POP);  // Discard result
+        codegen_emit(gen, OP_POP);  # Discard result
         return;
     }
 }
 
 fn codegen_functionDecl(gen, node) {
-    // Store function address
+    # Store function address
     gen.functions[node.name] = codegen_currentAddress(gen);
     
-    // Set up parameters as locals
+    # Set up parameters as locals
     let i = 0;
     while (i < arr_length(node.params)) {
         gen.locals[node.params[i]] = i;
@@ -127,10 +127,10 @@ fn codegen_functionDecl(gen, node) {
     }
     gen.localCount = arr_length(node.params);
     
-    // Generate function body
+    # Generate function body
     codegen_statement(gen, node.body);
     
-    // Implicit return null
+    # Implicit return null
     codegen_emit(gen, OP_PUSH);
     codegen_emitShort(gen, codegen_addConstant(gen, null));
     codegen_emit(gen, OP_RET);
@@ -144,7 +144,7 @@ fn codegen_varDecl(gen, node) {
         codegen_emitShort(gen, codegen_addConstant(gen, null));
     }
     
-    // Assign to local
+    # Assign to local
     gen.locals[node.name] = gen.localCount;
     gen.localCount = gen.localCount + 1;
     
@@ -164,33 +164,33 @@ fn codegen_return(gen, node) {
 }
 
 fn codegen_if(gen, node) {
-    // Condition
+    # Condition
     codegen_expression(gen, node.condition);
     
-    // Jump if false
+    # Jump if false
     codegen_emit(gen, OP_JMP_FALSE);
     let thenJump = codegen_currentAddress(gen);
-    codegen_emitShort(gen, 0);  // Placeholder
+    codegen_emitShort(gen, 0);  # Placeholder
     
-    // Then branch
+    # Then branch
     codegen_statement(gen, node.thenBranch);
     
     if (node.elseBranch != null) {
-        // Jump over else
+        # Jump over else
         codegen_emit(gen, OP_JMP);
         let elseJump = codegen_currentAddress(gen);
-        codegen_emitShort(gen, 0);  // Placeholder
+        codegen_emitShort(gen, 0);  # Placeholder
         
-        // Patch then jump
+        # Patch then jump
         codegen_patchJump(gen, thenJump);
         
-        // Else branch
+        # Else branch
         codegen_statement(gen, node.elseBranch);
         
-        // Patch else jump
+        # Patch else jump
         codegen_patchJump(gen, elseJump);
     } else {
-        // Patch then jump
+        # Patch then jump
         codegen_patchJump(gen, thenJump);
     }
 }
@@ -198,57 +198,57 @@ fn codegen_if(gen, node) {
 fn codegen_while(gen, node) {
     let loopStart = codegen_currentAddress(gen);
     
-    // Condition
+    # Condition
     codegen_expression(gen, node.condition);
     
-    // Jump if false
+    # Jump if false
     codegen_emit(gen, OP_JMP_FALSE);
     let exitJump = codegen_currentAddress(gen);
-    codegen_emitShort(gen, 0);  // Placeholder
+    codegen_emitShort(gen, 0);  # Placeholder
     
-    // Body
+    # Body
     codegen_statement(gen, node.body);
     
-    // Jump back to start
+    # Jump back to start
     codegen_emit(gen, OP_JMP);
     let offset = loopStart - codegen_currentAddress(gen) - 2;
     codegen_emitShort(gen, offset);
     
-    // Patch exit jump
+    # Patch exit jump
     codegen_patchJump(gen, exitJump);
 }
 
 fn codegen_for(gen, node) {
-    // Init
+    # Init
     if (node.init != null) {
         codegen_statement(gen, node.init);
     }
     
     let loopStart = codegen_currentAddress(gen);
     
-    // Condition
+    # Condition
     if (node.condition != null) {
         codegen_expression(gen, node.condition);
         
         codegen_emit(gen, OP_JMP_FALSE);
         let exitJump = codegen_currentAddress(gen);
-        codegen_emitShort(gen, 0);  // Placeholder
+        codegen_emitShort(gen, 0);  # Placeholder
         
-        // Body
+        # Body
         codegen_statement(gen, node.body);
         
-        // Increment
+        # Increment
         if (node.increment != null) {
             codegen_expression(gen, node.increment);
             codegen_emit(gen, OP_POP);
         }
         
-        // Jump back
+        # Jump back
         codegen_emit(gen, OP_JMP);
         let offset = loopStart - codegen_currentAddress(gen) - 2;
         codegen_emitShort(gen, offset);
         
-        // Patch exit
+        # Patch exit
         codegen_patchJump(gen, exitJump);
     }
 }
@@ -321,18 +321,18 @@ fn codegen_unary(gen, node) {
 }
 
 fn codegen_call(gen, node) {
-    // Push arguments
+    # Push arguments
     arr_forEach(node.arguments, fn(arg) {
         codegen_expression(gen, arg);
     });
     
-    // Special handling for built-in functions
+    # Special handling for built-in functions
     if (node.callee.type == "Identifier" && node.callee.name == "print") {
         codegen_emit(gen, OP_PRINT);
         return;
     }
     
-    // Regular function call
+    # Regular function call
     if (node.callee.type == "Identifier") {
         let funcAddr = gen.functions[node.callee.name];
         codegen_emit(gen, OP_CALL);

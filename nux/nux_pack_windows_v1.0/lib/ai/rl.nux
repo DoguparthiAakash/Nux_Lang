@@ -1,7 +1,7 @@
 # Nux Reinforcement Learning Library
 
-import "ai.tensor";
-import "ai.neuralnet";
+import "external.ai.tensor";
+import "external.ai.neuralnet";
 
 class ReplayBuffer {
     var capacity;

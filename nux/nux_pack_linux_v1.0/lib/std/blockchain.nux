@@ -1,7 +1,7 @@
 # Nux Blockchain Library
 # Cryptocurrency and distributed ledger
 
-import "std.crypto";
+import "external.security.crypto";
 
 class Block {
     var index;

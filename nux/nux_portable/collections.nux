@@ -1,5 +1,5 @@
 # Nux Standard Collections Library
-import "memory";
+import "nux.memory";
 import "util";
 
 # List Layout:

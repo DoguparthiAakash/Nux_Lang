@@ -1,7 +1,7 @@
 # Nux Driver Framework Library
 # Hardware abstraction and device drivers
 
-import "os.kernel";
+import "external.os.kernel";
 
 # ============================================================
 # DEVICE TYPES

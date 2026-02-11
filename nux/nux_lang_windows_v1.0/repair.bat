@@ -36,13 +36,20 @@ echo.
 
 echo     %CYAN%%ARROW%%NC% Downloading fresh files from GitHub...
 mkdir "%TEMP_DIR%"
-git clone --depth 1 "%REPO_URL%" "%TEMP_DIR%" >nul 2>&1
+git clone --no-checkout --depth 1 --filter=blob:none "%REPO_URL%" "%TEMP_DIR%" >nul 2>&1
+cd /d "%TEMP_DIR%"
+git sparse-checkout init --cone >nul 2>&1
+git sparse-checkout set nux_pack_windows_v1.0 >nul 2>&1
+git checkout >nul 2>&1
+
 if %errorlevel% neq 0 (
     echo     %RED%✗%NC% Download failed
+    cd /d "%~dp0"
     rmdir /s /q "%TEMP_DIR%"
     exit /b 1
 ) else (
     echo     %GREEN%✓%NC% Download complete
+    cd /d "%~dp0"
 )
 
 echo     %CYAN%%ARROW%%NC% Restoring core files...

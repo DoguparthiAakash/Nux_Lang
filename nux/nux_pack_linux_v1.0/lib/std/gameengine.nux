@@ -1,8 +1,8 @@
 # Nux Game Engine Library
 # Full game engine with ECS, input, audio, resources, and scenes
 
-import "std.gfxdriver";
-import "std.audio";
+import "external.game.gfxdriver";
+import "external.game.audio";
 
 # ============================================================
 # ENTITY COMPONENT SYSTEM (ECS)

@@ -1,7 +1,7 @@
 # Nux Kernel Primitives Library
 # Low-level OS building blocks
 
-import "std.memory";
+import "nux.memory";
 
 # ============================================================
 # INTERRUPT HANDLING

@@ -1,7 +1,7 @@
 # Nux Virtual File System Library
 # File system abstraction and common operations
 
-import "os.kernel";
+import "external.os.kernel";
 
 # ============================================================
 # INODE TYPES

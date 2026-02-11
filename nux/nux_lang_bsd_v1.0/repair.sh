@@ -39,7 +39,12 @@ if ! command -v git >/dev/null 2>&1; then
 fi
 
 # Suppress git output for cleaner UI unless error
-if git clone --depth 1 "$REPO_URL" "$TEMP_DIR" >/dev/null 2>&1; then
+# Suppress git output for cleaner UI unless error
+if mkdir -p "$TEMP_DIR" && cd "$TEMP_DIR" && \
+   git clone --no-checkout --depth 1 --filter=blob:none "$REPO_URL" . >/dev/null 2>&1 && \
+   git sparse-checkout init --cone >/dev/null 2>&1 && \
+   git sparse-checkout set nux_pack_bsd_v1.0 >/dev/null 2>&1 && \
+   git checkout >/dev/null 2>&1; then
     echo "    ${GREEN}✓${NC} Download complete"
 else
     echo "    ${RED}✗${NC} Download failed"

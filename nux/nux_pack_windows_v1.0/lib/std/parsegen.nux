@@ -1,8 +1,8 @@
 # Nux Parser Generator Library
 # ANTLR-style parser generation
 
-import "std.compiler";
-import "std.collections";
+import "external.tools.compiler";
+import "nux.collections";
 
 class Grammar {
     var name;

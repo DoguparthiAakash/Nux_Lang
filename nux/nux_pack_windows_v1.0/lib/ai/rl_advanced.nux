@@ -1,8 +1,8 @@
 # Nux Enhanced Reinforcement Learning Library
 # Advanced RL algorithms
 
-import "ai.autograd";
-import "std.math";
+import "external.ai.autograd";
+import "nux.math";
 
 # ============================================================
 # REPLAY BUFFERS

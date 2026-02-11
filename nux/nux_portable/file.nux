@@ -1,5 +1,5 @@
 # Nux Standard File I/O Library
-import "memory";
+import "nux.memory";
 
 func File_open(path) {
     var fd = 0;

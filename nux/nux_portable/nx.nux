@@ -1,10 +1,10 @@
-import "io";
-import "file";
+import "nux.io";
+import "nux.file";
 import "util";
-import "string";
+import "nux.string";
 import "log";
 import "sys";
-import "collections";
+import "nux.collections";
 
 func main() {
     println("nx - Nux Toolchain v0.3");

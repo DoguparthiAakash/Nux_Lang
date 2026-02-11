@@ -1,7 +1,7 @@
 # Nux Autograd Library
 # Automatic differentiation for deep learning
 
-import "std.math";
+import "nux.math";
 
 # ============================================================
 # TENSOR WITH GRADIENT TRACKING

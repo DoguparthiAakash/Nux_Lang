@@ -1,6 +1,6 @@
 # Snake Game
 import "graphics";
-import "collections";
+import "nux.collections";
 
 func main() {
     print("Starting Snake (Text Mode)...");

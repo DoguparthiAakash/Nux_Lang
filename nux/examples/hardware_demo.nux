@@ -1,12 +1,12 @@
 # Nux Hardware Control Demo
 # Demonstrates low-level hardware access
 
-import "std.cpu";
-import "std.memory";
-import "std.atomic";
-import "std.interrupt";
-import "std.pci";
-import "std.thread";
+import "nux.cpu";
+import "nux.memory";
+import "nux.atomic";
+import "nux.interrupt";
+import "nux.pci";
+import "nux.thread";
 
 func main() {
     println("=== Nux Hardware Control Demo ===");

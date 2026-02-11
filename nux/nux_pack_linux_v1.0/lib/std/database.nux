@@ -1,7 +1,7 @@
 # Nux Database Library
 # Simple in-memory database system
 
-import "std.collections";
+import "nux.collections";
 
 class Table {
     var name;

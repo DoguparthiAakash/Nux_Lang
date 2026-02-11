@@ -1,8 +1,8 @@
 # Nux AR/VR Library
 # Augmented and Virtual Reality
 
-import "std.gamedev";
-import "ai.tensor";
+import "external.game.gamedev";
+import "external.ai.tensor";
 
 class Matrix4x4 {
     var data;

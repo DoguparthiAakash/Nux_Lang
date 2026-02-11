@@ -1,7 +1,7 @@
 # Nux Process Scheduler Library
 # Process management and scheduling algorithms
 
-import "os.kernel";
+import "external.os.kernel";
 
 # ============================================================
 # PROCESS STATES

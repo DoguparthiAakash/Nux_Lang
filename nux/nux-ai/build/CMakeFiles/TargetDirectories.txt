@@ -1,0 +1,8 @@
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/nux_ai.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/linear_regression_test.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/edit_cache.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/rebuild_cache.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/list_install_components.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/install.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/install/local.dir
+/home/aakash/Downloads/Nux_Lang/nux/nux-ai/build/CMakeFiles/install/strip.dir

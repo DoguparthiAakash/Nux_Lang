@@ -1,8 +1,8 @@
 # Test Nux Standard Library
 
-import "std.io";
-import "std.math";
-import "std.string";
+import "nux.io";
+import "nux.math";
+import "nux.string";
 
 func main() {
     println("Testing Standard Library...");

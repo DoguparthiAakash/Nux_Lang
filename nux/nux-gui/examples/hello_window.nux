@@ -1,0 +1,40 @@
+# Nux GUI Example - Hello Window
+
+import "gui";
+
+func main() {
+    # Initialize GUI library
+    if (!gui.initialize()) {
+        println("Failed to initialize GUI library");
+        return;
+    }
+    
+    # Create window
+    var window = new gui.Window(800, 600, "Hello Nux GUI!");
+    
+    # Create a button
+    var button = new gui.Button("Click Me!");
+    button.setPosition(300.0, 250.0);
+    button.setSize(200.0, 50.0);
+    window.addWidget(button);
+    
+    # Create a label
+    var label = new gui.Label("Welcome to Nux GUI!");
+    label.setPosition(250.0, 150.0);
+    label.setFontSize(24.0);
+    window.addWidget(label);
+    
+    # Main loop
+    while (!window.shouldClose()) {
+        window.pollEvents();
+        window.clear(0.2, 0.3, 0.3, 1.0);
+        window.render();
+        window.swapBuffers();
+    }
+    
+    # Cleanup
+    gui.shutdown();
+    println("Goodbye!");
+}
+
+main();

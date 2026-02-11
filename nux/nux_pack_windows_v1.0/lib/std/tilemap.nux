@@ -1,7 +1,7 @@
 # Nux Tilemap Library
 # Tile-based game support
 
-import "std.math";
+import "nux.math";
 
 class Tile {
     var id;

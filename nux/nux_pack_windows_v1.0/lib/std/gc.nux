@@ -1,8 +1,8 @@
 # Nux Garbage Collector Library
 # Automatic memory management
 
-import "std.memory";
-import "std.atomic";
+import "nux.memory";
+import "nux.atomic";
 
 class GarbageCollector {
     var heap_start;

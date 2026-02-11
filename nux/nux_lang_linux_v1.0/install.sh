@@ -113,6 +113,10 @@ print_success() {
     echo -e "    ${GREEN}╠═══════════════════════════════════════════════════════════════════╣${NC}"
     echo -e "    ${GREEN}║                                                                   ║${NC}"
     echo -e "    ${GREEN}║   ${ROCKET} ${CYAN}Get Started:${GREEN}                                               ║${NC}"
+    echo -e "    ${GREEN}║                                                                   ║${NC}"
+    echo -e "    ${GREEN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
 
 
 print_section() {

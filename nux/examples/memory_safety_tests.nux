@@ -1,8 +1,8 @@
 // Nux Memory Safety Tests
 // Comprehensive tests for memory safety features
 
-import {Box, Rc, Arc, RefCell} from "std/memory_safety.nux";
-import {test, expect, describe} from "std/test.nux";
+import {Box, Rc, Arc, RefCell} from "nux/memory_safety.nux";
+import {test, expect, describe} from "nux/test.nux";
 
 describe("Memory Safety", fn() {
     

@@ -1,8 +1,8 @@
 # Nux Virtual Environment Library
 # Isolated environments for dependency management
 
-import "std.collections";
-import "std.file";
+import "nux.collections";
+import "nux.file";
 
 class VirtualEnvironment {
     var name;

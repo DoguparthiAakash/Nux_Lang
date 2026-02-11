@@ -81,8 +81,6 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_IMG_CROP" => ops.push(0x38),
             "OP_IMG_GRAYSCALE" => ops.push(0x39),
             
-            "OP_IMG_GRAYSCALE" => ops.push(0x39),
-            
             // File I/O
             "FILE_OPEN" => ops.push(0x55),
             "FILE_CLOSE" => ops.push(0x56),
@@ -181,6 +179,12 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_SEC_LOGIN" => ops.push(0x66),
             "OP_SEC_WHOAMI" => ops.push(0x67),
             "OP_PUSH_STR" => ops.push(0x68),
+            
+            // VBE / Graphics
+            "OP_VBE_SET_MODE" => ops.push(0x3A),
+            "OP_VBE_GET_FB" => ops.push(0x3B),
+            "OP_VBE_UPDATE" => ops.push(0x3C),
+            
             "EXIT" => ops.push(0xFF),
             "BYTE" => {
                 // Emit a single byte (for string data)

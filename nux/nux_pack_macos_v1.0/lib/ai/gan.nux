@@ -1,8 +1,8 @@
 # Nux GAN Library
 # Generative Adversarial Networks
 
-import "ai.autograd";
-import "std.math";
+import "external.ai.autograd";
+import "nux.math";
 
 # ============================================================
 # GENERATOR ARCHITECTURES

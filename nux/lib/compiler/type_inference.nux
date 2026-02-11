@@ -62,7 +62,7 @@ fn typeInfer_inferStatement(inferrer, node) {
 }
 
 fn typeInfer_inferFunctionDecl(inferrer, node) {
-    // Infer parameter types
+    # Infer parameter types
     let paramTypes = [];
     arr_forEach(node.params, fn(param) {
         if (param.typeAnnotation) {
@@ -72,7 +72,7 @@ fn typeInfer_inferFunctionDecl(inferrer, node) {
         }
     });
     
-    // Infer return type
+    # Infer return type
     let returnType;
     if (node.returnType) {
         returnType = node.returnType;
@@ -82,24 +82,24 @@ fn typeInfer_inferFunctionDecl(inferrer, node) {
     
     let funcType = type_function(paramTypes, returnType);
     
-    // Define function
+    # Define function
     typeEnv_define(inferrer.env, node.name, funcType);
     
-    // Infer body in new environment
+    # Infer body in new environment
     let prevEnv = inferrer.env;
     inferrer.env = typeEnv_createChild(prevEnv);
     
-    // Define parameters
+    # Define parameters
     let i = 0;
     while (i < arr_length(node.params)) {
         typeEnv_define(inferrer.env, node.params[i].name, paramTypes[i]);
         i = i + 1;
     }
     
-    // Infer body type
+    # Infer body type
     let bodyType = typeInfer_inferStatement(inferrer, node.body);
     
-    // Add constraint: body type must match return type
+    # Add constraint: body type must match return type
     typeInfer_addConstraint(inferrer, bodyType, returnType, node);
     
     inferrer.env = prevEnv;
@@ -152,11 +152,11 @@ fn typeInfer_inferBinary(inferrer, node) {
     let leftType = typeInfer_inferExpression(inferrer, node.left);
     let rightType = typeInfer_inferExpression(inferrer, node.right);
     
-    // Arithmetic operators
+    # Arithmetic operators
     if (node.operator == "+" || node.operator == "-" || 
         node.operator == "*" || node.operator == "/") {
         
-        // Both operands should be numeric
+        # Both operands should be numeric
         let numType = type_primitive(TYPE_INT);
         typeInfer_addConstraint(inferrer, leftType, numType, node);
         typeInfer_addConstraint(inferrer, rightType, numType, node);
@@ -164,11 +164,11 @@ fn typeInfer_inferBinary(inferrer, node) {
         return numType;
     }
     
-    // Comparison operators
+    # Comparison operators
     if (node.operator == "==" || node.operator == "!=" ||
         node.operator == "<" || node.operator == ">") {
         
-        // Operands should have same type
+        # Operands should have same type
         typeInfer_addConstraint(inferrer, leftType, rightType, node);
         
         return type_primitive(TYPE_BOOL);
@@ -180,16 +180,16 @@ fn typeInfer_inferBinary(inferrer, node) {
 fn typeInfer_inferCall(inferrer, node) {
     let calleeType = typeInfer_inferExpression(inferrer, node.callee);
     
-    // Infer argument types
+    # Infer argument types
     let argTypes = [];
     arr_forEach(node.arguments, fn(arg) {
         arr_push(argTypes, typeInfer_inferExpression(inferrer, arg));
     });
     
-    // Create return type variable
+    # Create return type variable
     let returnType = typeInfer_freshTypeVar(inferrer);
     
-    // Add constraint: callee must be a function
+    # Add constraint: callee must be a function
     let expectedFuncType = type_function(argTypes, returnType);
     typeInfer_addConstraint(inferrer, calleeType, expectedFuncType, node);
     
@@ -199,7 +199,7 @@ fn typeInfer_inferCall(inferrer, node) {
 // ===== CONSTRAINT SOLVING =====
 
 fn typeInfer_solve(inferrer) {
-    // Simple unification algorithm
+    # Simple unification algorithm
     let changed = true;
     
     while (changed) {
@@ -216,12 +216,12 @@ fn typeInfer_solve(inferrer) {
 }
 
 fn typeInfer_unify(inferrer, type1, type2) {
-    // Same type
+    # Same type
     if (type_equals(type1, type2)) {
         return false;
     }
     
-    // Type variable unification
+    # Type variable unification
     if (type1.kind == TYPE_GENERIC) {
         return typeInfer_bindTypeVar(inferrer, type1.name, type2);
     }
@@ -230,7 +230,7 @@ fn typeInfer_unify(inferrer, type1, type2) {
         return typeInfer_bindTypeVar(inferrer, type2.name, type1);
     }
     
-    // Structural unification
+    # Structural unification
     if (type1.kind == TYPE_ARRAY && type2.kind == TYPE_ARRAY) {
         return typeInfer_unify(inferrer, type1.elementType, type2.elementType);
     }
@@ -238,7 +238,7 @@ fn typeInfer_unify(inferrer, type1, type2) {
     if (type1.kind == TYPE_FUNCTION && type2.kind == TYPE_FUNCTION) {
         let changed = false;
         
-        // Unify parameters
+        # Unify parameters
         let i = 0;
         while (i < arr_length(type1.paramTypes)) {
             if (typeInfer_unify(inferrer, type1.paramTypes[i], type2.paramTypes[i])) {
@@ -247,7 +247,7 @@ fn typeInfer_unify(inferrer, type1, type2) {
             i = i + 1;
         }
         
-        // Unify return types
+        # Unify return types
         if (typeInfer_unify(inferrer, type1.returnType, type2.returnType)) {
             changed = true;
         }
@@ -265,12 +265,12 @@ fn typeInfer_bindTypeVar(inferrer, varName, type) {
         return false;
     }
     
-    // Occurs check
+    # Occurs check
     if (typeInfer_occurs(varName, type)) {
         return false;
     }
     
-    // Bind type variable
+    # Bind type variable
     inferrer.typeVars[varName] = type;
     
     return true;

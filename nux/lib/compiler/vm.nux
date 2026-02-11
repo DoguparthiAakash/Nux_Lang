@@ -94,7 +94,7 @@ fn vm_execute(vm, gen) {
             let address = vm_readShort(vm);
             let numArgs = vm_readByte(vm);
             
-            // Save return address
+            # Save return address
             arr_push(vm.callStack, {
                 returnAddr: vm.ip,
                 frameStart: vm.sp - numArgs

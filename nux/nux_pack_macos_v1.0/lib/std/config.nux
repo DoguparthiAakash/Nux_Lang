@@ -1,7 +1,7 @@
 # Nux Configuration Library
 # Parse configuration files
 
-import "std.collections";
+import "nux.collections";
 
 class INIParser {
     var sections;

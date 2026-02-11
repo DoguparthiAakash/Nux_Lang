@@ -1,7 +1,7 @@
 # Nux Animation Library
 # Skeletal animation, tweening, and state machines
 
-import "std.math";
+import "nux.math";
 
 # ============================================================
 # EASING FUNCTIONS

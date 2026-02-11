@@ -16,6 +16,7 @@ let TYPE_FUNCTION = "function";
 let TYPE_GENERIC = "generic";
 let TYPE_UNION = "union";
 let TYPE_INTERSECTION = "intersection";
+let TYPE_INSTANCE = "instance";
 
 // ===== TYPE CONSTRUCTORS =====
 
@@ -37,7 +38,7 @@ fn type_array(elementType) {
 fn type_object(properties) {
     return {
         kind: TYPE_OBJECT,
-        properties: properties,  // Map of name -> type
+        properties: properties,  # Map of name -> type
         isPrimitive: false
     };
 }
@@ -76,11 +77,25 @@ fn type_intersection(types) {
     };
 }
 
+fn type_instance(baseType, typeArguments) {
+    return {
+        kind: TYPE_INSTANCE,
+        baseType: baseType,
+        typeArguments: typeArguments,
+        isPrimitive: false
+    };
+}
+
 // ===== TYPE UTILITIES =====
 
 fn type_toString(type) {
     if (type.kind == TYPE_ARRAY) {
         return type_toString(type.elementType) + "[]";
+    }
+    
+    if (type.kind == TYPE_INSTANCE) {
+        let args = arr_map(type.typeArguments, type_toString);
+        return type_toString(type.baseType) + "<" + arr_join(args, ", ") + ">";
     }
     
     if (type.kind == TYPE_OBJECT) {
@@ -126,6 +141,23 @@ fn type_equals(type1, type2) {
         return type_equals(type1.elementType, type2.elementType);
     }
     
+    if (type1.kind == TYPE_INSTANCE) {
+        if (!type_equals(type1.baseType, type2.baseType)) {
+            return false;
+        }
+        if (arr_length(type1.typeArguments) != arr_length(type2.typeArguments)) {
+            return false;
+        }
+        let i = 0;
+        while (i < arr_length(type1.typeArguments)) {
+            if (!type_equals(type1.typeArguments[i], type2.typeArguments[i])) {
+                return false;
+            }
+            i = i + 1;
+        }
+        return true;
+    }
+    
     if (type1.kind == TYPE_FUNCTION) {
         if (arr_length(type1.paramTypes) != arr_length(type2.paramTypes)) {
             return false;
@@ -142,37 +174,37 @@ fn type_equals(type1, type2) {
         return type_equals(type1.returnType, type2.returnType);
     }
     
-    // For complex types, use structural equality
+    # For complex types, use structural equality
     return type_toString(type1) == type_toString(type2);
 }
 
 fn type_isAssignableTo(fromType, toType) {
-    // Any can be assigned to anything
+    # Any can be assigned to anything
     if (fromType.kind == TYPE_ANY || toType.kind == TYPE_ANY) {
         return true;
     }
     
-    // Null can be assigned to any non-primitive
+    # Null can be assigned to any non-primitive
     if (fromType.kind == TYPE_NULL && !toType.isPrimitive) {
         return true;
     }
     
-    // Exact match
+    # Exact match
     if (type_equals(fromType, toType)) {
         return true;
     }
     
-    // Int can be assigned to float
+    # Int can be assigned to float
     if (fromType.kind == TYPE_INT && toType.kind == TYPE_FLOAT) {
         return true;
     }
     
-    // Array covariance
+    # Array covariance
     if (fromType.kind == TYPE_ARRAY && toType.kind == TYPE_ARRAY) {
         return type_isAssignableTo(fromType.elementType, toType.elementType);
     }
     
-    // Union types
+    # Union types
     if (toType.kind == TYPE_UNION) {
         return arr_some(toType.types, fn(t) {
             return type_isAssignableTo(fromType, t);
@@ -214,7 +246,7 @@ fn type_fromLiteral(value) {
             return type_array(type_primitive(TYPE_ANY));
         }
         
-        // Infer element type from first element
+        # Infer element type from first element
         let elementType = type_fromLiteral(value[0]);
         return type_array(elementType);
     }
@@ -228,6 +260,44 @@ fn type_fromLiteral(value) {
     }
     
     return type_primitive(TYPE_ANY);
+}
+
+fn type_substitute(type, mapping) {
+    if (type.kind == TYPE_GENERIC) {
+        if (mapping[type.name] != null) {
+            return mapping[type.name];
+        }
+        return type;
+    }
+    
+    if (type.kind == TYPE_ARRAY) {
+        return type_array(type_substitute(type.elementType, mapping));
+    }
+    
+    if (type.kind == TYPE_INSTANCE) {
+        let args = arr_map(type.typeArguments, fn(t) {
+            return type_substitute(t, mapping);
+        });
+        return type_instance(type_substitute(type.baseType, mapping), args);
+    }
+    
+    if (type.kind == TYPE_FUNCTION) {
+        let paramTypes = arr_map(type.paramTypes, fn(t) {
+            return type_substitute(t, mapping);
+        });
+        let returnType = type_substitute(type.returnType, mapping);
+        return type_function(paramTypes, returnType);
+    }
+    
+    if (type.kind == TYPE_OBJECT) {
+        let props = {};
+        obj_forEach(type.properties, fn(name, propType) {
+            props[name] = type_substitute(propType, mapping);
+        });
+        return type_object(props);
+    }
+    
+    return type;
 }
 
 // ===== TYPE ENVIRONMENT =====
@@ -280,7 +350,7 @@ fn typeEnv_update(env, name, type) {
 fn typeEnv_createGlobal() {
     let env = typeEnv_create();
     
-    // Primitive types
+    # Primitive types
     typeEnv_define(env, "int", type_primitive(TYPE_INT));
     typeEnv_define(env, "float", type_primitive(TYPE_FLOAT));
     typeEnv_define(env, "string", type_primitive(TYPE_STRING));
@@ -288,7 +358,7 @@ fn typeEnv_createGlobal() {
     typeEnv_define(env, "void", type_primitive(TYPE_VOID));
     typeEnv_define(env, "any", type_primitive(TYPE_ANY));
     
-    // Built-in functions
+    # Built-in functions
     typeEnv_define(env, "print", type_function(
         [type_primitive(TYPE_ANY)],
         type_primitive(TYPE_VOID)

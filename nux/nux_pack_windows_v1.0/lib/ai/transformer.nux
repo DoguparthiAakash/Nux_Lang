@@ -1,8 +1,8 @@
 # Nux Transformer Library
 # Attention mechanisms and transformer architectures
 
-import "ai.autograd";
-import "std.math";
+import "external.ai.autograd";
+import "nux.math";
 
 # ============================================================
 # POSITIONAL ENCODING

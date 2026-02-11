@@ -1,7 +1,7 @@
 # Nux 2D Physics Library
 # Box2D-style physics engine
 
-import "std.math";
+import "nux.math";
 
 # ============================================================
 # VECTOR MATH

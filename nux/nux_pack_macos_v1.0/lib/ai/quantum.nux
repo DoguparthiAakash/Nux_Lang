@@ -1,7 +1,7 @@
 # Nux Quantum Computing Library
 # Quantum circuit simulation
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # Quantum state (complex numbers)
 class QuantumState {

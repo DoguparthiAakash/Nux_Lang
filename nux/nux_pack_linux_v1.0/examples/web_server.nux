@@ -1,8 +1,8 @@
 # Simple Web Server Example
 # Demonstrates HTTP server capabilities in Nux
 
-import "std.io";
-import "std.networking";
+import "nux.io";
+import "nux.networking";
 
 func main() {
     println("Starting Nux Web Server...");

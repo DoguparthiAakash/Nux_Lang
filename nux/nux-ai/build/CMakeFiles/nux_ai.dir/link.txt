@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -Wl,--dependency-file=CMakeFiles/nux_ai.dir/link.d -shared -Wl,-soname,libnux_ai.so -o libnux_ai.so CMakeFiles/nux_ai.dir/src/core/tensor.cpp.o CMakeFiles/nux_ai.dir/src/nn/layer.cpp.o CMakeFiles/nux_ai.dir/src/nn/linear.cpp.o CMakeFiles/nux_ai.dir/src/nn/activation.cpp.o CMakeFiles/nux_ai.dir/src/optim/optimizer.cpp.o CMakeFiles/nux_ai.dir/src/optim/sgd.cpp.o

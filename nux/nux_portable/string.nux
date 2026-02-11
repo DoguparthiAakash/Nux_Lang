@@ -1,6 +1,6 @@
 # Nux Standard String Library
-import "memory";
-import "collections";
+import "nux.memory";
+import "nux.collections";
 
 func len(s) {
     if (s == 0) { return 0; }

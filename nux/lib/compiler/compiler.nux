@@ -2,23 +2,23 @@
 // Self-hosting compiler entry point
 
 fn compile(source) {
-    // Lexical analysis
+    # Lexical analysis
     let tokens = lexer_tokenize(source);
     
-    // Syntax analysis
+    # Syntax analysis
     let ast = parser_parse(tokens);
     
-    // Code generation
+    # Code generation
     let gen = codegen_generate(ast);
     
     return gen;
 }
 
 fn run(source) {
-    // Compile
+    # Compile
     let gen = compile(source);
     
-    // Execute
+    # Execute
     let vm = vm_create();
     let result = vm_execute(vm, gen);
     
@@ -28,10 +28,10 @@ fn run(source) {
 fn compileToFile(source, outputPath) {
     let gen = compile(source);
     
-    // Write bytecode to file
+    # Write bytecode to file
     file_write(outputPath, gen.bytecode);
     
-    // Write constants
+    # Write constants
     file_write(outputPath + ".const", gen.constants);
 }
 

@@ -1,7 +1,7 @@
 # Nux Financial Computing Library
 # Trading algorithms and financial analysis
 
-import "ai.datascience";
+import "external.ai.datascience";
 
 class TimeSeries {
     var data;

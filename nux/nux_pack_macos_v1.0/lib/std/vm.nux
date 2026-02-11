@@ -1,7 +1,7 @@
 # Nux Virtual Machine Library
 # Process VM for portable execution
 
-import "std.collections";
+import "nux.collections";
 
 class NuxVM {
     var stack;

@@ -1,7 +1,7 @@
 # Nux Robotics Library
 # Control systems and robotics algorithms
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # PID Controller
 class PIDController {

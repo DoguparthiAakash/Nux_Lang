@@ -1,8 +1,8 @@
 # Nux Debugging Library
 # Debugging and profiling utilities
 
-import "std.cpu";
-import "std.memory";
+import "nux.cpu";
+import "nux.memory";
 
 class Debugger {
     var breakpoints;

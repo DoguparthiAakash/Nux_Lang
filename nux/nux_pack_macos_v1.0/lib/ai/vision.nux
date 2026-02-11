@@ -1,8 +1,8 @@
 # Nux Computer Vision Library
 # Image processing and vision models
 
-import "ai.tensor";
-import "ai.neuralnet";
+import "external.ai.tensor";
+import "external.ai.neuralnet";
 
 # Image preprocessing
 func normalize_image(image, mean, std) {

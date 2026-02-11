@@ -1,13 +1,13 @@
-import "io";
-import "math";
+import "nux.io";
+import "nux.math";
 import "util";
 import "graphics";
-import "string";
+import "nux.string";
 import "sys";
-import "file";
-import "collections";
-import "time";
-import "testing";
+import "nux.file";
+import "nux.collections";
+import "external.embedded.time";
+import "nux.testing";
 import "log";
 
 func main() {

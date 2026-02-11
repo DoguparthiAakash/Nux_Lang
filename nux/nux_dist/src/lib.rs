@@ -14,6 +14,8 @@ pub mod polyglot_parser;
 pub mod ffi_manager;
 pub mod type_marshaller;
 pub mod venv_manager;
+pub mod bonfort_config;
+pub mod package_manager;
 
 // New standalone features (commented out until fully integrated)
 // pub mod gc;

@@ -8,6 +8,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process;
 
+use nux::package_manager;
+use nux::venv_manager;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     
@@ -26,6 +29,12 @@ fn main() {
         "clean" => cmd_clean(&args[2..]),
         "check" => cmd_check(&args[2..]),
         "compile" => cmd_compile(&args[2..]),
+
+        "venv" => {
+            let name = if args.len() >= 3 { &args[2] } else { "" };
+            venv_manager::create_venv(name);
+        },
+
         "version" | "--version" | "-v" => print_version(),
         "help" | "--help" | "-h" => print_help(),
         _ => {

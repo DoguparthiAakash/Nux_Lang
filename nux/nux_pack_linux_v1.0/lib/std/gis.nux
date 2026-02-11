@@ -1,7 +1,7 @@
 # Nux GIS Library
 # Geographic Information Systems and mapping
 
-import "std.collections";
+import "nux.collections";
 
 class GeoPoint {
     var latitude;

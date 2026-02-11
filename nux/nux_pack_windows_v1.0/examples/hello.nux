@@ -2,7 +2,7 @@
 # This is a simple example to get you started with Nux programming
 
 # Import the standard I/O library
-import "std.io";
+import "nux.io";
 
 # Define the main function
 func main() {

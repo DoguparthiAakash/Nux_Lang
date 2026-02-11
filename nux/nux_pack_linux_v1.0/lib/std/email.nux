@@ -1,7 +1,7 @@
 # Nux Email Library
 # SMTP client and email utilities
 
-import "std.network";
+import "nux.network";
 
 class Email {
     var from_address;

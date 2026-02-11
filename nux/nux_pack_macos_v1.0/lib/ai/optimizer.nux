@@ -1,7 +1,7 @@
 # Nux Optimizer Library
 # Gradient descent and optimization algorithms
 
-import "ai.tensor";
+import "external.ai.tensor";
 
 # SGD (Stochastic Gradient Descent)
 class SGD {

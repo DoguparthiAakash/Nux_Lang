@@ -1,6 +1,6 @@
 # Nux Class Demo
-import "std.oo_graphics";
-import "std.random";
+import "external.game.oo_graphics";
+import "nux.random";
 
 func main() {
     println("Initializing Graphics Object...");

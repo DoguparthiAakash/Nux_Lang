@@ -1,8 +1,8 @@
 # Nux Web Framework
 # HTTP server and web application framework
 
-import "std.network";
-import "std.collections";
+import "nux.network";
+import "nux.collections";
 
 class HTTPRequest {
     var method;

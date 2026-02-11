@@ -1,0 +1,29 @@
+{
+  "name": "nux-vscode",
+  "displayName": "Nux Language Support",
+  "description": "Language support for Nux",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "nux",
+      "aliases": ["Nux", "nux"],
+      "extensions": [".nux"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "nux",
+      "scopeName": "source.nux",
+      "path": "./syntaxes/nux.tmLanguage.json"
+    }],
+    "snippets": [{
+      "language": "nux",
+      "path": "./snippets/nux.json"
+    }]
+  }
+}

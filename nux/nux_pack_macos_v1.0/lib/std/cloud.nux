@@ -1,8 +1,8 @@
 # Nux Cloud Computing Library
 # Distributed systems and cloud primitives
 
-import "std.network";
-import "std.thread";
+import "nux.network";
+import "nux.thread";
 
 # Load balancer
 class LoadBalancer {

@@ -203,6 +203,9 @@ impl Parser {
     }
 
     fn resolve_var(&self, name: &str) -> Option<(VarLocation, Type)> {
+        if name == "this" {
+             println!("DEBUG: Resolving 'this'. Scopes depth: {}", self.scopes.len());
+        }
         for scope in self.scopes.iter().rev() {
             if let Some(&(loc, ref t)) = scope.get(name) {
                 return Some((loc, t.clone()));
@@ -246,7 +249,8 @@ impl Parser {
         let mut definitions = String::new();
         
         loop {
-            // println!("DEBUG: Token: {:?}", self.current_token); // TRACE
+            println!("DEBUG: Token: {:?}", self.current_token); // TRACE
+            // println!("DEBUG: Token: {:?}", self.current_token);
             match &self.current_token {
                 Token::EOF => break,
                 Token::Pub => {
@@ -481,6 +485,7 @@ impl Parser {
     }
 
     fn parse_class(&mut self, out: &mut String) -> Result<(), CompileError> {
+        println!("DEBUG: parse_class called");
         self.advance(); // consume 'class'
         let name = match &self.current_token {
             Token::Identifier(s) => s.clone(),
@@ -589,6 +594,7 @@ impl Parser {
     }
 
     fn parse_func(&mut self, out: &mut String, class_prefix: &str, access: AccessModifier) -> Result<(), CompileError> {
+        println!("DEBUG: parse_func called. Prefix='{}'", class_prefix);
         // Optional Pub (Legacy check? Should be handled by caller now, but keeping safe)
         if self.current_token == Token::Pub {
             self.advance();
@@ -669,12 +675,27 @@ impl Parser {
         
         self.enter_scope(); 
         
+        let mut arg_start = 0;
+        // Check if inside class method
+        // Heuristic: class_prefix is not empty for class methods?
+        // Actually, parse_class passes `&name` as prefix.
+        if !class_prefix.is_empty() {
+             // Inject 'this' at offset 0
+             let loc = VarLocation::Local(0);
+             if let Some(scope) = self.scopes.last_mut() {
+                 scope.insert("this".to_string(), (loc, Type::Class(class_prefix.to_string())));
+                 println!("DEBUG: Injected 'this' into scope for class '{}'", class_prefix);
+             }
+             arg_start = 1;
+        }
+        
         let num_args = args.len() as i64;
-        self.local_offset = num_args; // Locals start after arguments
+        self.local_offset = num_args + (arg_start as i64); // Locals start after arguments
         
         for (i, arg) in args.iter().enumerate() {
              // Arguments are at positive offsets 0, 1, 2, ...
-             let offset = i as i64;
+             // If class method, they shift by 1.
+             let offset = (i + arg_start) as i64;
              let loc = VarLocation::Local(offset);
              if let Some(scope) = self.scopes.last_mut() {
                  scope.insert(arg.clone(), (loc, Type::Int));
@@ -1002,8 +1023,22 @@ impl Parser {
                           
                       } else if self.current_token == Token::LParen {
                           // Method Call
+                          // Resolve "this"/object again
+                          let (loc, _) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                           
+                          // Push Object Instance (implicitly passed as first arg)
+                          match loc {
+                              VarLocation::Global(addr) => {
+                                  out.push_str(&format!("PUSH {}\n", addr));
+                                  out.push_str("PEEK\n"); 
+                              },
+                              VarLocation::Local(idx) => {
+                                  out.push_str(&format!("OP_GET_LOCAL {}\n", idx));
+                              }
+                          }
+
                           self.advance();
-                          let mut arg_count = 0;
+                          let mut arg_count = 1; // 'this' counts as 1 argument
                           if self.current_token != Token::RParen {
                                loop {
                                    self.parse_expression(out)?;
@@ -1355,6 +1390,14 @@ impl Parser {
                      return self.error("Continue outside of loop".to_string());
                  }
                  self.advance();
+                 if self.current_token == Token::SemiColon { self.advance(); }
+             },
+             Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+             Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+             Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale => {
+                 self.parse_expression(out)?;
+                 // Expression leaves result on stack, discard it for statement
+                 out.push_str("POP\n");
                  if self.current_token == Token::SemiColon { self.advance(); }
              },
              Token::Asm => {
