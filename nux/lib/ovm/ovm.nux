@@ -305,7 +305,7 @@ class OVM {
             process.run_capture(exec_path, &[&tmp_path])
         } else {
             # Compiled: compile to bin, run, cleanup
-            var bin = fs.temp_file(".out");
+            var bin = fs.temp_file(".exe");
             process.run_wait(exec_path, &[&tmp_path, "-o", &bin]);
             var r = process.run_capture(&bin, &[]);
             fs.delete(&bin);

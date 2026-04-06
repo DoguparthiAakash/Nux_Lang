@@ -171,8 +171,9 @@ EXT = {'python':'.py','rust':'.rs','c':'.c','c++':'.cpp',
        'java':'.java','zig':'.zig','go':'.go','js':'.js','lua':'.lua','ruby':'.rb'}
 
 def find_runtime(lang):
+    import shutil
     for name in LANG_RUNTIMES.get(lang, []):
-        path = subprocess.run(['which',name], capture_output=True, text=True).stdout.strip()
+        path = shutil.which(name)
         if path: return path
     return None
 
@@ -200,7 +201,7 @@ def run_foreign(lang, code, imports):
         ext = EXT[lang]
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False, mode='w') as f:
             f.write(full_code); src = f.name
-        bin_path = src + '.out'
+        bin_path = src + ('.exe' if os.name == 'nt' else '.out')
         if lang == 'rust':
             cr = subprocess.run([rt, src, '-o', bin_path], capture_output=True, text=True)
         elif lang in ('c','c++'):
