@@ -1,12 +1,12 @@
-// Nux Data Science Library
-// Uses NuxFrame and NuxArray through FFI
+# Nux Data Science Library
+# Uses NuxFrame and NuxArray through FFI
 
 import "std/io";
 import "std/array";
 
-// DataFrame wrapper
+# DataFrame wrapper
 class DataFrame {
-    var handle;  // FFI handle to C++ DataFrame
+    var handle;  # FFI handle to C++ DataFrame
     
     func init(data) {
         this.handle = ffi_call("nux_frame_create", data);
@@ -98,7 +98,7 @@ class GroupBy {
     }
 }
 
-// Array/Tensor wrapper
+# Array/Tensor wrapper
 class Array {
     var handle;
     
@@ -161,9 +161,9 @@ class Array {
     }
 }
 
-// Example usage
+# Example usage
 func main() {
-    // Load and analyze data
+    # Load and analyze data
     var df = DataFrame.from_csv("data.csv");
     
     println("First 5 rows:");
@@ -172,14 +172,14 @@ func main() {
     println("\nStatistics:");
     df.describe().print();
     
-    // Data manipulation
+    # Data manipulation
     var filtered = df.filter("age > 25");
     var grouped = filtered.groupby("category").mean();
     
-    // Visualization
+    # Visualization
     df.plot("x", "y", "scatter");
     
-    // Array operations
+    # Array operations
     var a = Array.random([100, 100]);
     var b = Array.random([100, 100]);
     var c = a.matmul(b);

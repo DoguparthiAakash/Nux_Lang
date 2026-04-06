@@ -1,0 +1,221 @@
+# Nux Type System Examples
+# Demonstrating type annotations, inference, and checking
+
+# ===== BASIC TYPE ANNOTATIONS =====
+
+# Explicit type annotations
+func add(a: int, b: int): int {
+    return a + b;
+}
+
+func greet(name: string): string {
+    return "Hello, " + name;
+}
+
+# Variables with type annotations
+var age: int = 25;
+var price: float = 19.99;
+var message: string = "Nux is awesome!";
+var isActive: bool = true;
+
+# ===== TYPE INFERENCE =====
+
+# Compiler infers types automatically
+var x: int = 42;              # inferred as int
+var y = 3.14;            # inferred as float
+var name: string = "Nux";        # inferred as string
+var flag: bool = true;         # inferred as bool
+
+# Function return type inference
+func multiply(a, b) {
+    return a * b;        # inferred as int or float
+}
+
+# ===== ARRAY TYPES =====
+
+# Array with type annotation
+var numbers: int[] = [1, 2, 3, 4, 5];
+var names: string[] = ["Alice", "Bob", "Charlie"];
+
+# Inferred array types
+var scores = [95, 87, 92];           # inferred as int[]
+var colors = ["red", "green", "blue"]; # inferred as string[]
+
+# ===== OBJECT TYPES =====
+
+# Object type annotation
+type Person = {
+    name: string,
+    age: int,
+    email: string
+};
+
+var user: Person = {
+    name: "Alice",
+    age: 30,
+    email: "alice@example.com"
+};
+
+# Inferred object types
+var point = {x: 10, y: 20};  # inferred as {x: int, y: int}
+
+# ===== FUNCTION TYPES =====
+
+# Function type annotation
+type BinaryOp = (int, int) => int;
+
+var subtract: BinaryOp = func(a, b) {
+    return a - b;
+};
+
+# Higher-order functions
+func map<T, U>(arr: T[], func: (T) => U): U[] {
+    var result: U[] = [];
+    var i: int = 0;
+    while (i < arr_length(arr)) {
+        arr_push(result, func(arr[i]));
+        i = i + 1;
+    }
+    return result;
+}
+
+# ===== GENERIC TYPES =====
+
+# Generic function
+func identity<T>(value: T): T {
+    return value;
+}
+
+var num = identity<int>(42);
+var str = identity<string>("hello");
+
+# Generic data structures
+func first<T>(arr: T[]): T {
+    return arr[0];
+}
+
+var firstNum = first<int>([1, 2, 3]);      # returns 1
+var firstName = first<string>(["a", "b"]); # returns "a"
+
+# ===== UNION TYPES =====
+
+# Union type annotation
+type StringOrNumber = string | int;
+
+func process(value: StringOrNumber): string {
+    if (typeof(value) == "string") {
+        return value;
+    } else {
+        return str_fromInt(value);
+    }
+}
+
+# ===== TYPE ALIASES =====
+
+type UserId = int;
+type Coordinate = {x: float, y: float};
+type Result<T> = {ok: bool, value: T, error: string};
+
+func divide(a: float, b: float): Result<float> {
+    if (b == 0) {
+        return {ok: false, value: 0, error: "Division by zero"};
+    }
+    return {ok: true, value: a / b, error: ""};
+}
+
+# ===== TYPE CHECKING EXAMPLES =====
+
+# This will pass type checking
+func validExample() {
+    var x: int = 10;
+    var y: int = 20;
+    var sum: int = x + y;  # ✓ OK
+    print(sum);
+}
+
+# This will fail type checking
+func invalidExample() {
+    var x: int = 10;
+    var y: string = "hello";
+    var sum: int = x + y;  # ✗ ERROR: Cannot add int and string
+}
+
+# ===== COMPLEX EXAMPLE =====
+
+type Point = {x: float, y: float};
+type Circle = {center: Point, radius: float};
+
+func distance(p1: Point, p2: Point): float {
+    var dx = p2.x - p1.x;
+    var dy = p2.y - p1.y;
+    return math_sqrt(dx * dx + dy * dy);
+}
+
+func circleArea(circle: Circle): float {
+    return 3.14159 * circle.radius * circle.radius;
+}
+
+func circleContains(circle: Circle, point: Point): bool {
+    var dist = distance(circle.center, point);
+    return dist <= circle.radius;
+}
+
+# Usage
+var myCircle: Circle = {
+    center: {x: 0, y: 0},
+    radius: 5
+};
+
+var testPoint: Point = {x: 3, y: 4};
+
+var area = circleArea(myCircle);
+var contains = circleContains(myCircle, testPoint);
+
+print("Area: " + area);
+print("Contains point: " + contains);
+
+# ===== TYPE INFERENCE IN ACTION =====
+
+func fibonacci(n) {
+    # Type inference determines:
+    # - n is int
+    # - return type is int
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+func factorial(n) {
+    # Inferred types throughout
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+# ===== MAIN =====
+
+func main() {
+    print("Nux Type System Examples");
+    print("========================");
+    
+    # Type annotations
+    var result1: int = add(5, 3);
+    print("5 + 3 = " + result1);
+    
+    # Type inference
+    var result2 = multiply(4, 7);
+    print("4 * 7 = " + result2);
+    
+    # Generics
+    var id1 = identity<int>(42);
+    var id2 = identity<string>("hello");
+    print("Identity: " + id1 + ", " + id2);
+    
+    # Complex types
+    print("Fibonacci(10) = " + fibonacci(10));
+    print("Factorial(5) = " + factorial(5));
+}
+
+main();

@@ -1,0 +1,219 @@
+# Nux v2.0 — LAG Syntax Extension to Parser
+# New tokens and AST nodes for Language Agnostic Gateway syntax.
+#
+# Recognized patterns:
+#   import nux.lag.python.3.14.3
+#   from python import os
+#   nux.lag python.3.14.3 = v1;
+#   var.v1 { <foreign code> }
+#   var1.v1 { <foreign code> }
+#   if(var == true) { ... }
+
+# ===== NEW TOKEN TYPES =====
+class LAGToken {
+    var NUX_LAG_IMPORT: i32 = 200;  # "import nux.lag.<lang>.<ver>"
+    var NUX_LAG_BIND: i32 = 201;    # "nux.lag <lang>.<ver> = <alias>;"
+    var NUX_LAG_FROM: i32 = 202;    # "from <lang> import <module>"
+    var FOREIGN_BLOCK: i32 = 203;   # "varname.alias { ... }"
+    var CHECK_BLOCK: i32 = 204;     # "if(var == true) { ... }"
+}
+
+# ===== LAG IMPORT AST NODE =====
+# Represents: import nux.lag.python.3.14.3
+class LAGImportNode {
+    var lang: String;    # "python"
+    var version: String; # "3.14.3"
+}
+
+# ===== LAG BIND AST NODE =====
+# Represents: nux.lag python.3.14.3 = v1;
+class LAGBindNode {
+    var lang: String;
+    var version: String;
+    var alias: String;
+}
+
+# ===== FROM IMPORT AST NODE =====
+# Represents: from python import os
+class LAGFromImportNode {
+    var lang: String;
+    var module: String;
+    var alias_ref: String;  # which binding to attach this import to
+}
+
+# ===== FOREIGN BLOCK AST NODE =====
+# Represents: varname.alias { <code> }
+class ForeignBlockNode {
+    var var_name: String;      # "var" or "var1"
+    var lang_alias: String;    # "v1"
+    var foreign_code: String;  # raw source code inside {}
+}
+
+# ===== LAG PARSER EXTENSION =====
+class LAGParser {
+    # Parse "import nux.lag.python.3.14.3"
+    func parse_lag_import(&self, tokens: &[Token], pos: &mut i32) -> LAGImportNode {
+        # tokens: [import, nux, ., lag, ., lang, ., version_parts...]
+        # Skip "import nux.lag."
+        *pos += 4;
+        var lang = tokens[*pos as usize].value.clone(); *pos += 2; # skip lang and '.'
+        var version = String.new();
+        # Collect version: e.g. 3 . 14 . 3
+        while (*pos < tokens.len as i32 && tokens[*pos as usize].kind != Token.NEWLINE) {
+            version.push_str(&tokens[*pos as usize].value);
+            *pos += 1;
+        }
+        return LAGImportNode { lang: lang, version: version };
+    }
+
+    # Parse "nux.lag python.3.14.3 = v1;"
+    func parse_lag_bind(&self, tokens: &[Token], pos: &mut i32) -> LAGBindNode {
+        # Skip "nux.lag "
+        *pos += 3;
+        var lang = tokens[*pos as usize].value.clone(); *pos += 2;  # lang + '.'
+        var version = String.new();
+        while (tokens[*pos as usize].value != "=") {
+            version.push_str(&tokens[*pos as usize].value);
+            *pos += 1;
+        }
+        *pos += 1;  # skip '='
+        var alias = tokens[*pos as usize].value.clone();
+        *pos += 2;  # alias + ';'
+        return LAGBindNode { lang: lang, version: version.trim().to_owned(), alias: alias };
+    }
+
+    # Parse "from python import os"
+    func parse_from_import(&self, tokens: &[Token], pos: &mut i32) -> LAGFromImportNode {
+        *pos += 1;  # skip 'from'
+        var lang = tokens[*pos as usize].value.clone(); *pos += 2;  # skip 'import'
+        var module = tokens[*pos as usize].value.clone(); *pos += 1;
+        return LAGFromImportNode { lang: lang, module: module, alias_ref: String.new() };
+    }
+
+    # Parse "varname.alias { <code> }"
+    # The content between { } is captured verbatim as foreign source
+    func parse_foreign_block(&self, tokens: &[Token], pos: &mut i32, src: &str) -> ForeignBlockNode {
+        var var_name = tokens[*pos as usize].value.clone(); *pos += 1;  # "var"
+        *pos += 1;  # skip '.'
+        var alias = tokens[*pos as usize].value.clone(); *pos += 1;
+        *pos += 1;  # skip '{'
+        # Find matching '}' — capture raw text
+        var brace_depth: i32 = 1;
+        var code_start = tokens[*pos as usize].byte_offset;
+        var code_end = code_start;
+        while (*pos < tokens.len as i32 && brace_depth > 0) {
+            if (tokens[*pos as usize].value == "{") { brace_depth += 1; }
+            if (tokens[*pos as usize].value == "}") {
+                brace_depth -= 1;
+                if (brace_depth == 0) { code_end = tokens[*pos as usize].byte_offset; }
+            }
+            *pos += 1;
+        }
+        var foreign_code = src.slice(code_start, code_end).to_owned();
+        return ForeignBlockNode {
+            var_name: var_name,
+            lang_alias: alias,
+            foreign_code: foreign_code
+        };
+    }
+}
+
+# ===== CODE EMITTER FOR LAG BLOCKS =====
+class LAGCodegen {
+    var writer: *NXBWriter;
+    var executor: *LAGExecutor;
+    var var_results: HashMap[String, bool];  # varname -> success
+
+    func new(writer: *NXBWriter, exec: *LAGExecutor) -> @own LAGCodegen {
+        return LAGCodegen { writer: writer, executor: exec, var_results: HashMap.new() };
+    }
+
+    # Process an entire LAG section of source code
+    func process(&mut self, nodes: &Vec[any]) {
+        var reg: LAGRegistry = LAGRegistry.new();
+        var exec: LAGExecutor = LAGExecutor.new(&reg, &OVM.new(&NuxVM.new()));
+
+        for (var i = 0; i < nodes.len; i += 1) {
+            var node = nodes.get(i).unwrap();
+            # Dispatch by node type
+            if (node.type_id == 1) {  # LAGImportNode
+                var n = node as *LAGImportNode;
+                # Register binding (version will be bound later)
+                println("LAG: import " + &n.lang + " " + &n.version);
+            } else if (node.type_id == 2) {  # LAGBindNode
+                var n = node as *LAGBindNode;
+                var r = reg.bind(&n.lang, &n.version, &n.alias);
+                if (r.is_err()) { println("LAG error: " + r.unwrap_err()); }
+            } else if (node.type_id == 3) {  # LAGFromImportNode
+                var n = node as *LAGFromImportNode;
+                # Find which binding matches this lang
+                reg.add_import_by_lang(&n.lang, &n.module);
+            } else if (node.type_id == 4) {  # ForeignBlockNode
+                var n = node as *ForeignBlockNode;
+                var block = ForeignBlock.new(n.lang_alias.clone(), n.foreign_code.clone());
+                exec.exec(&mut block);
+                this.var_results.insert(n.var_name.clone(), block.success);
+                if (block.result.is_some()) {
+                    println(block.result.unwrap());
+                }
+                if (block.error.is_some() && !block.success) {
+                    println("LAG error: " + block.error.unwrap());
+                }
+            }
+        }
+    }
+
+    # if(var == true) — check if a LAG block succeeded
+    func check_var(&self, var_name: &str) -> bool {
+        return this.var_results.get(&String.from(var_name)).unwrap_or(false);
+    }
+}
+
+# ===== RUNTIME EXAMPLE (how the user's code maps to AST) =====
+#
+# ORIGINAL USER CODE:
+# -------------------
+# import nux.lag.python.3.14.3
+# from python import os
+#
+# nux.lag python.3.14.3 = v1;
+#
+# var = new var;
+# var1 = new var;
+#
+# var.v1 {
+#    if os.path.exists(path):
+#        print("Path exists!")
+# }
+# var1.v1 {
+#    if os.path.isfile(path):
+#        print("It is a file.")
+# }
+# if(var == true) { print(var); }
+# else { print(var1); }
+#
+# AST TREE:
+# ---------
+# Program
+#  ├─ LAGImportNode { lang="python", version="3.14.3" }
+#  ├─ LAGFromImportNode { lang="python", module="os" }
+#  ├─ LAGBindNode { lang="python", version="3.14.3", alias="v1" }
+#  ├─ VarDeclNode { name="var", kind=FOREIGN_VAR }
+#  ├─ VarDeclNode { name="var1", kind=FOREIGN_VAR }
+#  ├─ ForeignBlockNode { var_name="var",  alias="v1", code="if os.path.exists..." }
+#  ├─ ForeignBlockNode { var_name="var1", alias="v1", code="if os.path.isfile..." }
+#  └─ IfNode
+#      ├─ cond: BinaryExpr { left=VarRef("var"), op="==", right=BoolLit(true) }
+#      ├─ then: PrintNode { value=VarRef("var") }
+#      └─ else: PrintNode { value=VarRef("var1") }
+#
+# EXECUTION:
+# ----------
+# 1. LAGRegistry.bind("python", "3.14.3", "v1")  -> finds /usr/bin/python3
+# 2. OVM.ensure_runtime(PYTHON, path)             -> spawns python3 subprocess
+# 3. ForeignBlock("v1", "import os\nif os.path.exists(path):\n  print...")
+# 4. OVM.run_foreign(code) -> sends to python stdin, reads stdout
+# 5. var.success = (exit_code == 0)
+# 6. if(var == true) -> checks var.success
+
+println("Nux LAG parser extension loaded.");

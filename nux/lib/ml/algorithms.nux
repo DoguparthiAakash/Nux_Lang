@@ -1,6 +1,6 @@
-// Machine Learning - Complete ML library
+# Machine Learning - Complete ML library
 
-// ============= LINEAR REGRESSION =============
+# ============= LINEAR REGRESSION =============
 
 class LinearRegression {
     var weights: [float];
@@ -11,13 +11,13 @@ class LinearRegression {
         var n_features = X[0].length;
         this.weights = Array.filled(n_features, 0.0);
         
-        for (var epoch = 0; epoch < epochs; epoch++) {
-            for (var i = 0; i < X.length; i++) {
+        for (var epoch: int = 0; epoch < epochs; epoch++) {
+            for (var i: int = 0; i < X.length; i++) {
                 var prediction = this.predict_one(X[i]);
                 var error = prediction - y[i];
                 
-                // Update weights
-                for (var j = 0; j < n_features; j++) {
+                # Update weights
+                for (var j: int = 0; j < n_features; j++) {
                     this.weights[j] -= this.learning_rate * error * X[i][j];
                 }
                 
@@ -32,14 +32,14 @@ class LinearRegression {
     
     func predict_one(x: [float]) -> float {
         var sum = this.bias;
-        for (var i = 0; i < x.length; i++) {
+        for (var i: int = 0; i < x.length; i++) {
             sum += this.weights[i] * x[i];
         }
         return sum;
     }
 }
 
-// ============= LOGISTIC REGRESSION =============
+# ============= LOGISTIC REGRESSION =============
 
 class LogisticRegression {
     var weights: [float];
@@ -54,17 +54,17 @@ class LogisticRegression {
         var n_features = X[0].length;
         this.weights = Array.filled(n_features, 0.0);
         
-        for (var epoch = 0; epoch < epochs; epoch++) {
-            for (var i = 0; i < X.length; i++) {
+        for (var epoch: int = 0; epoch < epochs; epoch++) {
+            for (var i: int = 0; i < X.length; i++) {
                 var z = this.bias;
-                for (var j = 0; j < n_features; j++) {
+                for (var j: int = 0; j < n_features; j++) {
                     z += this.weights[j] * X[i][j];
                 }
                 
                 var prediction = this.sigmoid(z);
                 var error = prediction - y[i];
                 
-                for (var j = 0; j < n_features; j++) {
+                for (var j: int = 0; j < n_features; j++) {
                     this.weights[j] -= this.learning_rate * error * X[i][j];
                 }
                 
@@ -76,7 +76,7 @@ class LogisticRegression {
     func predict(X: [[float]]) -> [float] {
         return X.map((x) => {
             var z = this.bias;
-            for (var i = 0; i < x.length; i++) {
+            for (var i: int = 0; i < x.length; i++) {
                 z += this.weights[i] * x[i];
             }
             return this.sigmoid(z);
@@ -84,7 +84,7 @@ class LogisticRegression {
     }
 }
 
-// ============= K-MEANS CLUSTERING =============
+# ============= K-MEANS CLUSTERING =============
 
 class KMeans {
     var k: int;
@@ -96,26 +96,26 @@ class KMeans {
     }
     
     func fit(X: [[float]]) {
-        // Initialize centroids randomly
+        # Initialize centroids randomly
         this.centroids = [];
-        for (var i = 0; i < this.k; i++) {
+        for (var i: int = 0; i < this.k; i++) {
             this.centroids.push(X[Random.range(0, X.length)]);
         }
         
-        for (var iter = 0; iter < this.max_iters; iter++) {
-            // Assign points to clusters
+        for (var iter: int = 0; iter < this.max_iters; iter++) {
+            # Assign points to clusters
             var clusters: [[int]] = [];
-            for (var i = 0; i < this.k; i++) {
+            for (var i: int = 0; i < this.k; i++) {
                 clusters.push([]);
             }
             
-            for (var i = 0; i < X.length; i++) {
+            for (var i: int = 0; i < X.length; i++) {
                 var closest = this.find_closest_centroid(X[i]);
                 clusters[closest].push(i);
             }
             
-            // Update centroids
-            for (var i = 0; i < this.k; i++) {
+            # Update centroids
+            for (var i: int = 0; i < this.k; i++) {
                 if (clusters[i].length > 0) {
                     this.centroids[i] = this.compute_centroid(X, clusters[i]);
                 }
@@ -129,9 +129,9 @@ class KMeans {
     
     func find_closest_centroid(point: [float]) -> int {
         var min_dist = INFINITY;
-        var closest = 0;
+        var closest: int = 0;
         
-        for (var i = 0; i < this.centroids.length; i++) {
+        for (var i: int = 0; i < this.centroids.length; i++) {
             var dist = this.euclidean_distance(point, this.centroids[i]);
             if (dist < min_dist) {
                 min_dist = dist;
@@ -144,7 +144,7 @@ class KMeans {
     
     func euclidean_distance(a: [float], b: [float]) -> float {
         var sum = 0.0;
-        for (var i = 0; i < a.length; i++) {
+        for (var i: int = 0; i < a.length; i++) {
             sum += (a[i] - b[i]) * (a[i] - b[i]);
         }
         return sqrt(sum);
@@ -155,12 +155,12 @@ class KMeans {
         var centroid: [float] = Array.filled(n_features, 0.0);
         
         for (var idx in indices) {
-            for (var i = 0; i < n_features; i++) {
+            for (var i: int = 0; i < n_features; i++) {
                 centroid[i] += X[idx][i];
             }
         }
         
-        for (var i = 0; i < n_features; i++) {
+        for (var i: int = 0; i < n_features; i++) {
             centroid[i] /= indices.length;
         }
         
@@ -168,7 +168,7 @@ class KMeans {
     }
 }
 
-// ============= DECISION TREE =============
+# ============= DECISION TREE =============
 
 class DecisionTree {
     var root: Option<TreeNode> = None;
@@ -179,18 +179,18 @@ class DecisionTree {
     }
     
     func build_tree(X: [[float]], y: [int], depth: int) -> TreeNode {
-        // Check stopping criteria
+        # Check stopping criteria
         if (depth >= this.max_depth || y.all_equal()) {
             return TreeNode.leaf(most_common(y));
         }
         
-        // Find best split
+        # Find best split
         var (feature, threshold) = this.find_best_split(X, y);
         
-        // Split data
+        # Split data
         var (X_left, y_left, X_right, y_right) = this.split_data(X, y, feature, threshold);
         
-        // Recursively build subtrees
+        # Recursively build subtrees
         var left = this.build_tree(X_left, y_left, depth + 1);
         var right = this.build_tree(X_right, y_right, depth + 1);
         
@@ -214,7 +214,7 @@ class DecisionTree {
     }
 }
 
-// ============= NEURAL NETWORK =============
+# ============= NEURAL NETWORK =============
 
 class NeuralNetwork {
     var layers: [Layer] = [];
@@ -243,10 +243,10 @@ class NeuralNetwork {
     }
     
     func train(X: [[float]], y: [[float]], epochs: int) {
-        for (var epoch = 0; epoch < epochs; epoch++) {
+        for (var epoch: int = 0; epoch < epochs; epoch++) {
             var total_loss = 0.0;
             
-            for (var i = 0; i < X.length; i++) {
+            for (var i: int = 0; i < X.length; i++) {
                 var prediction = this.forward(X[i]);
                 var loss = mse_loss(prediction, y[i]);
                 total_loss += loss;
@@ -273,9 +273,9 @@ class Layer {
         this.last_input = input;
         
         var output: [float] = [];
-        for (var i = 0; i < this.weights.length; i++) {
+        for (var i: int = 0; i < this.weights.length; i++) {
             var sum = this.biases[i];
-            for (var j = 0; j < input.length; j++) {
+            for (var j: int = 0; j < input.length; j++) {
                 sum += this.weights[i][j] * input[j];
             }
             output.push(this.activate(sum));

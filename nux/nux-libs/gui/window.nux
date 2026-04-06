@@ -1,9 +1,9 @@
-// Nux GUI Library
-// Uses NuxGUI through FFI
+# Nux GUI Library
+# Uses NuxGUI through FFI
 
 import "std/io";
 
-// Window class
+# Window class
 class Window {
     var handle;
     var widgets;
@@ -31,7 +31,7 @@ class Window {
     }
 }
 
-// Button widget
+# Button widget
 class Button {
     var handle;
     var callback;
@@ -50,7 +50,7 @@ class Button {
     }
 }
 
-// Label widget
+# Label widget
 class Label {
     var handle;
     
@@ -63,7 +63,7 @@ class Label {
     }
 }
 
-// TextBox widget
+# TextBox widget
 class TextBox {
     var handle;
     
@@ -80,7 +80,7 @@ class TextBox {
     }
 }
 
-// Panel for layout
+# Panel for layout
 class Panel {
     var handle;
     var widgets;
@@ -96,7 +96,7 @@ class Panel {
     }
 }
 
-// Example: Calculator App
+# Example: Calculator App
 func create_calculator() {
     var window = new Window("Calculator", 300, 400);
     
@@ -110,16 +110,16 @@ func create_calculator() {
         ["0", ".", "=", "+"]
     ];
     
-    var y = 60;
-    for (var row = 0; row < buttons.length; row++) {
-        var x = 10;
-        for (var col = 0; col < buttons[row].length; col++) {
+    var y: int = 60;
+    for (var row: int = 0; row < buttons.length; row++) {
+        var x: int = 10;
+        for (var col: int = 0; col < buttons[row].length; col++) {
             var btn = new Button(buttons[row][col], x, y, 65, 50);
             
             btn.on_click(func(text) {
                 if (text == "=") {
                     var expr = display.get_text();
-                    var result = eval(expr);  // Evaluate expression
+                    var result = eval(expr);  # Evaluate expression
                     display.set_text(result.toString());
                 } else {
                     display.set_text(display.get_text() + text);
@@ -136,7 +136,7 @@ func create_calculator() {
     window.run();
 }
 
-// Example: Todo List App
+# Example: Todo List App
 func create_todo_app() {
     var window = new Window("Todo List", 400, 600);
     var todos = [];

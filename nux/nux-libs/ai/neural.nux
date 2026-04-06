@@ -1,10 +1,10 @@
-// Nux AI/ML Library
-// Uses NuxAI and NuxLearn through FFI
+# Nux AI/ML Library
+# Uses NuxAI and NuxLearn through FFI
 
 import "std/io";
 import "nux-libs/data/dataframe";
 
-// Neural Network Model
+# Neural Network Model
 class NeuralNetwork {
     var layers;
     var optimizer;
@@ -19,7 +19,7 @@ class NeuralNetwork {
     
     func compile(optimizer_name, learning_rate) {
         var params = [];
-        for (var i = 0; i < this.layers.length; i++) {
+        for (var i: int = 0; i < this.layers.length; i++) {
             params.push(this.layers[i].get_parameters());
         }
         
@@ -32,31 +32,31 @@ class NeuralNetwork {
     
     func forward(x) {
         var output = x;
-        for (var i = 0; i < this.layers.length; i++) {
+        for (var i: int = 0; i < this.layers.length; i++) {
             output = this.layers[i].forward(output);
         }
         return output;
     }
     
     func train(X, y, epochs, batch_size = 32) {
-        for (var epoch = 0; epoch < epochs; epoch++) {
+        for (var epoch: int = 0; epoch < epochs; epoch++) {
             var total_loss = 0.0;
             
-            for (var i = 0; i < X.length; i += batch_size) {
+            for (var i: int = 0; i < X.length; i += batch_size) {
                 var batch_X = X.slice(i, i + batch_size);
                 var batch_y = y.slice(i, i + batch_size);
                 
-                // Forward pass
+                # Forward pass
                 var pred = this.forward(batch_X);
                 
-                // Compute loss
+                # Compute loss
                 var loss = ffi_call("nux_ai_cross_entropy", pred, batch_y);
                 total_loss += loss;
                 
-                // Backward pass
+                # Backward pass
                 ffi_call("nux_ai_backward", loss);
                 
-                // Update weights
+                # Update weights
                 ffi_call("nux_ai_optimizer_step", this.optimizer);
                 ffi_call("nux_ai_optimizer_zero_grad", this.optimizer);
             }
@@ -70,7 +70,7 @@ class NeuralNetwork {
     }
 }
 
-// Linear Layer
+# Linear Layer
 class Linear {
     var handle;
     
@@ -87,7 +87,7 @@ class Linear {
     }
 }
 
-// Activation functions
+# Activation functions
 class ReLU {
     func forward(x) {
         return ffi_call("nux_ai_relu", x);
@@ -108,7 +108,7 @@ class Sigmoid {
     }
 }
 
-// Machine Learning Models
+# Machine Learning Models
 class LogisticRegression {
     var handle;
     
@@ -149,14 +149,14 @@ class KMeans {
     }
 }
 
-// Example: Image Classification
+# Example: Image Classification
 func train_mnist_classifier() {
-    // Load data
+    # Load data
     var df = DataFrame.from_csv("mnist_train.csv");
     var X = df.select(["pixel0", "pixel1", /* ... */ "pixel783"]);
     var y = df.select(["label"]);
     
-    // Build model
+    # Build model
     var model = new NeuralNetwork();
     model.add(new Linear(784, 128));
     model.add(new ReLU());
@@ -164,11 +164,11 @@ func train_mnist_classifier() {
     model.add(new ReLU());
     model.add(new Linear(64, 10));
     
-    // Compile and train
+    # Compile and train
     model.compile("adam", 0.001);
     model.train(X, y, epochs=10, batch_size=64);
     
-    // Evaluate
+    # Evaluate
     var test_df = DataFrame.from_csv("mnist_test.csv");
     var X_test = test_df.select(["pixel0", /* ... */ "pixel783"]);
     var predictions = model.predict(X_test);
@@ -177,7 +177,7 @@ func train_mnist_classifier() {
     return model;
 }
 
-// Example: Clustering
+# Example: Clustering
 func cluster_customers() {
     var df = DataFrame.from_csv("customers.csv");
     var X = df.select(["age", "income", "spending_score"]);

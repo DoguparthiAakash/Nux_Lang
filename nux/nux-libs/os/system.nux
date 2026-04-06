@@ -1,10 +1,10 @@
-// Nux OS Library
-// System programming and OS interaction
+# Nux OS Library
+# System programming and OS interaction
 
 import "std/io";
 import "std/memory";
 
-// Process management
+# Process management
 class Process {
     var pid;
     
@@ -27,7 +27,7 @@ class Process {
     }
 }
 
-// File system operations
+# File system operations
 class FileSystem {
     func read_file(path) {
         return ffi_call("nux_os_read_file", path);
@@ -54,7 +54,7 @@ class FileSystem {
     }
 }
 
-// Network operations
+# Network operations
 class Socket {
     var handle;
     
@@ -93,7 +93,7 @@ class Socket {
     }
 }
 
-// Thread management
+# Thread management
 class Thread {
     var handle;
     
@@ -108,7 +108,7 @@ class Thread {
     }
 }
 
-// Mutex for synchronization
+# Mutex for synchronization
 class Mutex {
     var handle;
     
@@ -125,7 +125,7 @@ class Mutex {
     }
 }
 
-// Example: HTTP Server
+# Example: HTTP Server
 func create_http_server(port) {
     var server = new Socket("tcp");
     server.bind("0.0.0.0", port);
@@ -136,12 +136,12 @@ func create_http_server(port) {
     while (true) {
         var client = server.accept();
         
-        // Spawn thread to handle client
+        # Spawn thread to handle client
         Thread.spawn(func() {
             var request = client.recv(4096);
             println("Request: " + request);
             
-            var response = "HTTP/1.1 200 OK\r\n";
+            var response: string = "HTTP/1.1 200 OK\r\n";
             response += "Content-Type: text/html\r\n\r\n";
             response += "<h1>Hello from Nux!</h1>";
             
@@ -151,20 +151,20 @@ func create_http_server(port) {
     }
 }
 
-// Example: File watcher
+# Example: File watcher
 func watch_directory(path) {
     var fs = new FileSystem();
     var last_files = fs.list_dir(path);
     
     while (true) {
-        sleep(1000);  // Wait 1 second
+        sleep(1000);  # Wait 1 second
         
         var current_files = fs.list_dir(path);
         
-        // Check for new files
-        for (var i = 0; i < current_files.length; i++) {
-            var found = false;
-            for (var j = 0; j < last_files.length; j++) {
+        # Check for new files
+        for (var i: int = 0; i < current_files.length; i++) {
+            var found: bool = false;
+            for (var j: int = 0; j < last_files.length; j++) {
                 if (current_files[i] == last_files[j]) {
                     found = true;
                     break;

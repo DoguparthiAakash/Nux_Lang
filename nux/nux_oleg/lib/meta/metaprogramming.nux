@@ -1,0 +1,276 @@
+# Enhanced Metaprogramming with Code Generation
+
+# ============= ADVANCED MACROS =============
+
+# Generate builder pattern automatically
+macro builder(struct_name) {
+    comptime {
+        var type_info = TypeInfo.of(struct_name);
+        var code = `class ${struct_name}Builder {\n`;
+        
+        # Add fields
+        for (var field in type_info.fields) {
+            code += `    var ${field.name}: Option<${field.type.name}> = None;\n`;
+        }
+        
+        code += `\n    func new() -> ${struct_name}Builder {\n`;
+        code += `        return ${struct_name}Builder {};\n`;
+        code += `    }\n\n`;
+        
+        # Generate setter methods
+        for (var field in type_info.fields) {
+            code += `    func ${field.name}(value: ${field.type.name}) -> ${struct_name}Builder {\n`;
+            code += `        this.${field.name} = Some(value);\n`;
+            code += `        return this;\n`;
+            code += `    }\n\n`;
+        }
+        
+        # Generate build method
+        code += `    func build() -> ${struct_name} {\n`;
+        code += `        return ${struct_name} {\n`;
+        for (var field in type_info.fields) {
+            code += `            ${field.name}: this.${field.name}.unwrap(),\n`;
+        }
+        code += `        };\n`;
+        code += `    }\n`;
+        code += `}\n`;
+        
+        return code;
+    }
+}
+
+# Usage
+struct User {
+    var id: int;
+    var name: string;
+    var email: string;
+}
+
+builder(User);
+
+# Now you can use:
+# var user = UserBuilder.new()
+#     .id(1)
+#     .name("Alice")
+#     .email("alice@example.com")
+#     .build();
+
+# ============= DERIVE MACROS =============
+
+# Auto-implement common traits
+macro derive(traits...) {
+    comptime {
+        for (var trait in traits) {
+            match (trait) {
+                "Clone" => generate_clone(),
+                "Debug" => generate_debug(),
+                "Eq" => generate_eq(),
+                "Hash" => generate_hash(),
+                "Serialize" => generate_serialize(),
+                "Deserialize" => generate_deserialize()
+            }
+        }
+    }
+}
+
+@derive("Clone", "Debug", "Eq", "Serialize")
+struct Point {
+    var x: int;
+    var y: int;
+}
+
+# Automatically generates:
+# - clone() method
+# - debug() method
+# - eq() method
+# - serialize() method
+
+# ============= COMPILE-TIME REGEX =============
+
+comptime func compile_regex(pattern: string) -> CompiledRegex {
+    # Parse regex at compile time
+    var nfa = parse_regex_to_nfa(pattern);
+    var dfa = nfa_to_dfa(nfa);
+    var optimized = optimize_dfa(dfa);
+    
+    return CompiledRegex { dfa: optimized };
+}
+
+# Usage
+const EMAIL_REGEX = compile_regex("^[^@]+@[^@]+$");
+
+func is_valid_email(email: string) -> bool {
+    return EMAIL_REGEX.matches(email);
+}
+
+# ============= COMPILE-TIME SQL =============
+
+comptime func compile_sql(query: string) -> PreparedQuery {
+    # Parse and validate SQL at compile time
+    var ast = parse_sql(query);
+    validate_sql(ast);
+    
+    return PreparedQuery {
+        ast: ast,
+        param_count: count_parameters(ast)
+    };
+}
+
+# Usage
+const GET_USER = compile_sql("SELECT * FROM users WHERE id = ?");
+
+func get_user(db: Database, id: int) -> User {
+    return db.execute(GET_USER, [id]);
+}
+
+# ============= TEMPLATE ENGINE =============
+
+macro template(name, content) {
+    comptime {
+        var code = `func render_${name}(data: Map<string, any>) -> string {\n`;
+        code += `    var result: string = "";\n`;
+        
+        # Parse template
+        var parts = parse_template(content);
+        
+        for (var part in parts) {
+            if (part.type == "text") {
+                code += `    result += "${escape(part.value)}";\n`;
+            } else if (part.type == "variable") {
+                code += `    result += data["${part.name}"].to_string();\n`;
+            } else if (part.type == "loop") {
+                code += `    for (var item in data["${part.collection}"]) {\n`;
+                code += `        result += render_${part.template}(item);\n`;
+                code += `    }\n`;
+            }
+        }
+        
+        code += `    return result;\n`;
+        code += `}\n`;
+        
+        return code;
+    }
+}
+
+# Usage
+template(user_card, `
+    <div class="user">
+        <h2>{{name}}</h2>
+        <p>{{email}}</p>
+    </div>
+`);
+
+# ============= COMPILE-TIME VALIDATION =============
+
+# Validate at compile time
+comptime func validate_config(config: Config) {
+    if (config.port < 1024 || config.port > 65535) {
+        compile_error("Port must be between 1024 and 65535");
+    }
+    
+    if (config.max_connections < 1) {
+        compile_error("max_connections must be positive");
+    }
+    
+    if (config.timeout < 0) {
+        compile_error("timeout cannot be negative");
+    }
+}
+
+const SERVER_CONFIG = Config {
+    port: 8080,
+    max_connections: 1000,
+    timeout: 30
+};
+
+comptime {
+    validate_config(SERVER_CONFIG);
+}
+
+# ============= CODE GENERATION FROM SCHEMA =============
+
+# Generate code from JSON schema
+comptime func generate_from_schema(schema: string) -> string {
+    var parsed = JSON.parse(schema);
+    var code: string = "";
+    
+    for (var (name, definition) in parsed["definitions"]) {
+        code += `struct ${name} {\n`;
+        
+        for (var (field_name, field_type) in definition["properties"]) {
+            code += `    var ${field_name}: ${map_type(field_type)};\n`;
+        }
+        
+        code += `}\n\n`;
+    }
+    
+    return code;
+}
+
+# ============= ASPECT-ORIENTED PROGRAMMING =============
+
+# Add logging to all methods
+macro log_all_methods(class_name) {
+    comptime {
+        var type_info = TypeInfo.of(class_name);
+        
+        for (var method in type_info.methods) {
+            var original = method.implementation;
+            
+            method.implementation = () => {
+                println("Calling " + method.name);
+                var result = original();
+                println("Finished " + method.name);
+                return result;
+            };
+        }
+    }
+}
+
+@log_all_methods
+class Calculator {
+    func add(a: int, b: int) -> int {
+        return a + b;
+    }
+}
+
+# ============= MEMOIZATION =============
+
+macro memoize(func_name) {
+    comptime {
+        var cache: Map<string, any> = Map.new();
+        var original = get_function(func_name);
+        
+        return (args...) => {
+            var key = args.to_string();
+            
+            if (cache.contains(key)) {
+                return cache[key];
+            }
+            
+            var result = original(args...);
+            cache[key] = result;
+            return result;
+        };
+    }
+}
+
+@memoize
+func fibonacci(n: int) -> int {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+# ============= COMPILE-TIME UNIT CONVERSION =============
+
+comptime func meters_to_feet(meters: float) -> float {
+    return meters * 3.28084;
+}
+
+comptime func celsius_to_fahrenheit(celsius: float) -> float {
+    return celsius * 9.0 / 5.0 + 32.0;
+}
+
+# Constants computed at compile time
+const ROOM_HEIGHT_FEET = meters_to_feet(2.5);  # 8.2021 feet
+const BOILING_POINT_F = celsius_to_fahrenheit(100.0);  # 212.0°F

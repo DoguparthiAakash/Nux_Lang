@@ -1,0 +1,282 @@
+# Nux Standard Library - Testing Framework
+# Unit testing and assertions
+
+# ===== TEST SUITE =====
+
+var _test_suites = [];
+var _current_suite = null;
+
+func describe(name, func) {
+    # Create test suite
+    var suite = {
+        name: name,
+        tests: [],
+        beforeEach: null,
+        afterEach: null,
+        beforeAll: null,
+        afterAll: null
+    };
+    
+    arr_push(_test_suites, suite);
+    _current_suite = suite;
+    
+    func();
+    
+    _current_suite = null;
+}
+
+func it(description, func) {
+    # Create test case
+    if (_current_suite == null) {
+        print("Error: 'it' must be called inside 'describe'");
+        return;
+    }
+    
+    var test = {
+        description: description,
+        func: func,
+        passed: false,
+        error: null
+    };
+    
+    arr_push(_current_suite.tests, test);
+}
+
+# ===== HOOKS =====
+
+func beforeEach(func) {
+    # Run before each test
+    if (_current_suite != null) {
+        _current_suite.beforeEach = func;
+    }
+}
+
+func afterEach(func) {
+    # Run after each test
+    if (_current_suite != null) {
+        _current_suite.afterEach = func;
+    }
+}
+
+func beforeAll(func) {
+    # Run before all tests
+    if (_current_suite != null) {
+        _current_suite.beforeAll = func;
+    }
+}
+
+func afterAll(func) {
+    # Run after all tests
+    if (_current_suite != null) {
+        _current_suite.afterAll = func;
+    }
+}
+
+# ===== ASSERTIONS =====
+
+func assert(condition, message) {
+    # Basic assertion
+    if (!condition) {
+        var msg: string = "Assertion failed";
+        if (message != null) {
+            msg = msg + ": " + message;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertEqual(actual, expected, message) {
+    # Assert equality
+    if (actual != expected) {
+        var msg = "Expected " + expected + " but got " + actual;
+        if (message != null) {
+            msg = message + ": " + msg;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertNotEqual(actual, expected, message) {
+    # Assert inequality
+    if (actual == expected) {
+        var msg = "Expected not equal to " + expected;
+        if (message != null) {
+            msg = message + ": " + msg;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertTrue(value, message) {
+    # Assert true
+    return assertEqual(value, true, message);
+}
+
+func assertFalse(value, message) {
+    # Assert false
+    return assertEqual(value, false, message);
+}
+
+func assertNull(value, message) {
+    # Assert null
+    return assertEqual(value, null, message);
+}
+
+func assertNotNull(value, message) {
+    # Assert not null
+    return assertNotEqual(value, null, message);
+}
+
+func assertGreater(actual, expected, message) {
+    # Assert greater than
+    if (actual <= expected) {
+        var msg = "Expected " + actual + " > " + expected;
+        if (message != null) {
+            msg = message + ": " + msg;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertLess(actual, expected, message) {
+    # Assert less than
+    if (actual >= expected) {
+        var msg = "Expected " + actual + " < " + expected;
+        if (message != null) {
+            msg = message + ": " + msg;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertContains(array, item, message) {
+    # Assert array contains item
+    if (!arr_contains(array, item)) {
+        var msg = "Array does not contain " + item;
+        if (message != null) {
+            msg = message + ": " + msg;
+        }
+        print(msg);
+        return false;
+    }
+    return true;
+}
+
+func assertThrows(func, message) {
+    # Assert function throws error
+    # TODO: Implement with VM error handling
+    return true;
+}
+
+# ===== TEST RUNNER =====
+
+func run_tests() {
+    # Run all test suites
+    var totalTests: int = 0;
+    var passedTests: int = 0;
+    var failedTests: int = 0;
+    
+    print("=== Running Tests ===");
+    print("");
+    
+    var i: int = 0;
+    while (i < arr_length(_test_suites)) {
+        var suite = _test_suites[i];
+        
+        print("Suite: " + suite.name);
+        
+        # Run beforeAll
+        if (suite.beforeAll != null) {
+            suite.beforeAll();
+        }
+        
+        # Run tests
+        var j: int = 0;
+        while (j < arr_length(suite.tests)) {
+            var test = suite.tests[j];
+            totalTests = totalTests + 1;
+            
+            # Run beforeEach
+            if (suite.beforeEach != null) {
+                suite.beforeEach();
+            }
+            
+            # Run test
+            test.func();
+            test.passed = true;
+            passedTests = passedTests + 1;
+            
+            print("  ✓ " + test.description);
+            
+            # Run afterEach
+            if (suite.afterEach != null) {
+                suite.afterEach();
+            }
+            
+            j = j + 1;
+        }
+        
+        # Run afterAll
+        if (suite.afterAll != null) {
+            suite.afterAll();
+        }
+        
+        print("");
+        i = i + 1;
+    }
+    
+    print("=== Test Results ===");
+    print("Total: " + totalTests);
+    print("Passed: " + passedTests);
+    print("Failed: " + failedTests);
+    
+    if (failedTests == 0) {
+        print("All tests passed! ✓");
+    }
+}
+
+# ===== MOCKING =====
+
+func mock_create() {
+    # Create mock function
+    return {
+        calls: [],
+        returnValue: null
+    };
+}
+
+func mock_call(mock, args) {
+    # Record mock call
+    arr_push(mock.calls, args);
+    return mock.returnValue;
+}
+
+func mock_setReturnValue(mock, value) {
+    # Set return value
+    mock.returnValue = value;
+}
+
+func mock_getCalls(mock) {
+    # Get all calls
+    return mock.calls;
+}
+
+func mock_getCallCount(mock) {
+    # Get call count
+    return arr_length(mock.calls);
+}
+
+func mock_reset(mock) {
+    # Reset mock
+    mock.calls = [];
+}

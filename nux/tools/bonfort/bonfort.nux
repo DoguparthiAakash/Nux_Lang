@@ -1,0 +1,466 @@
+# Bonfort — Nux Package Manager
+# Manages Nux packages AND language runtime installations for LAG/OVM.
+# Usage:
+#   bonfort install <pkg>              # install a Nux package
+#   bonfort install python@3.14.3     # install Python runtime for LAG
+#   bonfort install rust@1.78         # install Rust runtime for LAG
+#   bonfort remove <pkg>
+#   bonfort list
+#   bonfort search <query>
+#   bonfort update
+#   bonfort lang list                  # list installed LAG runtimes
+#   bonfort lang add python@3.14.3    # install language runtime
+#   bonfort self-update               # update bonfort itself
+
+# ===== BONFORT CONFIG =====
+class BonfortConfig {
+    var registry_url: String = "https://registry.nux-lang.org";
+    var cache_dir: String = "~/.nux/cache";
+    var install_dir: String = "~/.nux/packages";
+    var runtime_dir: String = "~/.nux/runtimes";
+    var bonfort_version: String = "1.0.0";
+    var lock_file: String = "bonfort.lock";
+    var manifest_file: String = "bonfort.toml";
+}
+
+# ===== PACKAGE MANIFEST =====
+class BonfortManifest {
+    var name: String;
+    var version: String;
+    var description: String;
+    var author: String;
+    var license: String;
+    var dependencies: HashMap[String, String];  # name -> version constraint
+    var dev_dependencies: HashMap[String, String];
+    var lang_dependencies: HashMap[String, String];  # e.g. "python" -> ">=3.10"
+    var entry_point: String;
+    var lib: bool;  # is this a library?
+
+    func new(name: String, version: String) -> @own BonfortManifest {
+        return BonfortManifest {
+            name: name, version: version,
+            description: String.new(),
+            author: String.new(),
+            license: String.from("MIT"),
+            dependencies: HashMap.new(),
+            dev_dependencies: HashMap.new(),
+            lang_dependencies: HashMap.new(),
+            entry_point: String.from("main.nux"),
+            lib: false
+        };
+    }
+
+    # Parse bonfort.toml (simplified TOML parser)
+    func from_toml(content: &str) -> Result[@own BonfortManifest, String] {
+        # Simplified: look for key=value lines
+        var name = String.new();
+        var version = String.new();
+        var lines = content.split('\n');
+        for (var i = 0; i < lines.len; i += 1) {
+            var line = lines.get(i).unwrap().trim();
+            if (line.starts_with("name")) {
+                name = line.split('=').get(1).unwrap().trim().trim_quotes().to_owned();
+            } else if (line.starts_with("version")) {
+                version = line.split('=').get(1).unwrap().trim().trim_quotes().to_owned();
+            }
+        }
+        if (name.len() == 0) { return Result.err_val(String.from("Missing name in bonfort.toml")); }
+        return Result.ok_val(BonfortManifest.new(name, version));
+    }
+
+    func to_toml(&self) -> String {
+        var s = String.from("[package]\n");
+        s.push_str("name = \""); s.push_str(&self.name); s.push_str("\"\n");
+        s.push_str("version = \""); s.push_str(&self.version); s.push_str("\"\n");
+        s.push_str("description = \""); s.push_str(&self.description); s.push_str("\"\n");
+        s.push_str("author = \""); s.push_str(&self.author); s.push_str("\"\n");
+        s.push_str("license = \""); s.push_str(&self.license); s.push_str("\"\n\n");
+        s.push_str("[dependencies]\n");
+        # Write each dependency
+        s.push_str("\n[lang_dependencies]\n");
+        # Write lang deps
+        return s;
+    }
+}
+
+# ===== LOCK FILE =====
+class BonfortLock {
+    var packages: HashMap[String, LockEntry];
+
+    class LockEntry {
+        var name: String;
+        var version: String;
+        var checksum: String;  # SHA-256 of downloaded archive
+        var source: String;    # URL or local path
+    }
+
+    func new() -> @own BonfortLock { return BonfortLock { packages: HashMap.new() }; }
+    func add(&mut self, name: String, version: String, checksum: String, src: String) {
+        this.packages.insert(name.clone(), LockEntry {
+            name: name, version: version, checksum: checksum, source: src
+        });
+    }
+    func to_string(&self) -> String {
+        var s = String.from("# bonfort.lock — DO NOT EDIT MANUALLY\n");
+        # Serialize all entries
+        return s;
+    }
+}
+
+# ===== REGISTRY CLIENT =====
+class RegistryClient {
+    var base_url: String;
+    var cache_dir: String;
+
+    func new(cfg: &BonfortConfig) -> @own RegistryClient {
+        return RegistryClient { base_url: cfg.registry_url.clone(), cache_dir: cfg.cache_dir.clone() };
+    }
+
+    # Search registry
+    func search(&self, query: &str) -> Vec[PackageInfo] {
+        var url = self.base_url.clone() + "/search?q=" + query;
+        var resp = http_get(&url);
+        if (resp.is_err()) { return Vec.new(); }
+        return self.parse_package_list(&resp.unwrap());
+    }
+
+    # Fetch package metadata
+    func get_info(&self, name: &str, version: &str) -> Option[PackageInfo] {
+        var url = self.base_url.clone() + "/pkg/" + name + "/" + version;
+        var resp = http_get(&url);
+        if (resp.is_err()) { return Option.none(); }
+        return Option.some(self.parse_package_info(&resp.unwrap()));
+    }
+
+    # Download package archive
+    func download(&self, info: &PackageInfo, dest: &str) -> Result[String, String] {
+        var cache_path = self.cache_dir.clone() + "/" + &info.name + "-" + &info.version + ".nxpkg";
+        if (file_exists(&cache_path)) {
+            println("bonfort: using cached " + &info.name + "@" + &info.version);
+            return Result.ok_val(cache_path);
+        }
+        println("bonfort: downloading " + &info.name + "@" + &info.version + " ...");
+        var r = http_download(&info.download_url, &cache_path);
+        if (r.is_err()) { return r; }
+        # Verify checksum
+        var actual = sha256_file(&cache_path);
+        if (actual != info.checksum) {
+            file_delete(&cache_path);
+            return Result.err_val(String.from("Checksum mismatch for ") + &info.name);
+        }
+        return Result.ok_val(cache_path);
+    }
+
+    func parse_package_list(&self, json: &str) -> Vec[PackageInfo] { return Vec.new(); }
+    func parse_package_info(&self, json: &str) -> PackageInfo {
+        return PackageInfo { name: String.new(), version: String.new(), description: String.new(), download_url: String.new(), checksum: String.new() };
+    }
+}
+
+class PackageInfo {
+    var name: String;
+    var version: String;
+    var description: String;
+    var download_url: String;
+    var checksum: String;
+}
+
+# ===== LANGUAGE RUNTIME INSTALLER =====
+# bonfort lang add python@3.14.3
+class LangInstaller {
+    var runtime_dir: String;
+
+    func new(cfg: &BonfortConfig) -> @own LangInstaller {
+        return LangInstaller { runtime_dir: cfg.runtime_dir.clone() };
+    }
+
+    # Install a language runtime
+    func install(&self, lang: &str, version: &str) -> Result[String, String] {
+        println("bonfort: installing " + lang + "@" + version + " runtime...");
+        var id = Lang.from_str(lang);
+        if (id == -1) { return Result.err_val(String.from("Unknown language: ") + lang); }
+        var installer = self.get_installer(id, version);
+        var result = installer.run();
+        if (result.is_err()) { return result; }
+        var path = self.runtime_dir.clone() + "/" + lang + "/" + version;
+        println("bonfort: " + lang + "@" + version + " installed to " + &path);
+        return Result.ok_val(path);
+    }
+
+    func get_installer(&self, lang_id: i32, version: &str) -> LangRuntimeInstaller {
+        return LangRuntimeInstaller {
+            lang_id: lang_id,
+            version: String.from(version),
+            runtime_dir: self.runtime_dir.clone()
+        };
+    }
+
+    # List all installed language runtimes
+    func list_installed(&self) -> Vec[String] {
+        var result = Vec.new();
+        var langs_to_check = [
+            "python", "rust", "c", "c++", "java", "zig",
+            "go", "ruby", "js", "lua", "julia", "r"
+        ];
+        for (var i = 0; i < 12; i += 1) {
+            var lang = langs_to_check[i];
+            var path = self.runtime_dir.clone() + "/" + lang;
+            if (dir_exists(&path)) {
+                result.push(String.from(lang) + " (installed)");
+            }
+        }
+        return result;
+    }
+}
+
+class LangRuntimeInstaller {
+    var lang_id: i32;
+    var version: String;
+    var runtime_dir: String;
+
+    func run(&self) -> Result[String, String] {
+        if (self.lang_id == 0) { return self.install_python(); }
+        if (self.lang_id == 1) { return self.install_rust(); }
+        if (self.lang_id == 2 || self.lang_id == 3) { return self.install_c_cpp(); }
+        if (self.lang_id == 4) { return self.install_java(); }
+        if (self.lang_id == 5) { return self.install_zig(); }
+        if (self.lang_id == 6) { return self.install_go(); }
+        if (self.lang_id == 8) { return self.install_node(); }
+        if (self.lang_id == 9) { return self.install_lua(); }
+        return Result.err_val(String.from("No installer for lang_id ") + int_to_str(self.lang_id));
+    }
+
+    func install_python(&self) -> Result[String, String] {
+        # Strategy: try pyenv first, then deadsnakes PPA, then compile from source
+        println("bonfort: checking pyenv...");
+        if (cmd_exists("pyenv")) {
+            var r = proc_run_wait("pyenv", &["install", &self.version]);
+            if (r == 0) { return Result.ok_val(String.from("Installed via pyenv")); }
+        }
+        # Fallback: apt-get (Debian/Ubuntu)
+        println("bonfort: trying system package manager...");
+        var pkg = String.from("python") + &self.version.split('.').get(0).unwrap() + "." + &self.version.split('.').get(1).unwrap();
+        var r2 = proc_run_wait("apt-get", &["install", "-y", &pkg]);
+        if (r2 == 0) { return Result.ok_val(String.from("Installed via apt-get")); }
+        # Fallback: compile from source (via official tarballs)
+        return self.install_from_source("https://www.python.org/ftp/python/" + &self.version + "/Python-" + &self.version + ".tgz");
+    }
+    func install_rust(&self) -> Result[String, String] {
+        # Use rustup
+        if (cmd_exists("rustup")) {
+            proc_run_wait("rustup", &["toolchain", "install", &self.version]);
+            return Result.ok_val(String.from("Installed via rustup"));
+        }
+        # Install rustup first
+        var r = proc_run_wait("sh", &["-c", "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"]);
+        if (r == 0) { return Result.ok_val(String.from("rustup installed, then rust " + &self.version)); }
+        return Result.err_val(String.from("Failed to install Rust"));
+    }
+    func install_c_cpp(&self) -> Result[String, String] {
+        # Use system package manager
+        var r = proc_run_wait("apt-get", &["install", "-y", "gcc", "g++", "clang"]);
+        if (r == 0) { return Result.ok_val(String.from("gcc/clang installed")); }
+        return Result.err_val(String.from("Failed to install C/C++ compiler"));
+    }
+    func install_java(&self) -> Result[String, String] {
+        var pkg = String.from("openjdk-") + &self.version.split('.').get(0).unwrap() + "-jdk";
+        var r = proc_run_wait("apt-get", &["install", "-y", &pkg]);
+        if (r == 0) { return Result.ok_val(String.from("OpenJDK installed")); }
+        return Result.err_val(String.from("Failed to install Java"));
+    }
+    func install_zig(&self) -> Result[String, String] {
+        var url = "https://ziglang.org/download/" + &self.version + "/zig-linux-x86_64-" + &self.version + ".tar.xz";
+        return self.install_from_source(url);
+    }
+    func install_go(&self) -> Result[String, String] {
+        var url = "https://go.dev/dl/go" + &self.version + ".linux-amd64.tar.gz";
+        return self.install_from_source(url);
+    }
+    func install_node(&self) -> Result[String, String] {
+        # Use nvm
+        if (cmd_exists("nvm")) {
+            proc_run_wait("nvm", &["install", &self.version]);
+            return Result.ok_val(String.from("Node installed via nvm"));
+        }
+        var r = proc_run_wait("apt-get", &["install", "-y", "nodejs", "npm"]);
+        if (r == 0) { return Result.ok_val(String.from("Node.js installed")); }
+        return Result.err_val(String.from("Failed to install Node.js"));
+    }
+    func install_lua(&self) -> Result[String, String] {
+        var r = proc_run_wait("apt-get", &["install", "-y", "lua5.4"]);
+        if (r == 0) { return Result.ok_val(String.from("Lua installed")); }
+        return Result.err_val(String.from("Failed to install Lua"));
+    }
+    func install_from_source(&self, url: &str) -> Result[String, String] {
+        var archive = "/tmp/nux_lang_install_" + int_to_str(rand_i32());
+        println("bonfort: downloading " + url + " ...");
+        var dl = proc_run_wait("curl", &["-L", "-o", &archive, url]);
+        if (dl != 0) { return Result.err_val(String.from("Download failed: ") + url); }
+        var dest = self.runtime_dir.clone() + "/" + Lang.to_str(self.lang_id) + "/" + &self.version;
+        dir_create_all(&dest);
+        proc_run_wait("tar", &["xf", &archive, "-C", &dest, "--strip-components=1"]);
+        file_delete(&archive);
+        return Result.ok_val(dest);
+    }
+}
+
+# ===== BONFORT CLI MAIN =====
+class Bonfort {
+    var config: BonfortConfig;
+    var registry: RegistryClient;
+    var lang_installer: LangInstaller;
+
+    func new() -> @own Bonfort {
+        var cfg = BonfortConfig {};
+        var reg = RegistryClient.new(&cfg);
+        var li = LangInstaller.new(&cfg);
+        return Bonfort { config: cfg, registry: reg, lang_installer: li };
+    }
+
+    func run(args: Vec[String]) -> i32 {
+        if (args.len < 2) { self.help(); return 0; }
+        var cmd = args.get(1).unwrap().as_str();
+        if (cmd == "install") { return self.cmd_install(&args); }
+        if (cmd == "remove")  { return self.cmd_remove(&args); }
+        if (cmd == "list")    { return self.cmd_list(); }
+        if (cmd == "search")  { return self.cmd_search(&args); }
+        if (cmd == "update")  { return self.cmd_update(); }
+        if (cmd == "lang")    { return self.cmd_lang(&args); }
+        if (cmd == "init")    { return self.cmd_init(&args); }
+        if (cmd == "self-update") { return self.cmd_self_update(); }
+        println("bonfort: unknown command: " + cmd);
+        self.help();
+        return 1;
+    }
+
+    func cmd_install(&self, args: &Vec[String]) -> i32 {
+        if (args.len < 3) { println("Usage: bonfort install <pkg[@version]>"); return 1; }
+        var spec = args.get(2).unwrap();
+        var parts = spec.split('@');
+        var name = parts.get(0).unwrap();
+        var version = if (parts.len > 1) { parts.get(1).unwrap().as_str() } else { "latest" };
+        println("bonfort: resolving " + name + "@" + version + " ...");
+        var info = self.registry.get_info(name, version);
+        if (info.is_none()) {
+            println("bonfort: package not found: " + name);
+            return 1;
+        }
+        var pkg = info.unwrap();
+        var archive = self.registry.download(&pkg, &self.config.cache_dir);
+        if (archive.is_err()) { println("bonfort: " + archive.unwrap_err()); return 1; }
+        self.unpack_and_install(&pkg, &archive.unwrap());
+        println("bonfort: installed " + name + "@" + &pkg.version);
+        return 0;
+    }
+
+    func cmd_remove(&self, args: &Vec[String]) -> i32 {
+        if (args.len < 3) { println("Usage: bonfort remove <pkg>"); return 1; }
+        var name = args.get(2).unwrap();
+        var pkg_dir = self.config.install_dir.clone() + "/" + name;
+        if (dir_exists(&pkg_dir)) {
+            dir_remove_all(&pkg_dir);
+            println("bonfort: removed " + name);
+        } else {
+            println("bonfort: not installed: " + name);
+        }
+        return 0;
+    }
+
+    func cmd_list(&self) -> i32 {
+        println("bonfort: installed packages:");
+        var pkgs = dir_list(&self.config.install_dir);
+        for (var i = 0; i < pkgs.len; i += 1) {
+            println("  " + pkgs.get(i).unwrap());
+        }
+        return 0;
+    }
+
+    func cmd_search(&self, args: &Vec[String]) -> i32 {
+        if (args.len < 3) { println("Usage: bonfort search <query>"); return 1; }
+        var q = args.get(2).unwrap();
+        var results = self.registry.search(q);
+        if (results.is_empty()) { println("bonfort: no results for: " + q); return 0; }
+        for (var i = 0; i < results.len; i += 1) {
+            var p = results.get(i).unwrap();
+            println(p.name + "@" + p.version + " — " + p.description);
+        }
+        return 0;
+    }
+
+    func cmd_update(&self) -> i32 {
+        println("bonfort: updating all packages...");
+        # Read bonfort.toml, resolve latest compatible versions, reinstall
+        return 0;
+    }
+
+    func cmd_lang(&self, args: &Vec[String]) -> i32 {
+        if (args.len < 3) { println("Usage: bonfort lang [add|list|remove] [lang@version]"); return 1; }
+        var sub = args.get(2).unwrap().as_str();
+        if (sub == "list") {
+            println("bonfort: installed language runtimes:");
+            var list = self.lang_installer.list_installed();
+            for (var i = 0; i < list.len; i += 1) {
+                println("  " + list.get(i).unwrap());
+            }
+            return 0;
+        }
+        if (sub == "add") {
+            if (args.len < 4) { println("Usage: bonfort lang add <lang@version>"); return 1; }
+            var spec = args.get(3).unwrap();
+            var parts = spec.split('@');
+            var lang = parts.get(0).unwrap().as_str();
+            var ver = if (parts.len > 1) { parts.get(1).unwrap().as_str() } else { "latest" };
+            var r = self.lang_installer.install(lang, ver);
+            if (r.is_err()) { println("bonfort: " + r.unwrap_err()); return 1; }
+            println("bonfort: " + lang + "@" + ver + " ready for use in LAG");
+            return 0;
+        }
+        return 1;
+    }
+
+    func cmd_init(&self, args: &Vec[String]) -> i32 {
+        var name = if (args.len > 2) { args.get(2).unwrap().as_str() } else { "my-nux-project" };
+        var manifest = BonfortManifest.new(String.from(name), String.from("0.1.0"));
+        file_write("bonfort.toml", &manifest.to_toml());
+        println("bonfort: created bonfort.toml");
+        println("bonfort: run `bonfort install` to install dependencies");
+        return 0;
+    }
+
+    func cmd_self_update(&self) -> i32 {
+        println("bonfort: updating bonfort itself...");
+        var r = proc_run_wait("sh", &["-c", "curl -sSf https://install.nux-lang.org/bonfort | sh"]);
+        if (r == 0) { println("bonfort: updated successfully"); } else { println("bonfort: update failed"); }
+        return r;
+    }
+
+    func unpack_and_install(&self, pkg: &PackageInfo, archive: &str) {
+        var dest = self.config.install_dir.clone() + "/" + &pkg.name;
+        dir_create_all(&dest);
+        proc_run_wait("tar", &["xf", archive, "-C", &dest, "--strip-components=1"]);
+    }
+
+    func help(&self) {
+        println("Bonfort Package Manager v" + &self.config.bonfort_version);
+        println("Usage: bonfort <command> [args]");
+        println("");
+        println("Commands:");
+        println("  init [name]            Create a new Nux project");
+        println("  install <pkg[@ver]>    Install a Nux package");
+        println("  remove <pkg>           Remove a package");
+        println("  list                   List installed packages");
+        println("  search <query>         Search the registry");
+        println("  update                 Update all packages");
+        println("  lang list              List installed language runtimes");
+        println("  lang add <lang@ver>    Install a language runtime for LAG");
+        println("  lang add python@3.14.3 Install Python 3.14.3 for LAG");
+        println("  lang add rust@1.78     Install Rust 1.78 for LAG");
+        println("  self-update            Update bonfort itself");
+    }
+}
+
+# ===== ENTRYPOINT =====
+func main(args: Vec[String]) -> i32 {
+    var bonfort = Bonfort.new();
+    return bonfort.run(args);
+}

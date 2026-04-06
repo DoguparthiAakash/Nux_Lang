@@ -1,0 +1,215 @@
+# Web Scraper Example
+# Demonstrates using JavaScript's Puppeteer with Nux orchestration
+
+import std.polyglot
+import std.interop
+import std.json
+
+# Import JavaScript libraries
+import javascript:puppeteer
+
+# Define JavaScript scraping functions
+@javascript {
+    const puppeteer = require('puppeteer');
+    
+    async function scrapeWebsite(url, selectors) {
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox']
+        });
+        
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle2' });
+        
+        const data = await page.evaluate((selectors) => {
+            const results = {};
+            
+            for (const [key, selector] of Object.entries(selectors)) {
+                const elements = document.querySelectorAll(selector);
+                results[key] = Array.from(elements).map(el => ({
+                    text: el.textContent.trim(),
+                    html: el.innerHTML,
+                    href: el.href || null
+                }));
+            }
+            
+            return results;
+        }, selectors);
+        
+        await browser.close();
+        return data;
+    }
+    
+    async function scrapeMultiplePages(urls, selectors) {
+        const results = [];
+        
+        for (const url of urls) {
+            console.log(`Scraping: ${url}`);
+            const data = await scrapeWebsite(url, selectors);
+            results.push({
+                url: url,
+                data: data,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        return results;
+    }
+    
+    async function takeScreenshot(url, outputPath) {
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.goto(url, { waitUntil: 'networkidle2' });
+        await page.screenshot({ path: outputPath, fullPage: true });
+        await browser.close();
+        return outputPath;
+    }
+}
+
+# Nux orchestration code
+func main() {
+    print("=== Web Scraper with JavaScript/Puppeteer Integration ===\n")
+    
+    # Configuration
+    var target_urls = [
+        "https://news.ycombinator.com",
+        "https://www.reddit.com/r/programming",
+        "https://github.com/trending"
+    ]
+    
+    var selectors = {
+        "titles": ".title a, .post-title, h1.h3",
+        "links": "a.storylink, a.title, h1.h3 a",
+        "scores": ".score, .score-unvoted"
+    }
+    
+    # Step 1: Scrape websites
+    print("Step 1: Scraping websites...")
+    var promise_id = javascript.scrapeMultiplePages(target_urls, selectors)
+    
+    # Wait for async operation to complete
+    var scrape_results = await_promise(promise_id)
+    print("Scraped " + str(len(scrape_results)) + " websites\n")
+    
+    # Step 2: Process results in Nux
+    print("Step 2: Processing scraped data...")
+    var processed_data = process_scrape_results(scrape_results)
+    
+    print("Total items found: " + str(processed_data["total_items"]))
+    print("Unique domains: " + str(len(processed_data["domains"])) + "\n")
+    
+    # Step 3: Filter and rank
+    print("Step 3: Filtering and ranking...")
+    var top_items = rank_items(processed_data["items"], 10)
+    
+    print("Top 10 items:")
+    for i in range(len(top_items)) {
+        var item = top_items[i]
+        print(str(i + 1) + ". " + item["title"] + " (" + item["url"] + ")")
+    }
+    print()
+    
+    # Step 4: Take screenshots
+    print("Step 4: Taking screenshots...")
+    for url in target_urls {
+        var screenshot_path = "screenshots/" + extract_domain(url) + ".png"
+        javascript.takeScreenshot(url, screenshot_path)
+        print("Screenshot saved: " + screenshot_path)
+    }
+    print()
+    
+    # Step 5: Save results
+    print("Step 5: Saving results...")
+    save_results(processed_data, "scrape_results.json")
+    print("Results saved to scrape_results.json\n")
+    
+    # Step 6: Generate report
+    print("Step 6: Generating report...")
+    generate_report(processed_data)
+    
+    print("\n=== Scraping Complete ===")
+}
+
+# Nux helper functions
+func process_scrape_results(results: array) -> map {
+    var all_items = []
+    var domains = {}
+    var total_items = 0
+    
+    for result in results {
+        var url = result["url"]
+        var domain = extract_domain(url)
+        
+        if !domains.has_key(domain) {
+            domains[domain] = 0
+        }
+        
+        var data = result["data"]
+        
+        # Process titles
+        if data.has_key("titles") {
+            for title_elem in data["titles"] {
+                var item = {
+                    "title": title_elem["text"],
+                    "url": url,
+                    "domain": domain,
+                    "timestamp": result["timestamp"]
+                }
+                all_items.push(item)
+                domains[domain] += 1
+                total_items += 1
+            }
+        }
+    }
+    
+    return {
+        "items": all_items,
+        "domains": domains,
+        "total_items": total_items
+    }
+}
+
+func rank_items(items: array, top_n: int) -> array {
+    # Simple ranking by title length (in production, use more sophisticated ranking)
+    var ranked = items.copy()
+    
+    # Sort by title length (longer titles often more descriptive)
+    ranked.sort(func(a, b) { len(b["title"]) - len(a["title"]) })
+    
+    # Return top N
+    return ranked[0:top_n]
+}
+
+func extract_domain(url: string) -> string {
+    # Extract domain from URL
+    var parts = url.split("#")
+    if len(parts) > 1 {
+        var domain_parts = parts[1].split("/")
+        return domain_parts[0].replace("www.", "")
+    }
+    return url
+}
+
+func save_results(data: map, filename: string) {
+    var json_str = json.dumps(data, indent=2)
+    file.write(filename, json_str)
+}
+
+func generate_report(data: map) {
+    var report = "# Web Scraping Report\n\n"
+    report += "## Summary\n"
+    report += "- Total items scraped: " + str(data["total_items"]) + "\n"
+    report += "- Unique domains: " + str(len(data["domains"])) + "\n\n"
+    
+    report += "## Domains\n"
+    for domain in data["domains"].keys() {
+        report += "- " + domain + ": " + str(data["domains"][domain]) + " items\n"
+    }
+    
+    file.write("scrape_report.md", report)
+    print("Report saved to scrape_report.md")
+}
+
+# Run the scraper
+main()

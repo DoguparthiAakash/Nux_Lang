@@ -1,0 +1,412 @@
+# Nux Standard Library - Computer Vision
+# Image processing and computer vision algorithms
+
+# ===== IMAGE REPRESENTATION =====
+
+func image_create(width, height, channels) {
+    # Create blank image
+    var size = width * height * channels;
+    return {
+        width: width,
+        height: height,
+        channels: channels,
+        data: arr_fill(size, 0)
+    };
+}
+
+func image_getPixel(img, x, y) {
+    # Get pixel at (x, y)
+    var index = (y * img.width + x) * img.channels;
+    var pixel = [];
+    var i: int = 0;
+    
+    while (i < img.channels) {
+        arr_push(pixel, img.data[index + i]);
+        i = i + 1;
+    }
+    
+    return pixel;
+}
+
+func image_setPixel(img, x, y, pixel) {
+    # Set pixel at (x, y)
+    var index = (y * img.width + x) * img.channels;
+    var i: int = 0;
+    
+    while (i < img.channels) {
+        img.data[index + i] = pixel[i];
+        i = i + 1;
+    }
+}
+
+# ===== COLOR CONVERSIONS =====
+
+func image_rgbToGrayscale(img) {
+    # Convert RGB to grayscale
+    var gray = image_create(img.width, img.height, 1);
+    var y: int = 0;
+    
+    while (y < img.height) {
+        var x: int = 0;
+        while (x < img.width) {
+            var pixel = image_getPixel(img, x, y);
+            var grayValue = 0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2];
+            image_setPixel(gray, x, y, [grayValue]);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return gray;
+}
+
+func image_rgbToHsv(r, g, b) {
+    # Convert RGB to HSV
+    var max = max(max(r, g), b);
+    var min = min(min(r, g), b);
+    var delta = max - min;
+    
+    var h: int = 0;
+    var s: int = 0;
+    var v = max;
+    
+    if (delta > 0) {
+        s = delta / max;
+        
+        if (max == r) {
+            h = 60 * ((g - b) / delta % 6);
+        } else if (max == g) {
+            h = 60 * ((b - r) / delta + 2);
+        } else {
+            h = 60 * ((r - g) / delta + 4);
+        }
+    }
+    
+    return [h, s, v];
+}
+
+# ===== FILTERS =====
+
+func image_blur(img, kernelSize) {
+    # Box blur filter
+    var result = image_create(img.width, img.height, img.channels);
+    var half = kernelSize / 2;
+    var y: int = 0;
+    
+    while (y < img.height) {
+        var x: int = 0;
+        while (x < img.width) {
+            var sum = arr_fill(img.channels, 0);
+            var count: int = 0;
+            
+            var ky = -half;
+            while (ky <= half) {
+                var kx = -half;
+                while (kx <= half) {
+                    var nx = x + kx;
+                    var ny = y + ky;
+                    
+                    if (nx >= 0 && nx < img.width && ny >= 0 && ny < img.height) {
+                        var pixel = image_getPixel(img, nx, ny);
+                        var c: int = 0;
+                        while (c < img.channels) {
+                            sum[c] = sum[c] + pixel[c];
+                            c = c + 1;
+                        }
+                        count = count + 1;
+                    }
+                    
+                    kx = kx + 1;
+                }
+                ky = ky + 1;
+            }
+            
+            var c: int = 0;
+            while (c < img.channels) {
+                sum[c] = sum[c] / count;
+                c = c + 1;
+            }
+            
+            image_setPixel(result, x, y, sum);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return result;
+}
+
+func image_sharpen(img) {
+    # Sharpen filter
+    var kernel = [
+        [0, -1, 0],
+        [-1, 5, -1],
+        [0, -1, 0]
+    ];
+    
+    return image_convolve(img, kernel);
+}
+
+func image_edgeDetect(img) {
+    # Sobel edge detection
+    var sobelX = [
+        [-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1]
+    ];
+    
+    var sobelY = [
+        [-1, -2, -1],
+        [0, 0, 0],
+        [1, 2, 1]
+    ];
+    
+    var gx = image_convolve(img, sobelX);
+    var gy = image_convolve(img, sobelY);
+    
+    # Combine gradients
+    var result = image_create(img.width, img.height, img.channels);
+    var i: int = 0;
+    
+    while (i < arr_length(result.data)) {
+        result.data[i] = sqrt(gx.data[i] * gx.data[i] + gy.data[i] * gy.data[i]);
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func image_convolve(img, kernel) {
+    # Apply convolution kernel
+    var result = image_create(img.width, img.height, img.channels);
+    var kSize = arr_length(kernel);
+    var half = kSize / 2;
+    var y: int = 0;
+    
+    while (y < img.height) {
+        var x: int = 0;
+        while (x < img.width) {
+            var sum = arr_fill(img.channels, 0);
+            
+            var ky: int = 0;
+            while (ky < kSize) {
+                var kx: int = 0;
+                while (kx < kSize) {
+                    var nx = x + kx - half;
+                    var ny = y + ky - half;
+                    
+                    if (nx >= 0 && nx < img.width && ny >= 0 && ny < img.height) {
+                        var pixel = image_getPixel(img, nx, ny);
+                        var weight = kernel[ky][kx];
+                        
+                        var c: int = 0;
+                        while (c < img.channels) {
+                            sum[c] = sum[c] + pixel[c] * weight;
+                            c = c + 1;
+                        }
+                    }
+                    
+                    kx = kx + 1;
+                }
+                ky = ky + 1;
+            }
+            
+            image_setPixel(result, x, y, sum);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return result;
+}
+
+# ===== TRANSFORMATIONS =====
+
+func image_resize(img, newWidth, newHeight) {
+    # Resize image (nearest neighbor)
+    var result = image_create(newWidth, newHeight, img.channels);
+    var y: int = 0;
+    
+    while (y < newHeight) {
+        var x: int = 0;
+        while (x < newWidth) {
+            var srcX = floor(x * img.width / newWidth);
+            var srcY = floor(y * img.height / newHeight);
+            var pixel = image_getPixel(img, srcX, srcY);
+            image_setPixel(result, x, y, pixel);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return result;
+}
+
+func image_rotate(img, angle) {
+    # Rotate image
+    var rad = angle * PI / 180;
+    var cos = cos(rad);
+    var sin = sin(rad);
+    
+    var result = image_create(img.width, img.height, img.channels);
+    var centerX = img.width / 2;
+    var centerY = img.height / 2;
+    var y: int = 0;
+    
+    while (y < img.height) {
+        var x: int = 0;
+        while (x < img.width) {
+            var dx = x - centerX;
+            var dy = y - centerY;
+            
+            var srcX = floor(dx * cos - dy * sin + centerX);
+            var srcY = floor(dx * sin + dy * cos + centerY);
+            
+            if (srcX >= 0 && srcX < img.width && srcY >= 0 && srcY < img.height) {
+                var pixel = image_getPixel(img, srcX, srcY);
+                image_setPixel(result, x, y, pixel);
+            }
+            
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return result;
+}
+
+func image_crop(img, x, y, width, height) {
+    # Crop image
+    var result = image_create(width, height, img.channels);
+    var dy: int = 0;
+    
+    while (dy < height) {
+        var dx: int = 0;
+        while (dx < width) {
+            var pixel = image_getPixel(img, x + dx, y + dy);
+            image_setPixel(result, dx, dy, pixel);
+            dx = dx + 1;
+        }
+        dy = dy + 1;
+    }
+    
+    return result;
+}
+
+func image_flip(img, horizontal) {
+    # Flip image horizontally or vertically
+    var result = image_create(img.width, img.height, img.channels);
+    var y: int = 0;
+    
+    while (y < img.height) {
+        var x: int = 0;
+        while (x < img.width) {
+            var srcX = x;
+            var srcY = y;
+            
+            if (horizontal) {
+                srcX = img.width - 1 - x;
+            } else {
+                srcY = img.height - 1 - y;
+            }
+            
+            var pixel = image_getPixel(img, srcX, srcY);
+            image_setPixel(result, x, y, pixel);
+            x = x + 1;
+        }
+        y = y + 1;
+    }
+    
+    return result;
+}
+
+# ===== FEATURE DETECTION =====
+
+func image_findCorners(img) {
+    # Harris corner detection (simplified)
+    var corners = [];
+    var gray = image_rgbToGrayscale(img);
+    
+    # TODO: Implement full Harris corner detection
+    
+    return corners;
+}
+
+func image_findContours(img) {
+    # Find contours in binary image
+    var contours = [];
+    
+    # TODO: Implement contour detection
+    
+    return contours;
+}
+
+# ===== HISTOGRAM =====
+
+func image_histogram(img) {
+    # Calculate histogram
+    var hist = arr_fill(256, 0);
+    var i: int = 0;
+    
+    while (i < arr_length(img.data)) {
+        var value = floor(img.data[i]);
+        hist[value] = hist[value] + 1;
+        i = i + 1;
+    }
+    
+    return hist;
+}
+
+func image_equalizeHistogram(img) {
+    # Histogram equalization
+    var hist = image_histogram(img);
+    var cdf = [];
+    var sum: int = 0;
+    var i: int = 0;
+    
+    # Calculate CDF
+    while (i < 256) {
+        sum = sum + hist[i];
+        arr_push(cdf, sum);
+        i = i + 1;
+    }
+    
+    # Normalize
+    var total = arr_length(img.data);
+    var result = image_create(img.width, img.height, img.channels);
+    i = 0;
+    
+    while (i < arr_length(img.data)) {
+        var value = floor(img.data[i]);
+        result.data[i] = floor(cdf[value] * 255 / total);
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+# ===== MORPHOLOGICAL OPERATIONS =====
+
+func image_erode(img, kernelSize) {
+    # Morphological erosion
+    # TODO: Implement erosion
+    return img;
+}
+
+func image_dilate(img, kernelSize) {
+    # Morphological dilation
+    # TODO: Implement dilation
+    return img;
+}
+
+func image_open(img, kernelSize) {
+    # Morphological opening (erosion then dilation)
+    var eroded = image_erode(img, kernelSize);
+    return image_dilate(eroded, kernelSize);
+}
+
+func image_close(img, kernelSize) {
+    # Morphological closing (dilation then erosion)
+    var dilated = image_dilate(img, kernelSize);
+    return image_erode(dilated, kernelSize);
+}

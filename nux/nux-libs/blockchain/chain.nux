@@ -1,10 +1,10 @@
-// Nux Blockchain Library
-// Uses NuxBlockchain through FFI
+# Nux Blockchain Library
+# Uses NuxBlockchain through FFI
 
 import "std/io";
 import "nux-libs/crypto/hash";
 
-// Blockchain class
+# Blockchain class
 class Blockchain {
     var handle;
     
@@ -34,7 +34,7 @@ class Blockchain {
     }
 }
 
-// Transaction class
+# Transaction class
 class Transaction {
     var sender;
     var recipient;
@@ -66,7 +66,7 @@ class Transaction {
     }
 }
 
-// Wallet class
+# Wallet class
 class Wallet {
     var public_key;
     var private_key;
@@ -86,7 +86,7 @@ class Wallet {
     }
 }
 
-// Smart Contract
+# Smart Contract
 class SmartContract {
     var code;
     var state;
@@ -97,8 +97,8 @@ class SmartContract {
     }
     
     func execute(params) {
-        // Execute contract code with params
-        var result = eval(this.code);  // Simplified
+        # Execute contract code with params
+        var result = eval(this.code);  # Simplified
         return result;
     }
     
@@ -111,11 +111,11 @@ class SmartContract {
     }
 }
 
-// Example: Cryptocurrency
+# Example: Cryptocurrency
 func create_cryptocurrency() {
     var chain = new Blockchain(4);
     
-    // Create wallets
+    # Create wallets
     var alice = new Wallet();
     var bob = new Wallet();
     var miner = new Wallet();
@@ -123,28 +123,28 @@ func create_cryptocurrency() {
     println("Alice address: " + alice.get_address());
     println("Bob address: " + bob.get_address());
     
-    // Create and sign transaction
+    # Create and sign transaction
     var tx1 = new Transaction(alice.get_address(), bob.get_address(), 50);
     alice.sign_transaction(tx1);
     chain.add_transaction(tx1.sender, tx1.recipient, tx1.amount);
     
-    // Mine block
+    # Mine block
     println("\nMining block...");
     chain.mine_pending_transactions(miner.get_address());
     
-    // Check balances
+    # Check balances
     println("\nBalances:");
     println("Alice: " + chain.get_balance(alice.get_address()));
     println("Bob: " + chain.get_balance(bob.get_address()));
     println("Miner: " + chain.get_balance(miner.get_address()));
     
-    // Validate chain
+    # Validate chain
     println("\nChain valid: " + chain.is_valid());
     
     return chain;
 }
 
-// Example: NFT Marketplace
+# Example: NFT Marketplace
 class NFT {
     var id;
     var owner;
@@ -156,8 +156,8 @@ class NFT {
         this.owner = owner;
         this.metadata = metadata;
         
-        // Create smart contract for NFT
-        var code = "
+        # Create smart contract for NFT
+        var code: string = "
             func transfer(new_owner) {
                 this.set_state('owner', new_owner);
             }
@@ -181,18 +181,18 @@ func create_nft_marketplace() {
     var chain = new Blockchain(3);
     var nfts = [];
     
-    // Mint NFT
+    # Mint NFT
     var artist = new Wallet();
     var nft = new NFT(1, artist.get_address(), {
         "name": "Digital Art #1",
         "description": "Beautiful artwork",
-        "image": "ipfs://..."
+        "image": "ipfs:#..."
     });
     
     nfts.push(nft);
     println("NFT minted: " + nft.metadata["name"]);
     
-    // Transfer NFT
+    # Transfer NFT
     var buyer = new Wallet();
     nft.transfer(buyer.get_address());
     

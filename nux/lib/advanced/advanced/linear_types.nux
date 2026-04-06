@@ -1,0 +1,262 @@
+# Nux - Linear Types & Ownership
+# Compile-time resource management without garbage collection
+
+# Linear types - must be used exactly once
+linear class File {
+    var handle: int;
+    
+    func new(path: string) -> File {
+        var handle = ffi_open(path);
+        return File { handle: handle };
+    }
+    
+    # Consuming method (takes ownership)
+    func read(consume this) -> string {
+        var content = ffi_read(this.handle);
+        ffi_close(this.handle);  # Automatically closed!
+        return content;
+    }
+    
+    # Borrowing method (temporary access)
+    func get_size(borrow this) -> int {
+        return ffi_file_size(this.handle);
+    }
+}
+
+# Ownership transfer
+func process_file(consume file: File) -> string {
+    return file.read();  # File consumed here
+}
+
+# Compile error: file used after move!
+func bad_example() {
+    var file = File.new("data.txt");
+    var content = process_file(file);  # file moved
+    # var size = file.get_size();  # ERROR: file already consumed!
+}
+
+# Affine types - use at most once
+affine class Socket {
+    var fd: int;
+    
+    func send(consume this, data: string) -> Result<void, Error> {
+        var result = ffi_send(this.fd, data);
+        ffi_close(this.fd);
+        return result;
+    }
+}
+
+# Capability-based security
+capability ReadFile {
+    func read(path: string) -> string;
+}
+
+capability WriteFile {
+    func write(path: string, content: string) -> void;
+}
+
+capability NetworkAccess {
+    func connect(host: string, port: int) -> Socket;
+}
+
+# Functions require explicit capabilities
+func save_data(data: string) with WriteFile {
+    WriteFile.write("output.txt", data);
+}
+
+# Compile error: missing capability!
+func unauthorized() {
+    # save_data("secret");  # ERROR: no WriteFile capability!
+}
+
+# Grant capabilities explicitly
+func authorized() with WriteFile {
+    save_data("public data");  # OK!
+}
+
+# Region-based memory management
+region<'a> {
+    var data: &'a [int] = allocate_in_region(1000);
+    
+    # Use data...
+    
+    # Automatically freed when region ends!
+}
+
+# Lifetime annotations
+func longest<'a>(x: &'a string, y: &'a string) -> &'a string {
+    if (x.length > y.length) {
+        return x;
+    } else {
+        return y;
+    }
+}
+
+# Borrowing rules
+class BorrowChecker {
+    var data: [int];
+    
+    # Immutable borrow
+    func get(borrow this, index: int) -> int {
+        return this.data[index];
+    }
+    
+    # Mutable borrow
+    func set(borrow mut this, index: int, value: int) {
+        this.data[index] = value;
+    }
+}
+
+# Compile error: cannot borrow mutably while immutably borrowed!
+func borrow_conflict() {
+    var checker = BorrowChecker { data: [1, 2, 3] };
+    
+    var x = checker.get(0);  # Immutable borrow
+    # checker.set(0, 42);  # ERROR: cannot borrow mutably!
+    println(x);  # Immutable borrow ends here
+    
+    checker.set(0, 42);  # OK now!
+}
+
+# Move semantics
+func take_ownership(consume vec: Vec<int>) {
+    # vec is moved here
+}
+
+func test_move() {
+    var v = Vec<int>.new();
+    take_ownership(v);  # v moved
+    # println(v);  # ERROR: v no longer valid!
+}
+
+# Copy vs Move
+@copy
+class Point {  # Copyable
+    var x: int;
+    var y: int;
+}
+
+class BigData {  # Move-only (default)
+    var data: [int; 1000000];
+}
+
+func test_copy_move() {
+    var p1 = Point { x: 1, y: 2 };
+    var p2 = p1;  # Copied
+    println(p1.x);  # OK, p1 still valid
+    
+    var d1 = BigData { data: [...] };
+    var d2 = d1;  # Moved
+    # println(d1.data[0]);  # ERROR: d1 moved!
+}
+
+# Session types for protocols
+session protocol FileTransfer {
+    Send<string>;      # Send filename
+    Receive<int>;      # Receive file size
+    Send<[byte]>;      # Send file data
+    Receive<bool>;     # Receive confirmation
+    Close;
+}
+
+func file_transfer_client(consume channel: Channel<FileTransfer>) {
+    channel.send("document.pdf");
+    var size = channel.receive<int>();
+    channel.send(read_file_bytes("document.pdf"));
+    var success = channel.receive<bool>();
+    channel.close();
+}
+
+# Typestate pattern
+class Connection {
+    state Disconnected {
+        func connect(consume this) -> Connection<Connected> {
+            ffi_connect();
+            return Connection<Connected> { ... };
+        }
+    }
+    
+    state Connected {
+        func send(borrow mut this, data: string) {
+            ffi_send(data);
+        }
+        
+        func disconnect(consume this) -> Connection<Disconnected> {
+            ffi_disconnect();
+            return Connection<Disconnected> { ... };
+        }
+    }
+}
+
+# Compile error: cannot send on disconnected connection!
+func typestate_example() {
+    var conn = Connection<Disconnected>.new();
+    # conn.send("data");  # ERROR: wrong state!
+    
+    var conn2 = conn.connect();  # Now Connected
+    conn2.send("data");  # OK!
+    
+    var conn3 = conn2.disconnect();  # Back to Disconnected
+    # conn3.send("data");  # ERROR again!
+}
+
+# Phantom types for units
+class Distance<Unit> {
+    var value: float;
+}
+
+type Meters = Distance<"meters">;
+type Kilometers = Distance<"kilometers">;
+
+func add_meters(a: Meters, b: Meters) -> Meters {
+    return Meters { value: a.value + b.value };
+}
+
+# Compile error: type mismatch!
+func wrong_units() {
+    var m = Meters { value: 100.0 };
+    var km = Kilometers { value: 1.0 };
+    # var sum = add_meters(m, km);  # ERROR!
+}
+
+# Unique pointers (Box)
+class Box<T> {
+    linear var data: T;
+    
+    func new(value: T) -> Box<T> {
+        return Box<T> { data: value };
+    }
+    
+    func unwrap(consume this) -> T {
+        return this.data;
+    }
+}
+
+# Reference counting (Rc)
+class Rc<T> {
+    var data: T;
+    var ref_count: int;
+    
+    func clone(borrow this) -> Rc<T> {
+        this.ref_count += 1;
+        return this;
+    }
+    
+    func drop(consume this) {
+        this.ref_count -= 1;
+        if (this.ref_count == 0) {
+            # Free memory
+        }
+    }
+}
+
+# Atomic reference counting (Arc)
+class Arc<T> {
+    var data: T;
+    var ref_count: Atomic<int>;
+    
+    func clone(borrow this) -> Arc<T> {
+        this.ref_count.fetch_add(1);
+        return this;
+    }
+}

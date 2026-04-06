@@ -1,0 +1,29 @@
+# Standard Vision Library (Functional)
+
+func Vision_Alloc(w, h) {
+    return img_alloc(w, h);
+}
+
+func Vision_Free(handle) {
+    img_free(handle);
+}
+
+func Vision_Resize(handle, new_w, new_h) {
+    return img_resize(handle, new_w, new_h);
+}
+
+func Vision_Crop(handle, x, y, w, h) {
+    return img_crop(handle, x, y, w, h);
+}
+
+func Vision_Grayscale(handle) {
+    return img_grayscale(handle);
+}
+
+func Vision_Draw(handle, x, y) {
+    img_draw(handle, x, y);
+}
+
+func Vision_Capture(cam_id) {
+    return cam_capture(cam_id);
+}

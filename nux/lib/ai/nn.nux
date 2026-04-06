@@ -1,0 +1,402 @@
+# Nux v2.0 — Neural Network Layers & Model API
+
+# ===== PARAMETER (trainable tensor with grad tracking) =====
+class Parameter {
+    var tensor: Tensor;
+    var name: String;
+
+    func new(shape: Vec[usize], name: String) -> @own Parameter {
+        var t = Tensor.randn(shape);
+        t.requires_grad = true;
+        # He initialization scale = sqrt(2 / fan_in)
+        var fan_in = shape.get(0).unwrap() as f32;
+        t.mul_scalar_(sqrt_f32(2.0 / fan_in));
+        return Parameter { tensor: t, name: name };
+    }
+    func zeros(shape: Vec[usize], name: String) -> @own Parameter {
+        var t = Tensor.zeros(shape, DType.F32);
+        t.requires_grad = true;
+        return Parameter { tensor: t, name: name };
+    }
+}
+
+# ===== MODULE TRAIT (all layers implement this) =====
+# All layers must implement forward() and parameters()
+# Nux interfaces are declared with `interface`
+interface Module {
+    func forward(input: &Tensor) -> @own Tensor;
+    func parameters() -> Vec[*Parameter];
+    func train_mode(&mut self);
+    func eval_mode(&mut self);
+    func zero_grad(&mut self);
+}
+
+# ===== LINEAR (Dense) LAYER =====
+class Linear {
+    var weight: Parameter;  # [out, in]
+    var bias: Parameter;    # [out]
+    var in_features: usize;
+    var out_features: usize;
+    var training: bool = true;
+
+    func new(in_features: usize, out_features: usize) -> @own Linear {
+        var ws = Vec.new(); ws.push(out_features); ws.push(in_features);
+        var bs = Vec.new(); bs.push(out_features);
+        return Linear {
+            weight: Parameter.new(ws, String.from("weight")),
+            bias: Parameter.zeros(bs, String.from("bias")),
+            in_features: in_features,
+            out_features: out_features
+        };
+    }
+    func forward(&self, input: &Tensor) -> @own Tensor {
+        # out = input @ weight.T + bias
+        var wt = this.weight.tensor.transpose();
+        var out = input.matmul(&wt);
+        # Add bias (broadcast over batch dim)
+        var b = this.bias.tensor.clone();
+        out.add_(&b);
+        return out;
+    }
+    func parameters(&self) -> Vec[*Parameter] {
+        var p = Vec.new();
+        p.push(&this.weight);
+        p.push(&this.bias);
+        return p;
+    }
+}
+
+# ===== CONVOLUTION 2D =====
+class Conv2D {
+    var weight: Parameter;  # [out_ch, in_ch, kH, kW]
+    var bias: Parameter;    # [out_ch]
+    var in_channels: usize;
+    var out_channels: usize;
+    var kernel_size: usize;
+    var stride: usize;
+    var padding: usize;
+    var training: bool = true;
+
+    func new(in_ch: usize, out_ch: usize, k: usize, stride: usize, pad: usize) -> @own Conv2D {
+        var ws = Vec.new(); ws.push(out_ch); ws.push(in_ch); ws.push(k); ws.push(k);
+        var bs = Vec.new(); bs.push(out_ch);
+        return Conv2D {
+            weight: Parameter.new(ws, String.from("weight")),
+            bias: Parameter.zeros(bs, String.from("bias")),
+            in_channels: in_ch, out_channels: out_ch,
+            kernel_size: k, stride: stride, padding: pad
+        };
+    }
+    @simd(avx2, neon, rvv)
+    func forward(&self, input: &Tensor) -> @own Tensor {
+        # input: [batch, in_ch, H, W]
+        # output: [batch, out_ch, H_out, W_out]
+        var batch = input.shape.get(0).unwrap();
+        var in_h = input.shape.get(2).unwrap();
+        var in_w = input.shape.get(3).unwrap();
+        var out_h = (in_h + 2 * this.padding - this.kernel_size) // this.stride + 1;
+        var out_w = (in_w + 2 * this.padding - this.kernel_size) // this.stride + 1;
+        var shape = Vec.new();
+        shape.push(batch); shape.push(this.out_channels);
+        shape.push(out_h); shape.push(out_w);
+        var out = Tensor.zeros(shape, DType.F32);
+        # im2col + GEMM (JIT will vectorize via SIMD)
+        this.conv2d_im2col(input, &mut out);
+        return out;
+    }
+    func conv2d_im2col(&self, inp: &Tensor, out: &mut Tensor) { # im2col implementation }
+}
+
+# ===== BATCH NORMALIZATION =====
+class BatchNorm {
+    var gamma: Parameter;  # scale
+    var beta: Parameter;   # shift
+    var running_mean: Tensor;
+    var running_var: Tensor;
+    var eps: f32 = 1e-5;
+    var momentum: f32 = 0.1;
+    var training: bool = true;
+    var num_features: usize;
+
+    func new(num_features: usize) -> @own BatchNorm {
+        var s = Vec.new(); s.push(num_features);
+        return BatchNorm {
+            gamma: Parameter.new(s.clone(), String.from("gamma")),
+            beta: Parameter.zeros(s.clone(), String.from("beta")),
+            running_mean: Tensor.zeros(s.clone(), DType.F32),
+            running_var: Tensor.ones(s.clone(), DType.F32),
+            num_features: num_features
+        };
+    }
+    func forward(&self, x: &Tensor) -> @own Tensor {
+        if (this.training) {
+            # Compute batch mean and var
+            var mean = x.mean_all();
+            # Normalize, scale, shift
+            var xn = x.clone();
+            xn.add_scalar_(-mean);
+            var var_val = xn.pow_scalar(2.0).mean_all() + this.eps;
+            xn.div_scalar_(sqrt_f32(var_val));
+            var out = xn.mul_(&this.gamma.tensor);
+            out.add_(&this.beta.tensor);
+            return out;
+        } else {
+            var xn = x.clone();
+            xn.add_scalar_(-this.running_mean.mean_all());
+            xn.div_scalar_(sqrt_f32(this.running_var.mean_all() + this.eps));
+            xn.mul_(&this.gamma.tensor);
+            xn.add_(&this.beta.tensor);
+            return xn;
+        }
+    }
+}
+
+# ===== LAYER NORMALIZATION =====
+class LayerNorm {
+    var gamma: Parameter;
+    var beta: Parameter;
+    var normalized_shape: Vec[usize];
+    var eps: f32 = 1e-5;
+
+    func new(shape: Vec[usize]) -> @own LayerNorm {
+        var n = Tensor.numel_from_shape(&shape);
+        var ps = Vec.new(); ps.push(n);
+        return LayerNorm {
+            gamma: Parameter.new(ps.clone(), String.from("gamma")),
+            beta: Parameter.zeros(ps.clone(), String.from("beta")),
+            normalized_shape: shape
+        };
+    }
+    func forward(&self, x: &Tensor) -> @own Tensor {
+        var mean = x.mean_all();
+        var xn = x.clone();
+        xn.add_scalar_(-mean);
+        var var_val = xn.pow_scalar(2.0).mean_all() + this.eps;
+        xn.div_scalar_(sqrt_f32(var_val));
+        var out = xn;
+        out.mul_(&this.gamma.tensor);
+        out.add_(&this.beta.tensor);
+        return out;
+    }
+}
+
+# ===== DROPOUT =====
+class Dropout {
+    var p: f32;         # Drop prob
+    var training: bool = true;
+
+    func new(p: f32) -> @own Dropout { return Dropout { p: p }; }
+    func forward(&self, x: &Tensor) -> @own Tensor {
+        if (!this.training || this.p == 0.0) { return x.clone(); }
+        var mask = Tensor.zeros(x.shape.clone(), DType.F32);
+        var mp = mask.data as *f32;
+        var scale = 1.0 / (1.0 - this.p);
+        for (var i = 0; i < mask.numel; i += 1) {
+            mp[i] = if (rand_f32() > this.p) { scale } else { 0.0 };
+        }
+        return x.mul(&mask);
+    }
+}
+
+# ===== EMBEDDING =====
+class Embedding {
+    var weight: Parameter;  # [vocab_size, embed_dim]
+    var vocab_size: usize;
+    var embed_dim: usize;
+
+    func new(vocab_size: usize, embed_dim: usize) -> @own Embedding {
+        var s = Vec.new(); s.push(vocab_size); s.push(embed_dim);
+        return Embedding {
+            weight: Parameter.new(s, String.from("weight")),
+            vocab_size: vocab_size, embed_dim: embed_dim
+        };
+    }
+    func forward(&self, indices: &Tensor) -> @own Tensor {
+        # Lookup rows from weight matrix
+        var n = indices.numel;
+        var shape = Vec.new(); shape.push(n); shape.push(this.embed_dim);
+        var out = Tensor.zeros(shape, DType.F32);
+        var ip = indices.data as *i32;
+        var wp = this.weight.tensor.data as *f32;
+        var op = out.data as *f32;
+        for (var i = 0; i < n; i += 1) {
+            var row = ip[i] as usize;
+            memcpy(&op[i * this.embed_dim], &wp[row * this.embed_dim], this.embed_dim * 4);
+        }
+        return out;
+    }
+}
+
+# ===== MULTI-HEAD ATTENTION =====
+class MultiHeadAttention {
+    var q_proj: Linear;
+    var k_proj: Linear;
+    var v_proj: Linear;
+    var out_proj: Linear;
+    var num_heads: usize;
+    var head_dim: usize;
+    var scale: f32;
+
+    func new(embed_dim: usize, num_heads: usize) -> @own MultiHeadAttention {
+        var head_dim = embed_dim // num_heads;
+        return MultiHeadAttention {
+            q_proj: Linear.new(embed_dim, embed_dim),
+            k_proj: Linear.new(embed_dim, embed_dim),
+            v_proj: Linear.new(embed_dim, embed_dim),
+            out_proj: Linear.new(embed_dim, embed_dim),
+            num_heads: num_heads, head_dim: head_dim,
+            scale: 1.0 / sqrt_f32(head_dim as f32)
+        };
+    }
+    func forward(&self, q: &Tensor, k: &Tensor, v: &Tensor) -> @own Tensor {
+        var Q = this.q_proj.forward(q);
+        var K = this.k_proj.forward(k);
+        var V = this.v_proj.forward(v);
+        # Scaled dot-product attention: softmax(Q*K^T / scale) * V
+        var KT = K.transpose();
+        var scores = Q.matmul(&KT);
+        scores.mul_scalar_(this.scale);
+        var attn = scores.softmax(1);
+        var attn_out = attn.matmul(&V);
+        return this.out_proj.forward(&attn_out);
+    }
+}
+
+# ===== LSTM CELL =====
+class LSTMCell {
+    var weight_ih: Parameter;  # [4*hidden, input]
+    var weight_hh: Parameter;  # [4*hidden, hidden]
+    var bias: Parameter;       # [4*hidden]
+    var hidden_size: usize;
+
+    func new(input_size: usize, hidden_size: usize) -> @own LSTMCell {
+        var ws1 = Vec.new(); ws1.push(4 * hidden_size); ws1.push(input_size);
+        var ws2 = Vec.new(); ws2.push(4 * hidden_size); ws2.push(hidden_size);
+        var bs = Vec.new(); bs.push(4 * hidden_size);
+        return LSTMCell {
+            weight_ih: Parameter.new(ws1, String.from("weight_ih")),
+            weight_hh: Parameter.new(ws2, String.from("weight_hh")),
+            bias: Parameter.zeros(bs, String.from("bias")),
+            hidden_size: hidden_size
+        };
+    }
+    func forward(&self, x: &Tensor, h: &Tensor, c: &Tensor) -> (Tensor, Tensor) {
+        # gates = x @ W_ih.T + h @ W_hh.T + bias
+        var wih_t = this.weight_ih.tensor.transpose();
+        var whh_t = this.weight_hh.tensor.transpose();
+        var gates = x.matmul(&wih_t).add(&h.matmul(&whh_t));
+        gates.add_(&this.bias.tensor);
+        # Split into 4 gates: i, f, g, o
+        var h = this.hidden_size;
+        var i_gate = gates.slice(0, h).sigmoid();
+        var f_gate = gates.slice(h, 2*h).sigmoid();
+        var g_gate = gates.slice(2*h, 3*h).tanh_tensor();
+        var o_gate = gates.slice(3*h, 4*h).sigmoid();
+        # c' = f*c + i*g
+        var new_c = f_gate.mul(c).add(&i_gate.mul(&g_gate));
+        # h' = o * tanh(c')
+        var new_h = o_gate.mul(&new_c.tanh_tensor());
+        return (new_h, new_c);
+    }
+}
+
+# ===== TRANSFORMER BLOCK =====
+class TransformerBlock {
+    var attn: MultiHeadAttention;
+    var norm1: LayerNorm;
+    var norm2: LayerNorm;
+    var ff1: Linear;
+    var ff2: Linear;
+    var dropout: Dropout;
+
+    func new(embed_dim: usize, num_heads: usize, ff_dim: usize, drop_p: f32) -> @own TransformerBlock {
+        var norm_s = Vec.new(); norm_s.push(embed_dim);
+        return TransformerBlock {
+            attn: MultiHeadAttention.new(embed_dim, num_heads),
+            norm1: LayerNorm.new(norm_s.clone()),
+            norm2: LayerNorm.new(norm_s),
+            ff1: Linear.new(embed_dim, ff_dim),
+            ff2: Linear.new(ff_dim, embed_dim),
+            dropout: Dropout.new(drop_p)
+        };
+    }
+    func forward(&self, x: &Tensor) -> @own Tensor {
+        # Attention + residual
+        var attn_out = this.attn.forward(x, x, x);
+        var x1 = x.add(&this.dropout.forward(&attn_out));
+        var x1n = this.norm1.forward(&x1);
+        # Feed-forward + residual
+        var ff_out = this.ff2.forward(&this.ff1.forward(&x1n).gelu());
+        var x2 = x1.add(&this.dropout.forward(&ff_out));
+        return this.norm2.forward(&x2);
+    }
+}
+
+# ===== SEQUENTIAL MODEL =====
+class Sequential {
+    @own var layers: Vec[*Module];
+
+    func new() -> @own Sequential { return Sequential { layers: Vec.new() }; }
+    func add(&mut self, layer: *Module) { this.layers.push(layer); }
+    func forward(&self, input: &Tensor) -> @own Tensor {
+        var x = input.clone();
+        for (var i = 0; i < this.layers.len; i += 1) {
+            var layer = this.layers.get(i).unwrap();
+            x = layer.forward(&x);
+        }
+        return x;
+    }
+    func parameters(&self) -> Vec[*Parameter] {
+        var all = Vec.new();
+        for (var i = 0; i < this.layers.len; i += 1) {
+            var ps = this.layers.get(i).unwrap().parameters();
+            for (var j = 0; j < ps.len; j += 1) { all.push(ps.get(j).unwrap()); }
+        }
+        return all;
+    }
+    func zero_grad(&mut self) {
+        var ps = this.parameters();
+        for (var i = 0; i < ps.len; i += 1) {
+            ps.get(i).unwrap().tensor.zero_grad();
+        }
+    }
+}
+
+# ===== LOSS FUNCTIONS =====
+func mse_loss(pred: &Tensor, target: &Tensor) -> f32 {
+    var diff = pred.sub(target);
+    var sq = diff.pow_scalar(2.0);
+    return sq.mean_all();
+}
+func cross_entropy_loss(logits: &Tensor, labels: &Tensor) -> f32 {
+    var probs = logits.softmax(1);
+    var log_probs = probs.log();
+    # Sum -log(p[y]) over batch
+    var n = logits.numel as f32;
+    return -(log_probs.mul(labels).sum_all()) / n;
+}
+func binary_cross_entropy(pred: &Tensor, target: &Tensor) -> f32 {
+    # BCE = -(y*log(p) + (1-y)*log(1-p))
+    var p = pred.data as *f32;
+    var t = target.data as *f32;
+    var loss: f32 = 0.0;
+    for (var i = 0; i < pred.numel; i += 1) {
+        loss += -(t[i] * log_f32(p[i] + 1e-7) + (1.0 - t[i]) * log_f32(1.0 - p[i] + 1e-7));
+    }
+    return loss / (pred.numel as f32);
+}
+func huber_loss(pred: &Tensor, target: &Tensor, delta: f32) -> f32 {
+    var diff = pred.sub(target).abs_tensor();
+    var dp = diff.data as *f32;
+    var loss: f32 = 0.0;
+    for (var i = 0; i < diff.numel; i += 1) {
+        if (dp[i] <= delta) {
+            loss += 0.5 * dp[i] * dp[i];
+        } else {
+            loss += delta * (dp[i] - 0.5 * delta);
+        }
+    }
+    return loss / (diff.numel as f32);
+}
+
+println("Nux v2.0 Neural Network library loaded.");

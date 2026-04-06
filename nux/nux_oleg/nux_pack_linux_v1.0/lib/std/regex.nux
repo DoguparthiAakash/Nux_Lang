@@ -1,0 +1,104 @@
+# Nux Standard Library - Regular Expressions
+# Pattern matching and text processing
+
+# ===== PATTERN MATCHING =====
+
+func regex_match(str, pattern) {
+    # Find first match
+    # TODO: Implement with VM regex support
+    return null;
+}
+
+func regex_matchAll(str, pattern) {
+    # Find all matches
+    # TODO: Implement with VM regex support
+    return [];
+}
+
+func regex_test(str, pattern) {
+    # Test if pattern matches
+    # TODO: Implement with VM regex support
+    return false;
+}
+
+# ===== REPLACEMENT =====
+
+func regex_replace(str, pattern, replacement) {
+    # Replace first match
+    # TODO: Implement with VM regex support
+    return str;
+}
+
+func regex_replaceAll(str, pattern, replacement) {
+    # Replace all matches
+    # TODO: Implement with VM regex support
+    return str;
+}
+
+# ===== SPLITTING =====
+
+func regex_split(str, pattern) {
+    # Split by pattern
+    # TODO: Implement with VM regex support
+    return [str];
+}
+
+# ===== PATTERN VALIDATION =====
+
+func regex_isValid(pattern) {
+    # Check if pattern is valid regex
+    # TODO: Implement with VM regex support
+    return true;
+}
+
+# ===== COMMON PATTERNS =====
+
+func regex_isEmail(str) {
+    # Check if valid email
+    var pattern: string = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+    return regex_test(str, pattern);
+}
+
+func regex_isURL(str) {
+    # Check if valid URL
+    var pattern: string = "^https?:#[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}";
+    return regex_test(str, pattern);
+}
+
+func regex_isPhone(str) {
+    # Check if valid phone number
+    var pattern: string = "^\\+?[0-9]{10,15}$";
+    return regex_test(str, pattern);
+}
+
+func regex_isIPv4(str) {
+    # Check if valid IPv4 address
+    var pattern: string = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
+    return regex_test(str, pattern);
+}
+
+func regex_isHexColor(str) {
+    # Check if valid hex color
+    var pattern: string = "^#?[0-9A-Fa-f]{6}$";
+    return regex_test(str, pattern);
+}
+
+# ===== EXTRACTION =====
+
+func regex_extractEmails(str) {
+    # Extract all email addresses
+    var pattern: string = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}";
+    return regex_matchAll(str, pattern);
+}
+
+func regex_extractURLs(str) {
+    # Extract all URLs
+    var pattern: string = "https?:#[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}[^\\s]*";
+    return regex_matchAll(str, pattern);
+}
+
+func regex_extractNumbers(str) {
+    # Extract all numbers
+    var pattern: string = "-?[0-9]+\\.?[0-9]*";
+    return regex_matchAll(str, pattern);
+}

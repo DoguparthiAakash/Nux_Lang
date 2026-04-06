@@ -1,0 +1,341 @@
+# Nux OVM — Overall Virtual Machine
+# Written in Nux. Self-hosted.
+#
+# The OVM is Nux's runtime core. It:
+#   1. Parses and executes .nux source (interpreter mode)
+#   2. Loads/decompresses .nxb bytecode (compiler mode)
+#   3. Manages language subprocesses (LAG — Python, Rust, C, Java, Zig, Go...)
+#   4. Reads Bonfort.toml and imports.xml to auto-inject bindings
+#   5. Delegates to the tiered JIT for hot functions
+#
+# Bootstrap note:
+#   The very first build uses nux_oleg/bootstrap/boot.py (Python) to
+#   compile this file to ovm.nxb. After that, ovm.nxb runs itself.
+#   This is the same self-hosting approach used by GCC, Rust, and Go.
+
+# ======== IMPORTS ========
+import nux.core.types;
+import nux.core.io;
+import nux.core.process;
+import nux.core.fs;
+import nux.core.xml;
+import nux.core.compress;
+import nux.lag.lag;
+
+# ======== TOML READER ========
+# Minimal built-in — no external dep needed.
+class TomlReader {
+    func load(path: &str) -> HashMap[String, HashMap[String, String]] {
+        var cfg: HashMap[String, HashMap[String, String]] = HashMap.new();
+        if (!fs.exists(path)) { return cfg; }
+        var lines = fs.read_lines(path);
+        var section = String.from("root");
+        cfg.insert(section.clone(), HashMap.new());
+        for (var i = 0; i < lines.len; i += 1) {
+            var line = lines.get(i).unwrap().trim();
+            if (line.is_empty() || line.starts_with('#')) { continue; }
+            if (line.starts_with('[')) {
+                section = line.trim_matches('[').trim_matches(']').trim().to_owned();
+                if (!cfg.contains(&section)) { cfg.insert(section.clone(), HashMap.new()); }
+                continue;
+            }
+            if (line.contains('=')) {
+                var parts = line.splitn(2, '=');
+                var k = parts.get(0).unwrap().trim().to_owned();
+                var v = parts.get(1).unwrap().trim().trim_matches('"').trim_matches('\'').to_owned();
+                cfg.get_mut(&section).unwrap().insert(k, v);
+            }
+        }
+        return cfg;
+    }
+
+    func get(cfg: &HashMap[String, HashMap[String, String]], section: &str, key: &str) -> Option[String] {
+        if (!cfg.contains(&String.from(section))) { return Option.none(); }
+        return cfg.get(&String.from(section)).unwrap().get(&String.from(key)).map(|v| v.clone());
+    }
+}
+
+# ======== XML IMPORT READER ========
+class ImportXMLReader {
+    var lag_bindings: Vec[LAGBindingDef];
+    var nux_libs: Vec[NuxLibDef];
+    var packages: Vec[PackageDef];
+    var settings: HashMap[String, String];
+
+    class LAGBindingDef {
+        var lang: String;
+        var version: String;
+        var alias: String;
+        var from_imports: Vec[String];
+    }
+    class NuxLibDef {
+        var pkg: String;
+        var alias: String;
+        var auto: bool;
+    }
+    class PackageDef {
+        var name: String;
+        var version: String;
+        var alias: String;
+    }
+
+    func new() -> @own ImportXMLReader {
+        return ImportXMLReader {
+            lag_bindings: Vec.new(),
+            nux_libs: Vec.new(),
+            packages: Vec.new(),
+            settings: HashMap.new()
+        };
+    }
+
+    func load(&mut self, path: &str, src_path: &str) -> bool {
+        if (!fs.exists(path)) { return false; }
+        var doc = xml.parse_file(path);
+        if (doc.is_err()) {
+            println("[XML] Warning: could not parse " + path);
+            return false;
+        }
+        var root = doc.unwrap();
+
+        # <nux-libs>
+        for el in root.find_all("nux-libs/import") {
+            this.nux_libs.push(NuxLibDef {
+                pkg: el.attr("pkg"),
+                alias: el.attr("as"),
+                auto: el.attr("auto") == "true"
+            });
+        }
+
+        # <lag-bindings>
+        for lang_el in root.find_all("lag-bindings/lang") {
+            var froms = Vec.new();
+            for fi in lang_el.find_all("from-import") {
+                froms.push(fi.attr("module"));
+            }
+            this.lag_bindings.push(LAGBindingDef {
+                lang: lang_el.attr("name"),
+                version: lang_el.attr("version"),
+                alias: lang_el.attr("alias"),
+                from_imports: froms
+            });
+        }
+
+        # <packages>
+        for pkg in root.find_all("packages/package") {
+            this.packages.push(PackageDef {
+                name: pkg.attr("name"),
+                version: pkg.attr("version"),
+                alias: pkg.attr("as")
+            });
+        }
+
+        # <settings>
+        for s in root.find_all("settings/compiler/*") {
+            this.settings.insert(s.tag_name(), s.text());
+        }
+        for s in root.find_all("settings/ovm/*") {
+            this.settings.insert("ovm_" + s.tag_name(), s.text());
+        }
+
+        # <file-overrides> for this specific file
+        for fo in root.find_all("file-overrides/file") {
+            var fp = fo.attr("path");
+            if (fp == fs.basename(src_path) || fp == fs.relpath(src_path)) {
+                var inherit = fo.attr("inherit") != "false";
+                if (!inherit) { this.clear_global(); }
+                for lib in fo.find_all("import") {
+                    this.nux_libs.push(NuxLibDef { pkg: lib.attr("pkg"), alias: lib.attr("as"), auto: false });
+                }
+                for lang_el in fo.find_all("lang") {
+                    var froms = Vec.new();
+                    for fi in lang_el.find_all("from-import") { froms.push(fi.attr("module")); }
+                    this.lag_bindings.push(LAGBindingDef {
+                        lang: lang_el.attr("name"), version: lang_el.attr("version"),
+                        alias: lang_el.attr("alias"), from_imports: froms
+                    });
+                }
+            }
+        }
+        return true;
+    }
+
+    func clear_global(&mut self) {
+        this.nux_libs = Vec.new();
+        this.lag_bindings = Vec.new();
+        this.packages = Vec.new();
+    }
+}
+
+# ======== NXB LOADER (.nxb binary) ========
+class NXBLoader {
+    func load(path: &str) -> Result[String, String] {
+        var bytes = fs.read_bytes(path);
+        if (bytes.len < 4) { return Result.err_val(String.from("File too small")); }
+        # Zstd magic: 28 B5 2F FD
+        if (bytes[0] == 0x28 && bytes[1] == 0xB5) {
+            var decompressed = compress.zstd_decompress(&bytes);
+            return decompressed.map(|b| String.from_utf8(&b));
+        }
+        # Gzip magic: 1F 8B
+        if (bytes[0] == 0x1F && bytes[1] == 0x8B) {
+            var decompressed = compress.gzip_decompress(&bytes);
+            return decompressed.map(|b| String.from_utf8(&b));
+        }
+        # Nux Binary format magic: N X B 0x1A
+        if (bytes[0] == 'N' as u8 && bytes[1] == 'X' as u8 && bytes[2] == 'B' as u8) {
+            return Result.ok_val(String.from("nxb_binary"));  # -> bytecode VM
+        }
+        # Plain text fallback
+        return Result.ok_val(String.from_utf8(&bytes));
+    }
+}
+
+# ======== OVM — OVERALL VIRTUAL MACHINE ========
+class OVM {
+    var registry: LAGRegistry;
+    var toml: TomlReader;
+    var xml_reader: ImportXMLReader;
+    var nxb_loader: NXBLoader;
+    var jit: TieredCompiler;
+
+    func new() -> @own OVM {
+        return OVM {
+            registry: LAGRegistry.new(),
+            toml: TomlReader {},
+            xml_reader: ImportXMLReader.new(),
+            nxb_loader: NXBLoader {},
+            jit: TieredCompiler.new()
+        };
+    }
+
+    # Main entry: run a .nux or .nxb file
+    func run(&mut self, path: &str) -> i32 {
+        # 1. Load source
+        var src = if (path.ends_with(".nxb")) {
+            var r = self.nxb_loader.load(path);
+            if (r.is_err()) { println("[OVM] Error: " + r.unwrap_err()); return 1; }
+            r.unwrap()
+        } else {
+            var r = fs.read_string(path);
+            if (r.is_err()) { println("[OVM] Error reading: " + path); return 1; }
+            r.unwrap()
+        };
+
+        # 2. Find and load Bonfort.toml
+        var xml_ref = String.from("imports.xml");
+        for dir in [fs.cwd(), fs.dir_of(path)] {
+            var toml_path = dir + "/Bonfort.toml";
+            if (!fs.exists(&toml_path)) { toml_path = dir + "/bonfort.toml"; }
+            if (fs.exists(&toml_path)) {
+                var cfg = self.toml.load(&toml_path);
+                xml_ref = TomlReader.get(&cfg, "package", "imports")
+                    .unwrap_or(String.from("imports.xml"));
+                println("[OVM] Bonfort.toml: " + &toml_path);
+                break;
+            }
+        }
+
+        # 3. Check for @imports("file"); override in source
+        for line in src.lines().take(10) {
+            if (line.trim().starts_with("@imports(\"")) {
+                var start = line.find('"').unwrap() + 1;
+                var end = line.rfind('"').unwrap();
+                xml_ref = line.slice(start, end).to_owned();
+                println("[OVM] @imports override: " + &xml_ref);
+                break;
+            }
+        }
+
+        # 4. Load imports.xml
+        for dir in [fs.cwd(), fs.dir_of(path)] {
+            var xml_path = dir + "/" + &xml_ref;
+            if (fs.exists(&xml_path)) {
+                var loaded = self.xml_reader.load(&xml_path, path);
+                if (loaded) { self.apply_xml(); }
+                break;
+            }
+        }
+
+        # 5. Execute
+        return self.execute(&src, path);
+    }
+
+    # Apply XML-defined LAG bindings to registry
+    func apply_xml(&mut self) {
+        var executor = LAGExecutor.new(&self.registry, self);
+        for (var i = 0; i < self.xml_reader.lag_bindings.len; i += 1) {
+            var b = self.xml_reader.lag_bindings.get(i).unwrap();
+            if (b.lang.is_empty() || b.alias.is_empty()) { continue; }
+            var r = self.registry.bind(&b.lang, &b.version, &b.alias);
+            if (r.is_ok()) {
+                # Add from-imports
+                for (var j = 0; j < b.from_imports.len; j += 1) {
+                    self.registry.add_import(&b.alias, b.from_imports.get(j).unwrap());
+                }
+                println("[XML] Auto-bind " + &b.alias + " → " + &b.lang + " " + &b.version);
+            } else {
+                println("[XML] Warning: " + r.unwrap_err());
+            }
+        }
+        var auto_libs = Vec.new();
+        for (var i = 0; i < self.xml_reader.nux_libs.len; i += 1) {
+            var lib = self.xml_reader.nux_libs.get(i).unwrap();
+            if (lib.auto) { auto_libs.push(lib.pkg.clone()); }
+        }
+        if (!auto_libs.is_empty()) {
+            println("[XML] Auto-imports: " + auto_libs.join(", "));
+        }
+    }
+
+    # Execute parsed source via interpreter + JIT
+    func execute(&mut self, src: &str, path: &str) -> i32 {
+        var tokens = nux_lexer_tokenize(src);
+        var ast = nux_parser_build(tokens);
+        var executor = NuxInterpreter.new(&mut self.registry, &mut self.jit);
+        return executor.run(&ast);
+    }
+
+    # Run foreign language code block (called by interpreter for var.alias{} blocks)
+    func run_foreign(&mut self, lang_id: i32, exec_path: &str, code: &str) -> (Option[String], Option[String], i32) {
+        # Spawn subprocess, write code, capture output
+        var ext = lang_extension(lang_id);
+        var tmp_path = fs.temp_file(ext);
+        fs.write_string(&tmp_path, code);
+        var result = if (is_interpreted(lang_id)) {
+            process.run_capture(exec_path, &[&tmp_path])
+        } else {
+            # Compiled: compile to bin, run, cleanup
+            var bin = fs.temp_file(".out");
+            process.run_wait(exec_path, &[&tmp_path, "-o", &bin]);
+            var r = process.run_capture(&bin, &[]);
+            fs.delete(&bin);
+            r
+        };
+        fs.delete(&tmp_path);
+        return result;
+    }
+
+    # OVM status
+    func status(&self) {
+        println("=== OVM v2.0 ===");
+        println("  Mode:     hybrid (interpret + JIT)");
+        println("  GC:       generational tri-color");
+        println("  LAG:      " + int_to_str(self.registry.bindings.len) + " binding(s) active");
+        println("  JIT:      " + int_to_str(self.jit.compiled_fns) + " function(s) compiled");
+    }
+}
+
+# ======== ENTRYPOINT ========
+func main(args: Vec[String]) -> i32 {
+    if (args.len < 2) {
+        println("Nux OVM v2.0");
+        println("Usage: ovm <file.nux|file.nxb>");
+        println("       ovm --status");
+        return 1;
+    }
+    var ovm = OVM.new();
+    if (args.get(1).unwrap() == "--status") { ovm.status(); return 0; }
+    return ovm.run(args.get(1).unwrap());
+}
+
+main(env.args());

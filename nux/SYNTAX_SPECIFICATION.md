@@ -1,218 +1,312 @@
-# Nux Language Syntax Specification
+# Nux v2.0 — Complete Language Specification
+# Syntax: Brace-delimited, no indentation errors, no ambiguity.
 
-## ⚠️ Current Issues
+# ========================================
+# 1. COMMENTS
+# ========================================
+# Single-line comment
+/* Multi-line
+   comment */
 
-**CRITICAL: Syntax Inconsistency Detected!**
+# ========================================
+# 2. PRIMITIVE TYPES
+# ========================================
+# Signed:    i8  i16  i32  i64  i128  isize
+# Unsigned:  u8  u16  u32  u64  u128  usize
+# Float:     f16  bf16  f32  f64  f128
+# Other:     bool  char  byte  void  never
+# Aliases:   byte=u8, rune=char, index=usize
 
-The Nux language currently has **mixed syntax styles** which causes confusion:
+# ========================================
+# 3. COMPOUND TYPES
+# ========================================
+# Tuple:    (i32, f32, bool)
+# Array:    [T; N]           (fixed-size, stack)
+# Slice:    &[T]             (borrowed view)
+# Vec:      Vec[T]           (dynamic heap array)
+# String:   String           (owned UTF-8)
+# Str:      &str             (borrowed string slice)
+# Map:      HashMap[K, V]
+# Set:      HashSet[T]
+# Option:   Option[T]        (Some / None)
+# Result:   Result[T, E]     (Ok / Err)
+# Range:    Range[T]         (start..end)
+# Complex:  Complex[f32/f64]
 
-### **Problem 1: Function Declaration**
-```nux
-// Style 1 (Python-like) - used in lexer.nux
-fn function_name(params) {
-    let variable = value;
+# ========================================
+# 4. VARIABLES
+# ========================================
+var x: i32 = 42;          # mutable by default
+var y = 3.14;              # type inferred (f64)
+const PI: f64 = 3.14159;  # compile-time constant
+var s: &str = "hello";    # borrowed string literal
+
+# ========================================
+# 5. OWNERSHIP & MEMORY SAFETY
+# ========================================
+# @own  — sole owner, freed when scope ends
+# &T    — immutable borrow (zero-cost)
+# &mut T — mutable borrow (exclusive)
+# *T    — raw pointer (unsafe only)
+
+var data: @own Vec[i32] = Vec.new();  # owned
+func sum(v: &Vec[i32]) -> i32 { # borrows v, v still valid after }
+func fill(v: &mut Vec[i32], n: i32) { v.push(n); }  # mutably borrows
+
+# Move semantics: after move, original is invalid
+var a = String.from("hello");
+var b = a;          # a is moved to b
+# println(a);       # ERROR: use of moved value
+
+# ========================================
+# 6. FUNCTIONS
+# ========================================
+func add(x: i32, y: i32) -> i32 { return x + y; }
+
+# Generic functions
+func max[T: Ord](a: T, b: T) -> T {
+    if (a > b) { return a; } else { return b; }
 }
 
-// Style 2 (C-like) - used in new libraries
-func function_name(params) -> ReturnType {
-    var variable: Type = value;
-}
-```
-
-### **Problem 2: Variable Declaration**
-```nux
-// Style 1
-let x = 10;
-
-// Style 2
-var x: int = 10;
-```
-
-### **Problem 3: Indentation**
-- Nux uses **braces `{}`** for blocks (not indentation-based like Python)
-- Indentation is **optional** for readability
-- **No indentation errors** should occur
-
-## ✅ Recommended Standard Syntax
-
-### **1. Function Declaration**
-```nux
-// Use 'func' keyword (consistent with modern languages)
-func function_name(param1: Type1, param2: Type2) -> ReturnType {
-    // function body
+# Variadic
+func sum_all(args: ..i32) -> i32 {
+    var total: i32 = 0;
+    for (var x in args) { total += x; }
+    return total;
 }
 
-// Generic functions
-func generic_function<T>(value: T) -> T {
-    return value;
+# Function as value (lambda)
+var double = func(x: i32) -> i32 { return x * 2; };
+var doubled = [1, 2, 3].map(double);
+
+# Async functions (cooperative multitasking)
+async func fetch(url: &str) -> Result[String, Error] { # ... }
+
+# Unsafe functions (disable memory safety checks)
+unsafe func raw_ptr_read[T](p: *T) -> T { return *p; }
+
+# SIMD-annotated (compiler emits AVX2/NEON/RVV)
+@simd(avx2, neon, rvv)
+func vec_add(a: &[f32], b: &[f32], out: &mut [f32]) {
+    for (var i = 0; i < a.len; i += 1) { out[i] = a[i] + b[i]; }
 }
 
-// Methods
-class MyClass {
-    func method_name(self, param: Type) -> ReturnType {
-        // method body
-    }
-}
-```
+# No-GC zone (for real-time / kernel code)
+@nogc
+func isr_handler(vector: u64) { # interrupt service routine }
 
-### **2. Variable Declaration**
-```nux
-// Use 'var' for mutable variables
-var x: int = 10;
-var name: string = "Hello";
-var inferred = 42;  // Type inference
+# ========================================
+# 7. CONTROL FLOW
+# ========================================
 
-// Use 'const' for immutable
-const PI: float = 3.14159;
-```
+# If-else (braces required, no indentation dependency)
+if (x > 0) { println("positive"); }
+else if (x == 0) { println("zero"); }
+else { println("negative"); }
 
-### **3. Control Flow**
-```nux
-// If statements
-if (condition) {
-    // code
-} else if (other_condition) {
-    // code
-} else {
-    // code
-}
+# While
+while (x > 0) { x -= 1; }
 
-// For loops
-for (var i = 0; i < 10; i++) {
-    // code
-}
+# For (C-style)
+for (var i = 0; i < 10; i += 1) { println(int_to_str(i)); }
 
-// While loops
-while (condition) {
-    // code
-}
+# For-in (iterator)
+for (var item in collection) { println(item); }
 
-// Match expressions
+# Range loop
+for (var i in 0..100) { println(int_to_str(i)); }
+
+# Loop (infinite)
+loop { if (done) { break; } }
+
+# Match (exhaustive pattern matching)
 match (value) {
-    pattern1 => expression1,
-    pattern2 => expression2,
-    _ => default_expression
+    0        => { println("zero"); },
+    1..10    => { println("small"); },
+    n if n < 0 => { println("negative"); },
+    _        => { println("other"); }
 }
-```
 
-### **4. Classes and Interfaces**
-```nux
-class ClassName {
-    var field1: Type1;
-    var field2: Type2;
-    
-    func new(param: Type) -> ClassName {
-        return ClassName {
-            field1: value1,
-            field2: value2
-        };
+# ========================================
+# 8. CLASSES & INTERFACES
+# ========================================
+class Point {
+    var x: f32;
+    var y: f32;
+
+    func new(x: f32, y: f32) -> @own Point { return Point { x: x, y: y }; }
+    func dist(&self, other: &Point) -> f32 {
+        var dx = this.x - other.x;
+        var dy = this.y - other.y;
+        return sqrt_f32(dx*dx + dy*dy);
     }
-    
-    func method(self) -> ReturnType {
-        return this.field1;
+    func translate(&mut self, dx: f32, dy: f32) {
+        this.x += dx;
+        this.y += dy;
     }
-}
-
-interface InterfaceName {
-    func method_name(param: Type) -> ReturnType;
-}
-```
-
-### **5. Indentation Rules**
-
-**Nux is NOT indentation-sensitive!**
-
-```nux
-// ✅ Valid (well-formatted)
-func example() {
-    var x = 10;
-    if (x > 5) {
-        println("Greater");
+    func to_str(&self) -> String {
+        return "(" + f32_to_str(this.x) + ", " + f32_to_str(this.y) + ")";
     }
 }
 
-// ✅ Also valid (poor style, but legal)
-func example(){var x=10;if(x>5){println("Greater");}}
+# Generics
+class Stack[T] {
+    var data: Vec[T];
 
-// ✅ Also valid (mixed indentation)
-func example() {
-  var x = 10;
-    if (x > 5) {
-        println("Greater");
+    func new() -> @own Stack[T] { return Stack[T] { data: Vec.new() }; }
+    func push(&mut self, v: T) { this.data.push(v); }
+    func pop(&mut self) -> Option[T] { return this.data.pop(); }
+    func peek(&self) -> Option[&T] { return this.data.get(this.data.len - 1); }
+    func is_empty(&self) -> bool { return this.data.is_empty(); }
+}
+
+# Inheritance
+class ColorPoint extends Point {
+    var color: String;
+
+    func new(x: f32, y: f32, c: String) -> @own ColorPoint {
+        return ColorPoint { x: x, y: y, color: c };
     }
 }
-```
 
-**Recommendation:** Use **4 spaces** for indentation (not tabs)
-
-### **6. Comments**
-```nux
-// Single-line comment
-
-/*
- * Multi-line comment
- */
-
-/// Documentation comment
-func documented_function() {
-    // ...
-}
-```
-
-## 🔧 Migration Guide
-
-### **Old Syntax (lexer.nux style) → New Syntax**
-
-```nux
-// OLD
-fn lexer_create(source) {
-    let lexer = {
-        source: source,
-        pos: 0
-    };
-    return lexer;
+# Interface (trait-like)
+interface Drawable {
+    func draw(&self);
+    func bounding_box(&self) -> (f32, f32, f32, f32);
 }
 
-// NEW
-func lexer_create(source: string) -> Lexer {
-    var lexer = Lexer {
-        source: source,
-        pos: 0
-    };
-    return lexer;
+# ========================================
+# 9. AI-SPECIFIC SYNTAX
+# ========================================
+
+# Tensor literal
+var t = tensor[[1.0, 2.0], [3.0, 4.0]];  # 2x2 f32 tensor
+
+# Neural net layer annotation
+@layer
+class MyLayer {
+    var weight: Parameter;
+    func forward(&self, x: &Tensor) -> @own Tensor { return x.relu(); }
 }
-```
 
-## 📋 Complete Syntax Summary
+# Autodiff: mark tensor for gradient tracking
+var x = Tensor.randn([100, 10]);
+x.requires_grad = true;
+var y = x.matmul(&weight).relu();
+y.backward();  # Computes grad of all params
 
-| Feature | Syntax | Example |
-|---------|--------|---------|
-| Function | `func name(params) -> Type { }` | `func add(a: int, b: int) -> int { }` |
-| Variable | `var name: Type = value;` | `var x: int = 10;` |
-| Constant | `const NAME: Type = value;` | `const PI: float = 3.14;` |
-| If | `if (cond) { } else { }` | `if (x > 0) { println("positive"); }` |
-| For | `for (init; cond; inc) { }` | `for (var i = 0; i < 10; i++) { }` |
-| While | `while (cond) { }` | `while (running) { update(); }` |
-| Class | `class Name { fields; methods; }` | `class Point { var x: int; var y: int; }` |
-| Interface | `interface Name { methods; }` | `interface Drawable { func draw(); }` |
-| Match | `match (val) { pat => expr }` | `match (x) { 1 => "one", _ => "other" }` |
-| Comment | `// text` or `/* text */` | `// This is a comment` |
-| Import | `import "module";` | `import "std/io";` |
+# SIMD kernel annotation
+@simd(avx2)
+func relu_f32(data: &mut [f32]) {
+    for (var i = 0; i < data.len; i += 1) {
+        if (data[i] < 0.0) { data[i] = 0.0; }
+    }
+}
 
-## 🎯 Action Items
+# ========================================
+# 10. QUANTUM SYNTAX
+# ========================================
 
-1. **Standardize lexer.nux** - Convert from `fn`/`let` to `func`/`var`
-2. **Update parser** - Ensure it accepts both styles (for backward compatibility)
-3. **Create linter** - Warn about old-style syntax
-4. **Update documentation** - Use only new syntax in examples
-5. **Migration tool** - Auto-convert old code to new syntax
+# Quantum circuit (builder pattern)
+var qc = QuantumCircuit.new(3, 3);
+qc.h(0).cnot(0, 1).cnot(1, 2).measure_all();
 
-## 💡 Why This Matters
+# Run simulation
+var sim = QuantumSimulator.new(3);
+var counts = sim.run(&qc);
 
-**Consistency = Clarity**
-- Easier to learn
-- Better tooling support
-- Fewer bugs
-- Professional appearance
+# QFT on all qubits
+var qubits = [0, 1, 2];
+qc.qft(&qubits);
 
-**Nux should have ONE clear syntax, not multiple competing styles!**
+# ========================================
+# 11. OS / UNSAFE OPERATIONS
+# ========================================
+
+# Unsafe block (explicit unsafe scope)
+unsafe {
+    var p = alloc_raw(4096);
+    memset(p, 0, 4096);
+    mmio_write32(p, 0xDEADBEEF);
+    free_raw(p, 4096);
+}
+
+# Direct syscall
+sys_write(1, "hello\n" as *u8, 6);
+
+# Inline assembly (platform intrinsic calls)
+unsafe {
+    var mhartid = read_csr_mhartid();  # RISC-V: which core am I on?
+}
+
+# ========================================
+# 12. BUILT-IN FUNCTIONS
+# ========================================
+# Math:      sqrt_f32, sqrt_f64, pow_f32, exp_f32, log_f32
+#            sin_f64, cos_f64, tan_f64, atan2_f64
+# Memory:    alloc, realloc, free, memcpy, memset, memcmp
+# String:    int_to_str, f32_to_str, f64_to_str, str_to_int
+# I/O:       print, println, eprintln
+# Debug:     assert, panic, unreachable
+# Thread:    rand_f32, rand_f64, randn_f32
+# Casting:   sizeof[T](), alignof[T](), type_name[T]()
+# Intrinsics:cpu_relax, memory_fence, read_fence, write_fence
+
+# ========================================
+# 13. ERROR HANDLING
+# ========================================
+# No exceptions — use Result[T, E]
+func divide(a: f32, b: f32) -> Result[f32, String] {
+    if (b == 0.0) { return Result.err_val(String.from("division by zero")); }
+    return Result.ok_val(a / b);
+}
+
+# ? operator (propagate error)
+func compute(x: f32) -> Result[f32, String] {
+    var r = divide(x, 2.0)?;   # returns early if Err
+    return Result.ok_val(r + 1.0);
+}
+
+# ========================================
+# 14. MODULES & IMPORTS
+# ========================================
+# import "lib/ai/tensor";      # import tensor module
+# import "lib/quantum/circuit"; # import quantum circuit
+# import "lib/os/memory";
+
+# Selective import
+# from "lib/ai/nn" import Linear, Conv2D, Sequential;
+
+# ========================================
+# 15. TYPE ALIASES
+# ========================================
+# type Index = usize;
+# type Byte = u8;
+# type Float32 = f32;
+# type Complex64 = Complex[f32];
+# type Complex128 = Complex[f64];
+
+# ========================================
+# 16. COMPILE-TIME FEATURES
+# ========================================
+# comptime: run at compile time
+comptime var ARCH: &str = "riscv64";  # resolved at compile time
+comptime func is_debug() -> bool { return DEBUG_MODE; }
+
+# Conditional compilation
+#if (ARCH == "riscv64") { # RISC-V specific code }
+#elif (ARCH == "x86_64") { # x86 specific code }
+#else { # generic fallback }
+
+# ========================================
+# 17. ATTRIBUTES
+# ========================================
+# @simd(avx2, neon, rvv)  — vectorize with SIMD
+# @nogc                    — disable GC in this function
+# @inline                  — force inlining
+# @cold                    — rarely called (optimize for size)
+# @hot                     — frequently called (optimize for speed)
+# @layer                   — marks as neural network layer
+# @own                     — exclusive ownership annotation
+
+println("Nux v2.0 specification complete.");

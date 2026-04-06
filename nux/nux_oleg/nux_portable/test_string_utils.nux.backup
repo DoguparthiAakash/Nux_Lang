@@ -1,0 +1,34 @@
+# Test String Utils (Case Conversion)
+
+# Nux chars are just ints. 'A' is 65, 'a' is 97.
+# We test by converting char literals.
+
+func main() {
+    println("--- String Utils Test ---");
+
+    var char_a = 'a';
+    var char_B = 'B';
+    
+    print("Original 'a': "); println(char_a);
+    print("Original 'B': "); println(char_B);
+    
+    var up = UpperCase(char_a);
+    print("UpperCase('a'): "); println(up);
+    
+    var low = LowerCase(char_B);
+    print("LowerCase('B'): "); println(low);
+    
+    if (up == 'A') {
+        println("PASS: 'a' -> 'A'");
+    } else {
+        println("FAIL: 'a' -> ???");
+    }
+    
+    if (low == 'b') {
+        println("PASS: 'B' -> 'b'");
+    } else {
+        println("FAIL: 'B' -> ???");
+    }
+}
+
+main();
