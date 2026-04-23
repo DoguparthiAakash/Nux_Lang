@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="nux_oleg/vscode_extension/icons/logo.png" width="200" alt="Nux Logo" />
+  <img src="nux/nux_oleg/vscode_extension/icons/logo.png" width="200" alt="Nux Logo" />
 </p>
 
 # Nux OS/AI Language
