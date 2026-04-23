@@ -28,7 +28,7 @@ Compile and run:
 
 ```bash
 bonfort build main.nux
-nux main.nxb  # or nux main.nux
+nux main.nux
 ```
 
 Create an isolated virtual environment:
