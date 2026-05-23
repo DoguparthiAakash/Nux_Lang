@@ -1,0 +1,212 @@
+# Nux Standard String Library
+import "nux.memory";
+import "nux.collections";
+
+func len(s) {
+    if (s == 0) { return 0; }
+    var i: int = 0;
+    while (peek(s + i) != 0) {
+        i = i + 1;
+    }
+    return i;
+}
+
+func cmp(s1, s2) {
+    if (s1 == s2) { return 0; }
+    var i: int = 0;
+    while (true) {
+        var c1 = peek(s1 + i);
+        var c2 = peek(s2 + i);
+        if (c1 != c2) { return c1 - c2; }
+        if (c1 == 0) { return 0; }
+        i = i + 1;
+    }
+}
+
+func upper(s) {
+    var length = len(s);
+    var new_s = Mem_malloc(length + 1);
+    var i: int = 0;
+    while (i < length) {
+        var c = peek(s + i);
+        if (c >= 97) { if (c <= 122) { c = c - 32; } } # a-z -> A-Z
+        poke(new_s + i, c);
+        i = i + 1;
+    }
+    poke(new_s + length, 0);
+    return new_s;
+}
+
+func lower(s) {
+    var length = len(s);
+    var new_s = Mem_malloc(length + 1);
+    var i: int = 0;
+    while (i < length) {
+        var c = peek(s + i);
+        if (c >= 65) { if (c <= 90) { c = c + 32; } } # A-Z -> a-z
+        poke(new_s + i, c);
+        i = i + 1;
+    }
+    poke(new_s + length, 0);
+    return new_s;
+}
+
+# Python-like string ops
+func join(sep, list) {
+    # TODO: Requires collections.nux List
+    return 0;
+}
+
+func concat(s1, s2) {
+    var l1 = len(s1);
+    var l2 = len(s2);
+    var new_s = Mem_malloc(l1 + l2 + 1);
+    
+    var i: int = 0;
+    while (i < l1) {
+        poke(new_s + i, peek(s1 + i));
+        i = i + 1;
+    }
+    
+    var j: int = 0;
+    while (j < l2) {
+        poke(new_s + i + j, peek(s2 + j));
+        j = j + 1;
+    }
+    
+    poke(new_s + l1 + l2, 0);
+    return new_s;
+}
+
+func is_digit(c) {
+    if (c >= 48) { if (c <= 57) { return 1; } }
+    return 0;
+}
+
+func stoi(s) {
+    var res: int = 0;
+    var i: int = 0;
+    while (peek(s + i) != 0) {
+        var c = peek(s + i);
+        if (is_digit(c) == 0) { return res; } # Stop at non-digit
+        res = (res * 10) + (c - 48);
+        i = i + 1;
+    }
+    return res;
+}
+
+func parse_size(s) {
+    var num = stoi(s);
+    var i: int = 0;
+    
+    # Skip digits
+    while (peek(s + i) != 0) {
+        if (is_digit(peek(s + i)) == 0) {
+             # Skip whitespace
+             while (peek(s + i) == 32) { i = i + 1; }
+             break;
+        }
+        i = i + 1;
+    }
+    
+    # Check unit
+    var unit_char = peek(s + i);
+    # Check 'k' or 'K' (kb)
+    if (unit_char == 107) { num = num * 1024; }
+    if (unit_char == 75) { num = num * 1024; }
+    
+    # Check 'm' or 'M' (mb)
+    if (unit_char == 109) { num = num * 1048576; }
+    if (unit_char == 77) { num = num * 1048576; }
+    
+    return num;
+}
+
+func starts_with(s, prefix) {
+    if (len(prefix) > len(s)) { return 0; }
+    var i: int = 0;
+    while (peek(prefix + i) != 0) {
+        if (peek(s + i) != peek(prefix + i)) { return 0; }
+        i = i + 1;
+    }
+    return 1;
+}
+
+func index_of(s, sub) {
+    var ls = len(s);
+    var lsub = len(sub);
+    if (lsub > ls) { return -1; }
+    
+    var i: int = 0;
+    while (i <= (ls - lsub)) {
+        var match: int = 1;
+        var j: int = 0;
+        while (j < lsub) {
+            if (peek(s + i + j) != peek(sub + j)) { match = 0; break; }
+            j = j + 1;
+        }
+        if (match == 1) { return i; }
+        i = i + 1;
+    }
+    return -1;
+}
+
+func substr(s, start, length) {
+    var buf = Mem_malloc(length + 1);
+    var i: int = 0;
+    while (i < length) {
+        poke(buf + i, peek(s + start + i));
+        i = i + 1;
+    }
+    poke(buf + length, 0);
+    return buf;
+}
+
+# Requires List from collections
+func split(s, delim) {
+    # Returns a List of strings
+    # We construct a List with estimated capacity
+    # For now, List_new matches collections.nux
+    # But we can't easily call List_new if collections isn't imported.
+    # We will assume caller imports collections? No.
+    # We add import at top.
+    
+    var list = List_new(10); 
+    
+    var start: int = 0;
+    var i: int = 0;
+    var len_s = len(s);
+    var ld = len(delim);
+    # Only single char delim optimization? Or string?
+    # Assuming string delim.
+    
+    while (i <= (len_s - ld)) {
+        # Check match
+        var match: int = 1;
+        var j: int = 0;
+        while (j < ld) {
+             if (peek(s + i + j) != peek(delim + j)) { match = 0; break; }
+             j = j + 1;
+        }
+        
+        if (match == 1) {
+            # Found delim at i
+            # Substr from start to i
+            var part = substr(s, start, i - start);
+            List_push(list, part);
+            
+            i = i + ld;
+            start = i;
+        } else {
+            i = i + 1;
+        }
+    }
+    
+    # Last part
+    if (start <= len_s) {
+         var part = substr(s, start, len_s - start);
+         List_push(list, part);
+    }
+    
+    return list;
+}

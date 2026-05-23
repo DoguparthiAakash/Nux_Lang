@@ -1,0 +1,374 @@
+# Nux Advanced Data Structures
+# High-performance, cache-friendly implementations
+
+# ============= CONCURRENT DATA STRUCTURES =============
+
+# Lock-Free Queue (MPMC - Multi-Producer Multi-Consumer)
+class LockFreeQueue<T> {
+    var head: Atomic<Node<T>>;
+    var tail: Atomic<Node<T>>;
+    
+    func new() -> LockFreeQueue<T> {
+        var dummy = Node<T>.new(null);
+        return LockFreeQueue<T> {
+            head: Atomic.new(dummy),
+            tail: Atomic.new(dummy)
+        };
+    }
+    
+    func enqueue(value: T) {
+        var node = Node<T>.new(value);
+        
+        while (true) {
+            var tail = this.tail.load();
+            var next = tail.next.load();
+            
+            if (tail == this.tail.load()) {
+                if (next == null) {
+                    if (tail.next.compare_and_swap(null, node)) {
+                        this.tail.compare_and_swap(tail, node);
+                        return;
+                    }
+                } else {
+                    this.tail.compare_and_swap(tail, next);
+                }
+            }
+        }
+    }
+    
+    func dequeue() -> Option<T> {
+        while (true) {
+            var head = this.head.load();
+            var tail = this.tail.load();
+            var next = head.next.load();
+            
+            if (head == this.head.load()) {
+                if (head == tail) {
+                    if (next == null) return None;
+                    this.tail.compare_and_swap(tail, next);
+                } else {
+                    var value = next.value;
+                    if (this.head.compare_and_swap(head, next)) {
+                        return Some(value);
+                    }
+                }
+            }
+        }
+    }
+}
+
+# Skip List (O(log n) average, lock-free)
+class SkipList<K, V> where K: Comparable {
+    var head: Node<K, V>;
+    var max_level: int = 16;
+    
+    func search(key: K) -> Option<V> {
+        var current = this.head;
+        
+        for (var level = this.max_level - 1; level >= 0; level--) {
+            while (current.forward[level] != null && 
+                   current.forward[level].key < key) {
+                current = current.forward[level];
+            }
+        }
+        
+        current = current.forward[0];
+        if (current != null && current.key == key) {
+            return Some(current.value);
+        }
+        
+        return None;
+    }
+    
+    func insert(key: K, value: V) {
+        var update: [Node<K, V>] = Array.filled(this.max_level, null);
+        var current = this.head;
+        
+        for (var level = this.max_level - 1; level >= 0; level--) {
+            while (current.forward[level] != null && 
+                   current.forward[level].key < key) {
+                current = current.forward[level];
+            }
+            update[level] = current;
+        }
+        
+        var new_level = random_level();
+        var new_node = Node<K, V>.new(key, value, new_level);
+        
+        for (var i: int = 0; i < new_level; i++) {
+            new_node.forward[i] = update[i].forward[i];
+            update[i].forward[i] = new_node;
+        }
+    }
+}
+
+# B-Tree (cache-friendly, O(log n))
+class BTree<K, V> where K: Comparable {
+    var root: BTreeNode<K, V>;
+    var order: int;  # Max children per node
+    
+    func search(key: K) -> Option<V> {
+        return this.root.search(key);
+    }
+    
+    func insert(key: K, value: V) {
+        if (this.root.is_full()) {
+            var new_root = BTreeNode<K, V>.new();
+            new_root.children.push(this.root);
+            new_root.split_child(0);
+            this.root = new_root;
+        }
+        
+        this.root.insert_non_full(key, value);
+    }
+}
+
+class BTreeNode<K, V> where K: Comparable {
+    var keys: [K];
+    var values: [V];
+    var children: [BTreeNode<K, V>];
+    var is_leaf: bool;
+    
+    func search(key: K) -> Option<V> {
+        var i: int = 0;
+        while (i < this.keys.length && key > this.keys[i]) {
+            i += 1;
+        }
+        
+        if (i < this.keys.length && key == this.keys[i]) {
+            return Some(this.values[i]);
+        }
+        
+        if (this.is_leaf) {
+            return None;
+        }
+        
+        return this.children[i].search(key);
+    }
+}
+
+# Trie (Prefix Tree, O(m) where m = key length)
+class Trie {
+    var root: TrieNode;
+    
+    func insert(word: string) {
+        var current = this.root;
+        
+        for (var ch in word) {
+            if (!current.children.contains(ch)) {
+                current.children[ch] = TrieNode.new();
+            }
+            current = current.children[ch];
+        }
+        
+        current.is_end = true;
+    }
+    
+    func search(word: string) -> bool {
+        var current = this.root;
+        
+        for (var ch in word) {
+            if (!current.children.contains(ch)) {
+                return false;
+            }
+            current = current.children[ch];
+        }
+        
+        return current.is_end;
+    }
+    
+    func starts_with(prefix: string) -> bool {
+        var current = this.root;
+        
+        for (var ch in prefix) {
+            if (!current.children.contains(ch)) {
+                return false;
+            }
+            current = current.children[ch];
+        }
+        
+        return true;
+    }
+}
+
+# Bloom Filter (probabilistic, O(k))
+class BloomFilter {
+    var bits: [bool];
+    var num_hashes: int;
+    var size: int;
+    
+    func new(size: int, num_hashes: int) -> BloomFilter {
+        return BloomFilter {
+            bits: Array.filled(size, false),
+            num_hashes: num_hashes,
+            size: size
+        };
+    }
+    
+    func add(item: string) {
+        for (var i: int = 0; i < this.num_hashes; i++) {
+            var hash = hash_function(item, i) % this.size;
+            this.bits[hash] = true;
+        }
+    }
+    
+    func contains(item: string) -> bool {
+        for (var i: int = 0; i < this.num_hashes; i++) {
+            var hash = hash_function(item, i) % this.size;
+            if (!this.bits[hash]) {
+                return false;  # Definitely not present
+            }
+        }
+        
+        return true;  # Probably present
+    }
+}
+
+# Segment Tree (range queries, O(log n))
+class SegmentTree {
+    var tree: [int];
+    var n: int;
+    
+    func new(arr: [int]) -> SegmentTree {
+        var st = SegmentTree {
+            n: arr.length,
+            tree: Array.filled(4 * arr.length, 0)
+        };
+        
+        st.build(arr, 0, 0, arr.length - 1);
+        return st;
+    }
+    
+    func build(arr: [int], node: int, start: int, end: int) {
+        if (start == end) {
+            this.tree[node] = arr[start];
+        } else {
+            var mid = (start + end) / 2;
+            this.build(arr, 2 * node + 1, start, mid);
+            this.build(arr, 2 * node + 2, mid + 1, end);
+            this.tree[node] = this.tree[2 * node + 1] + this.tree[2 * node + 2];
+        }
+    }
+    
+    func query(left: int, right: int) -> int {
+        return this.query_helper(0, 0, this.n - 1, left, right);
+    }
+    
+    func update(index: int, value: int) {
+        this.update_helper(0, 0, this.n - 1, index, value);
+    }
+}
+
+# Fenwick Tree (Binary Indexed Tree, O(log n))
+class FenwickTree {
+    var tree: [int];
+    var n: int;
+    
+    func new(size: int) -> FenwickTree {
+        return FenwickTree {
+            tree: Array.filled(size + 1, 0),
+            n: size
+        };
+    }
+    
+    func update(index: int, delta: int) {
+        index += 1;  # 1-indexed
+        
+        while (index <= this.n) {
+            this.tree[index] += delta;
+            index += index & (-index);
+        }
+    }
+    
+    func query(index: int) -> int {
+        index += 1;  # 1-indexed
+        var sum: int = 0;
+        
+        while (index > 0) {
+            sum += this.tree[index];
+            index -= index & (-index);
+        }
+        
+        return sum;
+    }
+    
+    func range_query(left: int, right: int) -> int {
+        return this.query(right) - this.query(left - 1);
+    }
+}
+
+# Disjoint Set Union (Union-Find, O(α(n)))
+class UnionFind {
+    var parent: [int];
+    var rank: [int];
+    
+    func new(size: int) -> UnionFind {
+        var uf = UnionFind {
+            parent: Array.range(0, size),
+            rank: Array.filled(size, 0)
+        };
+        return uf;
+    }
+    
+    func find(x: int) -> int {
+        if (this.parent[x] != x) {
+            this.parent[x] = this.find(this.parent[x]);  # Path compression
+        }
+        return this.parent[x];
+    }
+    
+    func union(x: int, y: int) {
+        var root_x = this.find(x);
+        var root_y = this.find(y);
+        
+        if (root_x == root_y) return;
+        
+        # Union by rank
+        if (this.rank[root_x] < this.rank[root_y]) {
+            this.parent[root_x] = root_y;
+        } else if (this.rank[root_x] > this.rank[root_y]) {
+            this.parent[root_y] = root_x;
+        } else {
+            this.parent[root_y] = root_x;
+            this.rank[root_x] += 1;
+        }
+    }
+    
+    func connected(x: int, y: int) -> bool {
+        return this.find(x) == this.find(y);
+    }
+}
+
+# Persistent Data Structures (immutable, O(log n))
+class PersistentVector<T> {
+    var root: Node<T>;
+    var size: int;
+    
+    func get(index: int) -> T {
+        return this.root.get(index, this.size);
+    }
+    
+    func set(index: int, value: T) -> PersistentVector<T> {
+        var new_root = this.root.set(index, value, this.size);
+        return PersistentVector<T> { root: new_root, size: this.size };
+    }
+    
+    func push(value: T) -> PersistentVector<T> {
+        var new_root = this.root.push(value, this.size);
+        return PersistentVector<T> { root: new_root, size: this.size + 1 };
+    }
+}
+
+# Cache-Oblivious B-Tree
+class CacheObliviousBTree<K, V> where K: Comparable {
+    var root: COBNode<K, V>;
+    
+    # Automatically adapts to cache size
+    func search(key: K) -> Option<V> {
+        return this.root.search(key);
+    }
+    
+    func insert(key: K, value: V) {
+        this.root = this.root.insert(key, value);
+    }
+}

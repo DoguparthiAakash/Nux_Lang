@@ -1,0 +1,141 @@
+# Nux Standard Library - HTTP Client
+# HTTP request and response handling
+
+# ===== HTTP REQUEST METHODS =====
+
+func http_get(url) {
+    # Perform HTTP GET request
+    # TODO: Implement with VM network support
+    return {
+        status: 200,
+        headers: {},
+        body: ""
+    };
+}
+
+func http_post(url, options) {
+    # Perform HTTP POST request
+    # options: { headers: {}, body: "" }
+    # TODO: Implement with VM network support
+    return {
+        status: 200,
+        headers: {},
+        body: ""
+    };
+}
+
+func http_put(url, options) {
+    # Perform HTTP PUT request
+    # TODO: Implement with VM network support
+    return {
+        status: 200,
+        headers: {},
+        body: ""
+    };
+}
+
+func http_delete(url) {
+    # Perform HTTP DELETE request
+    # TODO: Implement with VM network support
+    return {
+        status: 200,
+        headers: {},
+        body: ""
+    };
+}
+
+func http_patch(url, options) {
+    # Perform HTTP PATCH request
+    # TODO: Implement with VM network support
+    return {
+        status: 200,
+        headers: {},
+        body: ""
+    };
+}
+
+# ===== CONVENIENCE METHODS =====
+
+func http_getJSON(url) {
+    # GET request and parse JSON response
+    var response = http_get(url);
+    return json_parse(response.body);
+}
+
+func http_postJSON(url, data) {
+    # POST JSON data
+    var options = {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: json_stringify(data)
+    };
+    return http_post(url, options);
+}
+
+# ===== RESPONSE HELPERS =====
+
+func http_isSuccess(response) {
+    # Check if response is successful (2xx)
+    return response.status >= 200 && response.status < 300;
+}
+
+func http_isError(response) {
+    # Check if response is error (4xx or 5xx)
+    return response.status >= 400;
+}
+
+# ===== URL ENCODING =====
+
+func http_encodeURI(str) {
+    # URL encode string
+    # TODO: Implement proper URL encoding
+    return str_replaceAll(str, " ", "%20");
+}
+
+func http_decodeURI(str) {
+    # URL decode string
+    # TODO: Implement proper URL decoding
+    return str_replaceAll(str, "%20", " ");
+}
+
+# ===== QUERY STRING =====
+
+func http_buildQuery(params) {
+    # Build query string from object
+    # params: { key1: "value1", key2: "value2" }
+    var parts = [];
+    var keys = object_keys(params);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        var value = params[key];
+        arr_push(parts, key + "=" + http_encodeURI(value));
+        i = i + 1;
+    }
+    
+    return arr_join(parts, "&");
+}
+
+func http_parseQuery(queryString) {
+    # Parse query string to object
+    var result = {};
+    var pairs = str_split(queryString, "&");
+    var i: int = 0;
+    
+    while (i < arr_length(pairs)) {
+        var pair = pairs[i];
+        var parts = str_split(pair, "=");
+        
+        if (arr_length(parts) == 2) {
+            var key = parts[0];
+            var value = http_decodeURI(parts[1]);
+            result[key] = value;
+        }
+        
+        i = i + 1;
+    }
+    
+    return result;
+}

@@ -1,0 +1,49 @@
+# Test language strengthening features
+
+import "nux/io";
+import "nux/error";
+
+# 1. Test Generic Function
+func identity<T>(x: T): T {
+    return x;
+}
+
+# 2. Test Type Annotations
+var x: int = 42;
+var y: string = "hello";
+
+# 3. Test Classes and Instantiation
+class Box<T> {
+    var value: T;
+    
+    func setValue(val: T) {
+        this.value = val;
+    }
+    
+    func getValue(): T {
+        return this.value;
+    }
+}
+
+func main() {
+    println("Verifying strengthened Nux language features...");
+    
+    # Generic function call
+    var a = identity(10);
+    print("Generic identity(int): ");
+    println(a);
+    
+    var b = identity("nux");
+    print("Generic identity(string): ");
+    println(b);
+    
+    # Class instantiation
+    var box = new Box<int>();
+    box.setValue(123);
+    print("Generic Box value: ");
+    println(box.getValue());
+    
+    println("Language strengthening verification complete.");
+}
+
+main();

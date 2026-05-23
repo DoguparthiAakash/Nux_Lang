@@ -1,0 +1,14 @@
+func add(a, b) {
+    var sum = a + b;
+    return sum;
+}
+
+func main() {
+    var x: int = 5;
+    var y: int = 10;
+    var result = add(x, y);
+    print("5 + 10 = ");
+    println(result);
+}
+
+main();

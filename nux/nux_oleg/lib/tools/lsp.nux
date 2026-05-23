@@ -1,0 +1,374 @@
+# Nux Language Server Protocol (LSP)
+# IDE integration for autocomplete, diagnostics, etc.
+
+class LanguageServer {
+    var workspace: Workspace;
+    var diagnostics: Map<string, [Diagnostic]> = Map.new();
+    var symbols: Map<string, [Symbol]> = Map.new();
+    
+    func new() -> LanguageServer {
+        return LanguageServer {
+            workspace: Workspace.new()
+        };
+    }
+    
+    # Initialize workspace
+    func initialize(root_uri: string) {
+        this.workspace.load(root_uri);
+        
+        # Index all files
+        for (var file in this.workspace.files) {
+            this.index_file(file);
+        }
+    }
+    
+    # Autocomplete
+    func completion(file: string, line: int, column: int) -> [CompletionItem] {
+        var source = File.read(file);
+        var ast = Parser.parse(source);
+        
+        # Find context at cursor position
+        var context = ast.find_context(line, column);
+        
+        var completions: [CompletionItem] = [];
+        
+        # Add keywords
+        completions.extend(this.keyword_completions());
+        
+        # Add variables in scope
+        completions.extend(this.variable_completions(context));
+        
+        # Add functions
+        completions.extend(this.function_completions(context));
+        
+        # Add types
+        completions.extend(this.type_completions());
+        
+        return completions;
+    }
+    
+    # Go to definition
+    func definition(file: string, line: int, column: int) -> Location {
+        var source = File.read(file);
+        var ast = Parser.parse(source);
+        
+        var symbol = ast.find_symbol_at(line, column);
+        if (symbol == null) return null;
+        
+        # Find definition
+        var def = this.symbols[file].find((s) => s.name == symbol.name);
+        if (def == null) {
+            # Search other files
+            for (var (path, syms) in this.symbols) {
+                def = syms.find((s) => s.name == symbol.name);
+                if (def != null) break;
+            }
+        }
+        
+        if (def != null) {
+            return Location {
+                file: def.file,
+                line: def.line,
+                column: def.column
+            };
+        }
+        
+        return null;
+    }
+    
+    # Find references
+    func references(file: string, line: int, column: int) -> [Location] {
+        var source = File.read(file);
+        var ast = Parser.parse(source);
+        
+        var symbol = ast.find_symbol_at(line, column);
+        if (symbol == null) return [];
+        
+        var refs: [Location] = [];
+        
+        # Search all files
+        for (var (path, syms) in this.symbols) {
+            var file_source = File.read(path);
+            var file_ast = Parser.parse(file_source);
+            
+            var file_refs = file_ast.find_references(symbol.name);
+            refs.extend(file_refs);
+        }
+        
+        return refs;
+    }
+    
+    # Hover information
+    func hover(file: string, line: int, column: int) -> HoverInfo {
+        var source = File.read(file);
+        var ast = Parser.parse(source);
+        
+        var symbol = ast.find_symbol_at(line, column);
+        if (symbol == null) return null;
+        
+        # Get type information
+        var type_info = this.infer_type(symbol);
+        
+        # Get documentation
+        var docs = this.get_documentation(symbol);
+        
+        return HoverInfo {
+            type: type_info,
+            documentation: docs
+        };
+    }
+    
+    # Diagnostics (errors, warnings)
+    func diagnose(file: string) -> [Diagnostic] {
+        var source = File.read(file);
+        
+        var diagnostics: [Diagnostic] = [];
+        
+        # Lexical analysis
+        var lexer = Lexer.new(source);
+        var tokens = lexer.tokenize();
+        diagnostics.extend(lexer.errors);
+        
+        # Syntax analysis
+        var parser = Parser.new(tokens);
+        var ast = parser.parse();
+        diagnostics.extend(parser.errors);
+        
+        # Semantic analysis
+        var analyzer = SemanticAnalyzer.new(ast);
+        analyzer.analyze();
+        diagnostics.extend(analyzer.errors);
+        
+        # Type checking
+        var type_checker = TypeChecker.new(ast);
+        type_checker.check();
+        diagnostics.extend(type_checker.errors);
+        
+        this.diagnostics[file] = diagnostics;
+        return diagnostics;
+    }
+    
+    # Code actions (quick fixes)
+    func code_actions(file: string, line: int, column: int) -> [CodeAction] {
+        var actions: [CodeAction] = [];
+        
+        var diags = this.diagnostics[file];
+        for (var diag in diags) {
+            if (diag.line == line) {
+                # Suggest fixes
+                if (diag.code == "undefined_variable") {
+                    actions.push(CodeAction {
+                        title: "Declare variable",
+                        edit: "var " + diag.symbol + ": auto;"
+                    });
+                }
+                
+                if (diag.code == "unused_import") {
+                    actions.push(CodeAction {
+                        title: "Remove import",
+                        edit: ""  # Delete line
+                    });
+                }
+            }
+        }
+        
+        return actions;
+    }
+    
+    # Formatting
+    func format(file: string) -> string {
+        var source = File.read(file);
+        var formatter = Formatter.new();
+        return formatter.format(source);
+    }
+    
+    # Rename symbol
+    func rename(file: string, line: int, column: int, new_name: string) -> [TextEdit] {
+        var refs = this.references(file, line, column);
+        
+        var edits: [TextEdit] = [];
+        for (var ref in refs) {
+            edits.push(TextEdit {
+                file: ref.file,
+                line: ref.line,
+                column: ref.column,
+                new_text: new_name
+            });
+        }
+        
+        return edits;
+    }
+    
+    # Index file for fast lookups
+    func index_file(file: string) {
+        var source = File.read(file);
+        var ast = Parser.parse(source);
+        
+        var symbols: [Symbol] = [];
+        
+        # Extract all symbols
+        ast.walk((node) => {
+            if (node.type == "function_def") {
+                symbols.push(Symbol {
+                    name: node.name,
+                    kind: SymbolKind.Function,
+                    file: file,
+                    line: node.line,
+                    column: node.column
+                });
+            } else if (node.type == "class_def") {
+                symbols.push(Symbol {
+                    name: node.name,
+                    kind: SymbolKind.Class,
+                    file: file,
+                    line: node.line,
+                    column: node.column
+                });
+            } else if (node.type == "var_decl") {
+                symbols.push(Symbol {
+                    name: node.name,
+                    kind: SymbolKind.Variable,
+                    file: file,
+                    line: node.line,
+                    column: node.column
+                });
+            }
+        });
+        
+        this.symbols[file] = symbols;
+    }
+}
+
+# Debugger
+class Debugger {
+    var breakpoints: Map<string, [int]> = Map.new();
+    var process: Process;
+    var paused: bool = false;
+    
+    func start(binary: string, args: [string] = []) {
+        this.process = Process.spawn_debug(binary, args);
+    }
+    
+    func set_breakpoint(file: string, line: int) {
+        if (!this.breakpoints.contains(file)) {
+            this.breakpoints[file] = [];
+        }
+        
+        this.breakpoints[file].push(line);
+        this.process.set_breakpoint(file, line);
+    }
+    
+    func continue_execution() {
+        this.paused = false;
+        this.process.continue();
+    }
+    
+    func step_over() {
+        this.process.step_over();
+    }
+    
+    func step_into() {
+        this.process.step_into();
+    }
+    
+    func step_out() {
+        this.process.step_out();
+    }
+    
+    func get_stack_trace() -> [StackFrame] {
+        return this.process.get_stack_trace();
+    }
+    
+    func get_variables() -> Map<string, any> {
+        return this.process.get_local_variables();
+    }
+    
+    func evaluate(expression: string) -> any {
+        return this.process.evaluate_expression(expression);
+    }
+}
+
+# Profiler
+class Profiler {
+    var samples: [Sample] = [];
+    var running: bool = false;
+    
+    func start() {
+        this.running = true;
+        this.samples = [];
+        
+        # Start sampling thread
+        Thread.spawn(() => {
+            while (this.running) {
+                var sample = this.take_sample();
+                this.samples.push(sample);
+                Thread.sleep_ms(10);  # Sample every 10ms
+            }
+        });
+    }
+    
+    func stop() -> ProfileReport {
+        this.running = false;
+        
+        # Analyze samples
+        var report = ProfileReport.new();
+        
+        for (var sample in this.samples) {
+            report.add_sample(sample);
+        }
+        
+        return report;
+    }
+    
+    func take_sample() -> Sample {
+        # Get current stack trace
+        var stack = get_stack_trace();
+        
+        return Sample {
+            timestamp: Time.now_nanos(),
+            stack: stack
+        };
+    }
+}
+
+# Code formatter
+class Formatter {
+    var indent_size: int = 4;
+    var max_line_length: int = 100;
+    
+    func format(source: string) -> string {
+        var ast = Parser.parse(source);
+        return this.format_ast(ast);
+    }
+    
+    func format_ast(ast: AST) -> string {
+        var output: string = "";
+        var indent: int = 0;
+        
+        ast.walk((node) => {
+            match (node.type) {
+                "function_def" => {
+                    output += this.indent(indent) + "func " + node.name + "(...) {\n";
+                    indent += 1;
+                },
+                "class_def" => {
+                    output += this.indent(indent) + "class " + node.name + " {\n";
+                    indent += 1;
+                },
+                "block_end" => {
+                    indent -= 1;
+                    output += this.indent(indent) + "}\n";
+                },
+                _ => {
+                    output += this.indent(indent) + node.text + "\n";
+                }
+            }
+        });
+        
+        return output;
+    }
+    
+    func indent(level: int) -> string {
+        return " ".repeat(level * this.indent_size);
+    }
+}

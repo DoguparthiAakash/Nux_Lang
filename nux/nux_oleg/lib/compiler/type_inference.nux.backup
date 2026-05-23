@@ -1,0 +1,329 @@
+// Nux Type Inference
+// Automatic type inference for Nux programs
+
+// ===== TYPE INFERENCE ENGINE =====
+
+fn typeInfer_create() {
+    return {
+        env: typeEnv_createGlobal(),
+        constraints: [],
+        typeVars: {},
+        nextTypeVar: 0
+    };
+}
+
+fn typeInfer_freshTypeVar(inferrer) {
+    let name = "T" + inferrer.nextTypeVar;
+    inferrer.nextTypeVar = inferrer.nextTypeVar + 1;
+    
+    let typeVar = type_generic(name, null);
+    inferrer.typeVars[name] = typeVar;
+    
+    return typeVar;
+}
+
+fn typeInfer_addConstraint(inferrer, type1, type2, node) {
+    arr_push(inferrer.constraints, {
+        type1: type1,
+        type2: type2,
+        node: node
+    });
+}
+
+// ===== INFERENCE =====
+
+fn typeInfer_infer(ast) {
+    let inferrer = typeInfer_create();
+    typeInfer_inferProgram(inferrer, ast);
+    typeInfer_solve(inferrer);
+    return inferrer;
+}
+
+fn typeInfer_inferProgram(inferrer, node) {
+    arr_forEach(node.statements, fn(stmt) {
+        typeInfer_inferStatement(inferrer, stmt);
+    });
+}
+
+fn typeInfer_inferStatement(inferrer, node) {
+    if (node.type == "FunctionDecl") {
+        return typeInfer_inferFunctionDecl(inferrer, node);
+    }
+    
+    if (node.type == "VarDecl") {
+        return typeInfer_inferVarDecl(inferrer, node);
+    }
+    
+    if (node.type == "ExprStmt") {
+        return typeInfer_inferExpression(inferrer, node.expression);
+    }
+    
+    return type_primitive(TYPE_VOID);
+}
+
+fn typeInfer_inferFunctionDecl(inferrer, node) {
+    # Infer parameter types
+    let paramTypes = [];
+    arr_forEach(node.params, fn(param) {
+        if (param.typeAnnotation) {
+            arr_push(paramTypes, param.typeAnnotation);
+        } else {
+            arr_push(paramTypes, typeInfer_freshTypeVar(inferrer));
+        }
+    });
+    
+    # Infer return type
+    let returnType;
+    if (node.returnType) {
+        returnType = node.returnType;
+    } else {
+        returnType = typeInfer_freshTypeVar(inferrer);
+    }
+    
+    let funcType = type_function(paramTypes, returnType);
+    
+    # Define function
+    typeEnv_define(inferrer.env, node.name, funcType);
+    
+    # Infer body in new environment
+    let prevEnv = inferrer.env;
+    inferrer.env = typeEnv_createChild(prevEnv);
+    
+    # Define parameters
+    let i = 0;
+    while (i < arr_length(node.params)) {
+        typeEnv_define(inferrer.env, node.params[i].name, paramTypes[i]);
+        i = i + 1;
+    }
+    
+    # Infer body type
+    let bodyType = typeInfer_inferStatement(inferrer, node.body);
+    
+    # Add constraint: body type must match return type
+    typeInfer_addConstraint(inferrer, bodyType, returnType, node);
+    
+    inferrer.env = prevEnv;
+    
+    return funcType;
+}
+
+fn typeInfer_inferVarDecl(inferrer, node) {
+    let varType;
+    
+    if (node.typeAnnotation) {
+        varType = node.typeAnnotation;
+    } else if (node.initializer) {
+        varType = typeInfer_inferExpression(inferrer, node.initializer);
+    } else {
+        varType = typeInfer_freshTypeVar(inferrer);
+    }
+    
+    typeEnv_define(inferrer.env, node.name, varType);
+    
+    return varType;
+}
+
+fn typeInfer_inferExpression(inferrer, node) {
+    if (node.type == "Binary") {
+        return typeInfer_inferBinary(inferrer, node);
+    }
+    
+    if (node.type == "Call") {
+        return typeInfer_inferCall(inferrer, node);
+    }
+    
+    if (node.type == "Identifier") {
+        let type = typeEnv_lookup(inferrer.env, node.name);
+        if (type == null) {
+            type = typeInfer_freshTypeVar(inferrer);
+            typeEnv_define(inferrer.env, node.name, type);
+        }
+        return type;
+    }
+    
+    if (node.type == "Literal") {
+        return type_fromLiteral(node.value);
+    }
+    
+    return typeInfer_freshTypeVar(inferrer);
+}
+
+fn typeInfer_inferBinary(inferrer, node) {
+    let leftType = typeInfer_inferExpression(inferrer, node.left);
+    let rightType = typeInfer_inferExpression(inferrer, node.right);
+    
+    # Arithmetic operators
+    if (node.operator == "+" || node.operator == "-" || 
+        node.operator == "*" || node.operator == "/") {
+        
+        # Both operands should be numeric
+        let numType = type_primitive(TYPE_INT);
+        typeInfer_addConstraint(inferrer, leftType, numType, node);
+        typeInfer_addConstraint(inferrer, rightType, numType, node);
+        
+        return numType;
+    }
+    
+    # Comparison operators
+    if (node.operator == "==" || node.operator == "!=" ||
+        node.operator == "<" || node.operator == ">") {
+        
+        # Operands should have same type
+        typeInfer_addConstraint(inferrer, leftType, rightType, node);
+        
+        return type_primitive(TYPE_BOOL);
+    }
+    
+    return typeInfer_freshTypeVar(inferrer);
+}
+
+fn typeInfer_inferCall(inferrer, node) {
+    let calleeType = typeInfer_inferExpression(inferrer, node.callee);
+    
+    # Infer argument types
+    let argTypes = [];
+    arr_forEach(node.arguments, fn(arg) {
+        arr_push(argTypes, typeInfer_inferExpression(inferrer, arg));
+    });
+    
+    # Create return type variable
+    let returnType = typeInfer_freshTypeVar(inferrer);
+    
+    # Add constraint: callee must be a function
+    let expectedFuncType = type_function(argTypes, returnType);
+    typeInfer_addConstraint(inferrer, calleeType, expectedFuncType, node);
+    
+    return returnType;
+}
+
+// ===== CONSTRAINT SOLVING =====
+
+fn typeInfer_solve(inferrer) {
+    # Simple unification algorithm
+    let changed = true;
+    
+    while (changed) {
+        changed = false;
+        
+        arr_forEach(inferrer.constraints, fn(constraint) {
+            let unified = typeInfer_unify(inferrer, constraint.type1, constraint.type2);
+            
+            if (unified) {
+                changed = true;
+            }
+        });
+    }
+}
+
+fn typeInfer_unify(inferrer, type1, type2) {
+    # Same type
+    if (type_equals(type1, type2)) {
+        return false;
+    }
+    
+    # Type variable unification
+    if (type1.kind == TYPE_GENERIC) {
+        return typeInfer_bindTypeVar(inferrer, type1.name, type2);
+    }
+    
+    if (type2.kind == TYPE_GENERIC) {
+        return typeInfer_bindTypeVar(inferrer, type2.name, type1);
+    }
+    
+    # Structural unification
+    if (type1.kind == TYPE_ARRAY && type2.kind == TYPE_ARRAY) {
+        return typeInfer_unify(inferrer, type1.elementType, type2.elementType);
+    }
+    
+    if (type1.kind == TYPE_FUNCTION && type2.kind == TYPE_FUNCTION) {
+        let changed = false;
+        
+        # Unify parameters
+        let i = 0;
+        while (i < arr_length(type1.paramTypes)) {
+            if (typeInfer_unify(inferrer, type1.paramTypes[i], type2.paramTypes[i])) {
+                changed = true;
+            }
+            i = i + 1;
+        }
+        
+        # Unify return types
+        if (typeInfer_unify(inferrer, type1.returnType, type2.returnType)) {
+            changed = true;
+        }
+        
+        return changed;
+    }
+    
+    return false;
+}
+
+fn typeInfer_bindTypeVar(inferrer, varName, type) {
+    let typeVar = inferrer.typeVars[varName];
+    
+    if (typeVar == null) {
+        return false;
+    }
+    
+    # Occurs check
+    if (typeInfer_occurs(varName, type)) {
+        return false;
+    }
+    
+    # Bind type variable
+    inferrer.typeVars[varName] = type;
+    
+    return true;
+}
+
+fn typeInfer_occurs(varName, type) {
+    if (type.kind == TYPE_GENERIC) {
+        return type.name == varName;
+    }
+    
+    if (type.kind == TYPE_ARRAY) {
+        return typeInfer_occurs(varName, type.elementType);
+    }
+    
+    if (type.kind == TYPE_FUNCTION) {
+        let i = 0;
+        while (i < arr_length(type.paramTypes)) {
+            if (typeInfer_occurs(varName, type.paramTypes[i])) {
+                return true;
+            }
+            i = i + 1;
+        }
+        
+        return typeInfer_occurs(varName, type.returnType);
+    }
+    
+    return false;
+}
+
+fn typeInfer_resolveType(inferrer, type) {
+    if (type.kind == TYPE_GENERIC) {
+        let resolved = inferrer.typeVars[type.name];
+        
+        if (resolved && resolved.kind != TYPE_GENERIC) {
+            return typeInfer_resolveType(inferrer, resolved);
+        }
+        
+        return type;
+    }
+    
+    if (type.kind == TYPE_ARRAY) {
+        return type_array(typeInfer_resolveType(inferrer, type.elementType));
+    }
+    
+    if (type.kind == TYPE_FUNCTION) {
+        let paramTypes = arr_map(type.paramTypes, fn(t) {
+            return typeInfer_resolveType(inferrer, t);
+        });
+        
+        let returnType = typeInfer_resolveType(inferrer, type.returnType);
+        
+        return type_function(paramTypes, returnType);
+    }
+    
+    return type;
+}

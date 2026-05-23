@@ -1,0 +1,169 @@
+# Nux GUI Library
+# Uses NuxGUI through FFI
+
+import "std/io";
+
+# Window class
+class Window {
+    var handle;
+    var widgets;
+    
+    func init(title, width, height) {
+        this.handle = ffi_call("nux_gui_window_create", title, width, height);
+        this.widgets = [];
+    }
+    
+    func add_widget(widget) {
+        this.widgets.push(widget);
+        ffi_call("nux_gui_window_add_widget", this.handle, widget.handle);
+    }
+    
+    func show() {
+        ffi_call("nux_gui_window_show", this.handle);
+    }
+    
+    func run() {
+        ffi_call("nux_gui_window_run", this.handle);
+    }
+    
+    func close() {
+        ffi_call("nux_gui_window_close", this.handle);
+    }
+}
+
+# Button widget
+class Button {
+    var handle;
+    var callback;
+    
+    func init(text, x, y, width, height) {
+        this.handle = ffi_call("nux_gui_button_create", text, x, y, width, height);
+    }
+    
+    func on_click(callback) {
+        this.callback = callback;
+        ffi_call("nux_gui_button_set_callback", this.handle, callback);
+    }
+    
+    func set_text(text) {
+        ffi_call("nux_gui_button_set_text", this.handle, text);
+    }
+}
+
+# Label widget
+class Label {
+    var handle;
+    
+    func init(text, x, y) {
+        this.handle = ffi_call("nux_gui_label_create", text, x, y);
+    }
+    
+    func set_text(text) {
+        ffi_call("nux_gui_label_set_text", this.handle, text);
+    }
+}
+
+# TextBox widget
+class TextBox {
+    var handle;
+    
+    func init(x, y, width, height) {
+        this.handle = ffi_call("nux_gui_textbox_create", x, y, width, height);
+    }
+    
+    func get_text() {
+        return ffi_call("nux_gui_textbox_get_text", this.handle);
+    }
+    
+    func set_text(text) {
+        ffi_call("nux_gui_textbox_set_text", this.handle, text);
+    }
+}
+
+# Panel for layout
+class Panel {
+    var handle;
+    var widgets;
+    
+    func init(x, y, width, height) {
+        this.handle = ffi_call("nux_gui_panel_create", x, y, width, height);
+        this.widgets = [];
+    }
+    
+    func add(widget) {
+        this.widgets.push(widget);
+        ffi_call("nux_gui_panel_add_widget", this.handle, widget.handle);
+    }
+}
+
+# Example: Calculator App
+func create_calculator() {
+    var window = new Window("Calculator", 300, 400);
+    
+    var display = new TextBox(10, 10, 280, 40);
+    window.add_widget(display);
+    
+    var buttons = [
+        ["7", "8", "9", "/"],
+        ["4", "5", "6", "*"],
+        ["1", "2", "3", "-"],
+        ["0", ".", "=", "+"]
+    ];
+    
+    var y: int = 60;
+    for (var row: int = 0; row < buttons.length; row++) {
+        var x: int = 10;
+        for (var col: int = 0; col < buttons[row].length; col++) {
+            var btn = new Button(buttons[row][col], x, y, 65, 50);
+            
+            btn.on_click(func(text) {
+                if (text == "=") {
+                    var expr = display.get_text();
+                    var result = eval(expr);  # Evaluate expression
+                    display.set_text(result.toString());
+                } else {
+                    display.set_text(display.get_text() + text);
+                }
+            });
+            
+            window.add_widget(btn);
+            x += 70;
+        }
+        y += 55;
+    }
+    
+    window.show();
+    window.run();
+}
+
+# Example: Todo List App
+func create_todo_app() {
+    var window = new Window("Todo List", 400, 600);
+    var todos = [];
+    
+    var input = new TextBox(10, 10, 300, 30);
+    window.add_widget(input);
+    
+    var add_btn = new Button("Add", 320, 10, 70, 30);
+    window.add_widget(add_btn);
+    
+    var list_panel = new Panel(10, 50, 380, 540);
+    window.add_widget(list_panel);
+    
+    add_btn.on_click(func() {
+        var text = input.get_text();
+        if (text != "") {
+            var todo_label = new Label(text, 10, todos.length * 30);
+            list_panel.add(todo_label);
+            todos.push(text);
+            input.set_text("");
+        }
+    });
+    
+    window.show();
+    window.run();
+}
+
+func main() {
+    create_calculator();
+}

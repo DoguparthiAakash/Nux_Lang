@@ -1,0 +1,318 @@
+# Nux Standard Library - Object/Map Operations
+# Dictionary and object manipulation
+
+# ===== CREATION =====
+
+func obj_create() {
+    # Create empty object
+    return {};
+}
+
+func obj_fromPairs(pairs) {
+    # Create object from array of [key, value] pairs
+    var obj = {};
+    var i: int = 0;
+    
+    while (i < arr_length(pairs)) {
+        var pair = pairs[i];
+        obj[pair[0]] = pair[1];
+        i = i + 1;
+    }
+    
+    return obj;
+}
+
+# ===== KEYS AND VALUES =====
+
+func obj_keys(obj) {
+    # Get array of keys
+    # TODO: Implement with VM object support
+    return [];
+}
+
+func obj_values(obj) {
+    # Get array of values
+    # TODO: Implement with VM object support
+    return [];
+}
+
+func obj_entries(obj) {
+    # Get array of [key, value] pairs
+    # TODO: Implement with VM object support
+    return [];
+}
+
+# ===== PROPERTY OPERATIONS =====
+
+func obj_has(obj, key) {
+    # Check if object has property
+    # TODO: Implement with VM object support
+    return false;
+}
+
+func obj_get(obj, key, defaultValue) {
+    # Get property with default
+    if (obj_has(obj, key)) {
+        return obj[key];
+    }
+    return defaultValue;
+}
+
+func obj_set(obj, key, value) {
+    # Set property
+    obj[key] = value;
+    return obj;
+}
+
+func obj_delete(obj, key) {
+    # Delete property
+    # TODO: Implement with VM object support
+    return obj;
+}
+
+# ===== MERGING =====
+
+func obj_assign(target, source) {
+    # Shallow merge source into target
+    var keys = obj_keys(source);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        target[key] = source[key];
+        i = i + 1;
+    }
+    
+    return target;
+}
+
+func obj_merge(obj1, obj2) {
+    # Merge two objects (creates new object)
+    var result = {};
+    result = obj_assign(result, obj1);
+    result = obj_assign(result, obj2);
+    return result;
+}
+
+func obj_deepMerge(obj1, obj2) {
+    # Deep merge two objects
+    var result = obj_clone(obj1);
+    var keys = obj_keys(obj2);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        var value = obj2[key];
+        
+        if (obj_isObject(value) && obj_has(result, key) && obj_isObject(result[key])) {
+            result[key] = obj_deepMerge(result[key], value);
+        } else {
+            result[key] = value;
+        }
+        
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+# ===== CLONING =====
+
+func obj_clone(obj) {
+    # Shallow clone
+    var result = {};
+    var keys = obj_keys(obj);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        result[key] = obj[key];
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func obj_deepClone(obj) {
+    # Deep clone
+    var result = {};
+    var keys = obj_keys(obj);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        var value = obj[key];
+        
+        if (obj_isObject(value)) {
+            result[key] = obj_deepClone(value);
+        } else if (obj_isArray(value)) {
+            result[key] = arr_clone(value);
+        } else {
+            result[key] = value;
+        }
+        
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+# ===== FILTERING =====
+
+func obj_pick(obj, keys) {
+    # Pick specific keys
+    var result = {};
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        if (obj_has(obj, key)) {
+            result[key] = obj[key];
+        }
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func obj_omit(obj, keys) {
+    # Omit specific keys
+    var result = {};
+    var allKeys = obj_keys(obj);
+    var i: int = 0;
+    
+    while (i < arr_length(allKeys)) {
+        var key = allKeys[i];
+        if (!arr_contains(keys, key)) {
+            result[key] = obj[key];
+        }
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+# ===== TRANSFORMATION =====
+
+func obj_map(obj, func) {
+    # Map over object values
+    var result = {};
+    var keys = obj_keys(obj);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        result[key] = func(obj[key], key);
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func obj_filter(obj, predicate) {
+    # Filter object by predicate
+    var result = {};
+    var keys = obj_keys(obj);
+    var i: int = 0;
+    
+    while (i < arr_length(keys)) {
+        var key = keys[i];
+        if (predicate(obj[key], key)) {
+            result[key] = obj[key];
+        }
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+# ===== UTILITY =====
+
+func obj_isEmpty(obj) {
+    # Check if object is empty
+    return arr_length(obj_keys(obj)) == 0;
+}
+
+func obj_size(obj) {
+    # Get number of properties
+    return arr_length(obj_keys(obj));
+}
+
+func obj_isObject(value) {
+    # Check if value is object
+    # TODO: Implement with VM type checking
+    return false;
+}
+
+func obj_isArray(value) {
+    # Check if value is array
+    # TODO: Implement with VM type checking
+    return false;
+}
+
+func obj_equals(obj1, obj2) {
+    # Deep equality check
+    var keys1 = obj_keys(obj1);
+    var keys2 = obj_keys(obj2);
+    
+    if (arr_length(keys1) != arr_length(keys2)) {
+        return false;
+    }
+    
+    var i: int = 0;
+    while (i < arr_length(keys1)) {
+        var key = keys1[i];
+        
+        if (!obj_has(obj2, key)) {
+            return false;
+        }
+        
+        if (obj1[key] != obj2[key]) {
+            return false;
+        }
+        
+        i = i + 1;
+    }
+    
+    return true;
+}
+
+# ===== PATH ACCESS =====
+
+func obj_getPath(obj, path) {
+    # Get nested value by path (e.g., "user.address.city")
+    var parts = split(path, ".");
+    var current = obj;
+    var i: int = 0;
+    
+    while (i < arr_length(parts)) {
+        var key = parts[i];
+        if (obj_has(current, key)) {
+            current = current[key];
+        } else {
+            return null;
+        }
+        i = i + 1;
+    }
+    
+    return current;
+}
+
+func obj_setPath(obj, path, value) {
+    # Set nested value by path
+    var parts = split(path, ".");
+    var current = obj;
+    var i: int = 0;
+    
+    while (i < arr_length(parts) - 1) {
+        var key = parts[i];
+        if (!obj_has(current, key)) {
+            current[key] = {};
+        }
+        current = current[key];
+        i = i + 1;
+    }
+    
+    current[parts[arr_length(parts) - 1]] = value;
+    return obj;
+}

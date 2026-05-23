@@ -1,0 +1,32 @@
+# Test Vision Library
+import "standard_vision.nux";
+
+func main() {
+    println("--- Vision Library Test ---");
+    
+    # create a dummy image
+    var img = Vision_Alloc(100, 100);
+    println("Image Allocated.");
+    
+    # Resize
+    var small = Vision_Resize(img, 50, 50);
+    println("Image Resized to 50x50.");
+    
+    # Crop
+    var crop = Vision_Crop(img, 10, 10, 20, 20);
+    println("Image Cropped to 20x20.");
+    
+    # Grayscale
+    var gray = Vision_Grayscale(img);
+    println("Image Converted to Grayscale.");
+    
+    # Clean up
+    Vision_Free(img);
+    Vision_Free(small);
+    Vision_Free(crop);
+    Vision_Free(gray);
+    
+    println("Test Complete.");
+}
+
+main();

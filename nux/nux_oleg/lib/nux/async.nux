@@ -1,0 +1,397 @@
+# Nux Async/Await System
+# Modern asynchronous programming
+
+# ===== PROMISE =====
+
+class Promise {
+    func constructor(executor) {
+        this.state = "pending";  # pending, fulfilled, rejected
+        this.value = null;
+        this.error = null;
+        this.callbacks = [];
+        
+        var resolve = func(value) {
+            if (this.state == "pending") {
+                this.state = "fulfilled";
+                this.value = value;
+                this._executeCallbacks();
+            }
+        };
+        
+        var reject = func(error) {
+            if (this.state == "pending") {
+                this.state = "rejected";
+                this.error = error;
+                this._executeCallbacks();
+            }
+        };
+        
+        try {
+            executor(resolve, reject);
+        } catch (e) {
+            reject(e);
+        }
+    }
+    
+    func then(onFulfilled, onRejected) {
+        return new Promise(func(resolve, reject) {
+            var callback = {
+                onFulfilled: onFulfilled,
+                onRejected: onRejected,
+                resolve: resolve,
+                reject: reject
+            };
+            
+            if (this.state == "pending") {
+                arr_push(this.callbacks, callback);
+            } else {
+                this._executeCallback(callback);
+            }
+        });
+    }
+    
+    func catch(onRejected) {
+        return this.then(null, onRejected);
+    }
+    
+    func finally(onFinally) {
+        return this.then(
+            func(value) {
+                onFinally();
+                return value;
+            },
+            func(error) {
+                onFinally();
+                throw error;
+            }
+        );
+    }
+    
+    func _executeCallbacks() {
+        arr_forEach(this.callbacks, func(callback) {
+            this._executeCallback(callback);
+        });
+        this.callbacks = [];
+    }
+    
+    func _executeCallback(callback) {
+        if (this.state == "fulfilled") {
+            if (callback.onFulfilled) {
+                try {
+                    var result = callback.onFulfilled(this.value);
+                    callback.resolve(result);
+                } catch (e) {
+                    callback.reject(e);
+                }
+            } else {
+                callback.resolve(this.value);
+            }
+        } else if (this.state == "rejected") {
+            if (callback.onRejected) {
+                try {
+                    var result = callback.onRejected(this.error);
+                    callback.resolve(result);
+                } catch (e) {
+                    callback.reject(e);
+                }
+            } else {
+                callback.reject(this.error);
+            }
+        }
+    }
+}
+
+# ===== PROMISE STATIC METHODS =====
+
+Promise.resolve = func(value) {
+    return new Promise(func(resolve, reject) {
+        resolve(value);
+    });
+};
+
+Promise.reject = func(error) {
+    return new Promise(func(resolve, reject) {
+        reject(error);
+    });
+};
+
+Promise.all = func(promises) {
+    return new Promise(func(resolve, reject) {
+        var results = [];
+        var completed: int = 0;
+        
+        if (arr_length(promises) == 0) {
+            resolve(results);
+            return;
+        }
+        
+        var i: int = 0;
+        while (i < arr_length(promises)) {
+            var index = i;
+            
+            promises[i].then(
+                func(value) {
+                    results[index] = value;
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                },
+                func(error) {
+                    reject(error);
+                }
+            );
+            
+            i = i + 1;
+        }
+    });
+};
+
+Promise.race = func(promises) {
+    return new Promise(func(resolve, reject) {
+        arr_forEach(promises, func(promise) {
+            promise.then(resolve, reject);
+        });
+    });
+};
+
+Promise.allSettled = func(promises) {
+    return new Promise(func(resolve, reject) {
+        var results = [];
+        var completed: int = 0;
+        
+        if (arr_length(promises) == 0) {
+            resolve(results);
+            return;
+        }
+        
+        var i: int = 0;
+        while (i < arr_length(promises)) {
+            var index = i;
+            
+            promises[i].then(
+                func(value) {
+                    results[index] = {status: "fulfilled", value: value};
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                },
+                func(error) {
+                    results[index] = {status: "rejected", reason: error};
+                    completed = completed + 1;
+                    
+                    if (completed == arr_length(promises)) {
+                        resolve(results);
+                    }
+                }
+            );
+            
+            i = i + 1;
+        }
+    });
+};
+
+# ===== ASYNC/AWAIT =====
+
+func async(func) {
+    return func() {
+        return new Promise(func(resolve, reject) {
+            try {
+                var result = func();
+                resolve(result);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    };
+}
+
+func await(promise) {
+    # This would be implemented by the compiler/VM
+    # to suspend execution until promise resolves
+    return promise.value;
+}
+
+# ===== ASYNC UTILITIES =====
+
+func sleep(ms) {
+    return new Promise(func(resolve, reject) {
+        setTimeout(resolve, ms);
+    });
+}
+
+func timeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise(func(resolve, reject) {
+            setTimeout(func() {
+                reject(new TimeoutError("Operation timed out", ms));
+            }, ms);
+        })
+    ]);
+}
+
+func retry_async(func, maxAttempts, delayMs) {
+    return new Promise(func(resolve, reject) {
+        var attempt: int = 0;
+        
+        var tryOnce = func() {
+            func().then(resolve, func(error) {
+                attempt = attempt + 1;
+                
+                if (attempt >= maxAttempts) {
+                    reject(error);
+                } else {
+                    sleep(delayMs).then(tryOnce);
+                }
+            });
+        };
+        
+        tryOnce();
+    });
+}
+
+# ===== ASYNC QUEUE =====
+
+class AsyncQueue {
+    func constructor(concurrency) {
+        this.concurrency = concurrency || 1;
+        this.running = 0;
+        this.queue = [];
+    }
+    
+    func add(func) {
+        return new Promise(func(resolve, reject) {
+            arr_push(this.queue, {func: func, resolve: resolve, reject: reject});
+            this._process();
+        });
+    }
+    
+    func _process() {
+        while (this.running < this.concurrency && arr_length(this.queue) > 0) {
+            var task = arr_shift(this.queue);
+            this.running = this.running + 1;
+            
+            task.func().then(
+                func(value) {
+                    this.running = this.running - 1;
+                    task.resolve(value);
+                    this._process();
+                },
+                func(error) {
+                    this.running = this.running - 1;
+                    task.reject(error);
+                    this._process();
+                }
+            );
+        }
+    }
+}
+
+# ===== ASYNC ITERATORS =====
+
+func async_map(arr, func) {
+    var promises = arr_map(arr, func);
+    return Promise.all(promises);
+}
+
+func async_filter(arr, func) {
+    return async_map(arr, func).then(func(results) {
+        var filtered = [];
+        var i: int = 0;
+        while (i < arr_length(arr)) {
+            if (results[i]) {
+                arr_push(filtered, arr[i]);
+            }
+            i = i + 1;
+        }
+        return filtered;
+    });
+}
+
+func async_reduce(arr, func, initial) {
+    return new Promise(func(resolve, reject) {
+        var acc = initial;
+        var i: int = 0;
+        
+        var next = func() {
+            if (i >= arr_length(arr)) {
+                resolve(acc);
+                return;
+            }
+            
+            func(acc, arr[i], i).then(func(result) {
+                acc = result;
+                i = i + 1;
+                next();
+            }, reject);
+        };
+        
+        next();
+    });
+}
+
+# ===== ASYNC GENERATORS =====
+
+class AsyncGenerator {
+    func constructor(generatorFn) {
+        this.generatorFn = generatorFn;
+        this.iterator = null;
+    }
+    
+    func next() {
+        if (this.iterator == null) {
+            this.iterator = this.generatorFn();
+        }
+        
+        return this.iterator.next();
+    }
+    
+    func [Symbol.asyncIterator]() {
+        return this;
+    }
+}
+
+# ===== EVENT EMITTER =====
+
+class AsyncEventEmitter {
+    func constructor() {
+        this.listeners = {};
+    }
+    
+    func on(event, listener) {
+        if (this.listeners[event] == null) {
+            this.listeners[event] = [];
+        }
+        arr_push(this.listeners[event], listener);
+    }
+    
+    func once(event, listener) {
+        var wrapper = func(...args) {
+            this.off(event, wrapper);
+            return listener(...args);
+        };
+        this.on(event, wrapper);
+    }
+    
+    func off(event, listener) {
+        if (this.listeners[event]) {
+            this.listeners[event] = arr_filter(this.listeners[event], func(l) {
+                return l != listener;
+            });
+        }
+    }
+    
+    func emit(event, ...args) {
+        if (this.listeners[event]) {
+            var promises = arr_map(this.listeners[event], func(listener) {
+                return Promise.resolve(listener(...args));
+            });
+            return Promise.all(promises);
+        }
+        return Promise.resolve([]);
+    }
+}

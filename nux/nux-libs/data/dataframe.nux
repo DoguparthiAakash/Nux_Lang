@@ -1,0 +1,188 @@
+# Nux Data Science Library
+# Uses NuxFrame and NuxArray through FFI
+
+import "std/io";
+import "std/array";
+
+# DataFrame wrapper
+class DataFrame {
+    var handle;  # FFI handle to C++ DataFrame
+    
+    func init(data) {
+        this.handle = ffi_call("nux_frame_create", data);
+    }
+    
+    func from_csv(filename) {
+        var df = new DataFrame(null);
+        df.handle = ffi_call("nux_frame_read_csv", filename);
+        return df;
+    }
+    
+    func head(n = 5) {
+        return ffi_call("nux_frame_head", this.handle, n);
+    }
+    
+    func tail(n = 5) {
+        return ffi_call("nux_frame_tail", this.handle, n);
+    }
+    
+    func describe() {
+        return ffi_call("nux_frame_describe", this.handle);
+    }
+    
+    func select(columns) {
+        var new_handle = ffi_call("nux_frame_select", this.handle, columns);
+        var df = new DataFrame(null);
+        df.handle = new_handle;
+        return df;
+    }
+    
+    func filter(condition) {
+        var new_handle = ffi_call("nux_frame_filter", this.handle, condition);
+        var df = new DataFrame(null);
+        df.handle = new_handle;
+        return df;
+    }
+    
+    func groupby(column) {
+        return new GroupBy(this.handle, column);
+    }
+    
+    func mean(column) {
+        return ffi_call("nux_frame_mean", this.handle, column);
+    }
+    
+    func sum(column) {
+        return ffi_call("nux_frame_sum", this.handle, column);
+    }
+    
+    func plot(x, y, kind = "line") {
+        var x_data = ffi_call("nux_frame_get_column", this.handle, x);
+        var y_data = ffi_call("nux_frame_get_column", this.handle, y);
+        
+        if (kind == "line") {
+            ffi_call("nux_plot_line", x_data, y_data);
+        } else if (kind == "scatter") {
+            ffi_call("nux_plot_scatter", x_data, y_data);
+        }
+    }
+    
+    func to_csv(filename) {
+        ffi_call("nux_frame_to_csv", this.handle, filename);
+    }
+    
+    func print() {
+        ffi_call("nux_frame_print", this.handle);
+    }
+}
+
+class GroupBy {
+    var df_handle;
+    var column;
+    
+    func init(handle, col) {
+        this.df_handle = handle;
+        this.column = col;
+    }
+    
+    func mean() {
+        return ffi_call("nux_frame_groupby_mean", this.df_handle, this.column);
+    }
+    
+    func sum() {
+        return ffi_call("nux_frame_groupby_sum", this.df_handle, this.column);
+    }
+    
+    func count() {
+        return ffi_call("nux_frame_groupby_count", this.df_handle, this.column);
+    }
+}
+
+# Array/Tensor wrapper
+class Array {
+    var handle;
+    
+    func init(shape, data = null) {
+        if (data == null) {
+            this.handle = ffi_call("nux_array_zeros", shape);
+        } else {
+            this.handle = ffi_call("nux_array_create", shape, data);
+        }
+    }
+    
+    func zeros(shape) {
+        var arr = new Array(null);
+        arr.handle = ffi_call("nux_array_zeros", shape);
+        return arr;
+    }
+    
+    func ones(shape) {
+        var arr = new Array(null);
+        arr.handle = ffi_call("nux_array_ones", shape);
+        return arr;
+    }
+    
+    func random(shape) {
+        var arr = new Array(null);
+        arr.handle = ffi_call("nux_array_random", shape);
+        return arr;
+    }
+    
+    func add(other) {
+        var result = new Array(null);
+        result.handle = ffi_call("nux_array_add", this.handle, other.handle);
+        return result;
+    }
+    
+    func mul(other) {
+        var result = new Array(null);
+        result.handle = ffi_call("nux_array_mul", this.handle, other.handle);
+        return result;
+    }
+    
+    func matmul(other) {
+        var result = new Array(null);
+        result.handle = ffi_call("nux_array_matmul", this.handle, other.handle);
+        return result;
+    }
+    
+    func sum() {
+        return ffi_call("nux_array_sum", this.handle);
+    }
+    
+    func mean() {
+        return ffi_call("nux_array_mean", this.handle);
+    }
+    
+    func reshape(new_shape) {
+        var result = new Array(null);
+        result.handle = ffi_call("nux_array_reshape", this.handle, new_shape);
+        return result;
+    }
+}
+
+# Example usage
+func main() {
+    # Load and analyze data
+    var df = DataFrame.from_csv("data.csv");
+    
+    println("First 5 rows:");
+    df.head().print();
+    
+    println("\nStatistics:");
+    df.describe().print();
+    
+    # Data manipulation
+    var filtered = df.filter("age > 25");
+    var grouped = filtered.groupby("category").mean();
+    
+    # Visualization
+    df.plot("x", "y", "scatter");
+    
+    # Array operations
+    var a = Array.random([100, 100]);
+    var b = Array.random([100, 100]);
+    var c = a.matmul(b);
+    
+    println("Matrix multiplication result sum: " + c.sum());
+}

@@ -1,0 +1,373 @@
+# Nux Type System
+# Type definitions and utilities
+
+# ===== TYPE KINDS =====
+
+var TYPE_VOID: string = "void";
+var TYPE_INT: string = "int";
+var TYPE_FLOAT: string = "float";
+var TYPE_STRING: string = "string";
+var TYPE_BOOL: string = "bool";
+var TYPE_ANY: string = "any";
+var TYPE_NULL: string = "null";
+var TYPE_ARRAY: string = "array";
+var TYPE_OBJECT: string = "object";
+var TYPE_FUNCTION: string = "function";
+var TYPE_GENERIC: string = "generic";
+var TYPE_UNION: string = "union";
+var TYPE_INTERSECTION: string = "intersection";
+var TYPE_INSTANCE: string = "instance";
+
+# ===== TYPE CONSTRUCTORS =====
+
+func type_primitive(kind) {
+    return {
+        kind: kind,
+        isPrimitive: true
+    };
+}
+
+func type_array(elementType) {
+    return {
+        kind: TYPE_ARRAY,
+        elementType: elementType,
+        isPrimitive: false
+    };
+}
+
+func type_object(properties) {
+    return {
+        kind: TYPE_OBJECT,
+        properties: properties,  # Map of name -> type
+        isPrimitive: false
+    };
+}
+
+func type_function(paramTypes, returnType) {
+    return {
+        kind: TYPE_FUNCTION,
+        paramTypes: paramTypes,
+        returnType: returnType,
+        isPrimitive: false
+    };
+}
+
+func type_generic(name, constraints) {
+    return {
+        kind: TYPE_GENERIC,
+        name: name,
+        constraints: constraints,
+        isPrimitive: false
+    };
+}
+
+func type_union(types) {
+    return {
+        kind: TYPE_UNION,
+        types: types,
+        isPrimitive: false
+    };
+}
+
+func type_intersection(types) {
+    return {
+        kind: TYPE_INTERSECTION,
+        types: types,
+        isPrimitive: false
+    };
+}
+
+func type_instance(baseType, typeArguments) {
+    return {
+        kind: TYPE_INSTANCE,
+        baseType: baseType,
+        typeArguments: typeArguments,
+        isPrimitive: false
+    };
+}
+
+# ===== TYPE UTILITIES =====
+
+func type_toString(type) {
+    if (type.kind == TYPE_ARRAY) {
+        return type_toString(type.elementType) + "[]";
+    }
+    
+    if (type.kind == TYPE_INSTANCE) {
+        var args = arr_map(type.typeArguments, type_toString);
+        return type_toString(type.baseType) + "<" + arr_join(args, ", ") + ">";
+    }
+    
+    if (type.kind == TYPE_OBJECT) {
+        var props = [];
+        obj_forEach(type.properties, func(name, propType) {
+            arr_push(props, name + ": " + type_toString(propType));
+        });
+        return "{" + arr_join(props, ", ") + "}";
+    }
+    
+    if (type.kind == TYPE_FUNCTION) {
+        var params = arr_map(type.paramTypes, type_toString);
+        return "(" + arr_join(params, ", ") + ") => " + type_toString(type.returnType);
+    }
+    
+    if (type.kind == TYPE_GENERIC) {
+        return type.name;
+    }
+    
+    if (type.kind == TYPE_UNION) {
+        var typeStrs = arr_map(type.types, type_toString);
+        return arr_join(typeStrs, " | ");
+    }
+    
+    if (type.kind == TYPE_INTERSECTION) {
+        var typeStrs = arr_map(type.types, type_toString);
+        return arr_join(typeStrs, " & ");
+    }
+    
+    return type.kind;
+}
+
+func type_equals(type1, type2) {
+    if (type1.kind != type2.kind) {
+        return false;
+    }
+    
+    if (type1.isPrimitive) {
+        return true;
+    }
+    
+    if (type1.kind == TYPE_ARRAY) {
+        return type_equals(type1.elementType, type2.elementType);
+    }
+    
+    if (type1.kind == TYPE_INSTANCE) {
+        if (!type_equals(type1.baseType, type2.baseType)) {
+            return false;
+        }
+        if (arr_length(type1.typeArguments) != arr_length(type2.typeArguments)) {
+            return false;
+        }
+        var i: int = 0;
+        while (i < arr_length(type1.typeArguments)) {
+            if (!type_equals(type1.typeArguments[i], type2.typeArguments[i])) {
+                return false;
+            }
+            i = i + 1;
+        }
+        return true;
+    }
+    
+    if (type1.kind == TYPE_FUNCTION) {
+        if (arr_length(type1.paramTypes) != arr_length(type2.paramTypes)) {
+            return false;
+        }
+        
+        var i: int = 0;
+        while (i < arr_length(type1.paramTypes)) {
+            if (!type_equals(type1.paramTypes[i], type2.paramTypes[i])) {
+                return false;
+            }
+            i = i + 1;
+        }
+        
+        return type_equals(type1.returnType, type2.returnType);
+    }
+    
+    # For complex types, use structural equality
+    return type_toString(type1) == type_toString(type2);
+}
+
+func type_isAssignableTo(fromType, toType) {
+    # Any can be assigned to anything
+    if (fromType.kind == TYPE_ANY || toType.kind == TYPE_ANY) {
+        return true;
+    }
+    
+    # Null can be assigned to any non-primitive
+    if (fromType.kind == TYPE_NULL && !toType.isPrimitive) {
+        return true;
+    }
+    
+    # Exact match
+    if (type_equals(fromType, toType)) {
+        return true;
+    }
+    
+    # Int can be assigned to float
+    if (fromType.kind == TYPE_INT && toType.kind == TYPE_FLOAT) {
+        return true;
+    }
+    
+    # Array covariance
+    if (fromType.kind == TYPE_ARRAY && toType.kind == TYPE_ARRAY) {
+        return type_isAssignableTo(fromType.elementType, toType.elementType);
+    }
+    
+    # Union types
+    if (toType.kind == TYPE_UNION) {
+        return arr_some(toType.types, func(t) {
+            return type_isAssignableTo(fromType, t);
+        });
+    }
+    
+    if (fromType.kind == TYPE_UNION) {
+        return arr_every(fromType.types, func(t) {
+            return type_isAssignableTo(t, toType);
+        });
+    }
+    
+    return false;
+}
+
+func type_fromLiteral(value) {
+    if (value == null) {
+        return type_primitive(TYPE_NULL);
+    }
+    
+    if (typeof(value) == "number") {
+        if (value == math_floor(value)) {
+            return type_primitive(TYPE_INT);
+        } else {
+            return type_primitive(TYPE_FLOAT);
+        }
+    }
+    
+    if (typeof(value) == "string") {
+        return type_primitive(TYPE_STRING);
+    }
+    
+    if (typeof(value) == "boolean") {
+        return type_primitive(TYPE_BOOL);
+    }
+    
+    if (typeof(value) == "array") {
+        if (arr_length(value) == 0) {
+            return type_array(type_primitive(TYPE_ANY));
+        }
+        
+        # Infer element type from first element
+        var elementType = type_fromLiteral(value[0]);
+        return type_array(elementType);
+    }
+    
+    if (typeof(value) == "object") {
+        var properties = {};
+        obj_forEach(value, func(key, val) {
+            properties[key] = type_fromLiteral(val);
+        });
+        return type_object(properties);
+    }
+    
+    return type_primitive(TYPE_ANY);
+}
+
+func type_substitute(type, mapping) {
+    if (type.kind == TYPE_GENERIC) {
+        if (mapping[type.name] != null) {
+            return mapping[type.name];
+        }
+        return type;
+    }
+    
+    if (type.kind == TYPE_ARRAY) {
+        return type_array(type_substitute(type.elementType, mapping));
+    }
+    
+    if (type.kind == TYPE_INSTANCE) {
+        var args = arr_map(type.typeArguments, func(t) {
+            return type_substitute(t, mapping);
+        });
+        return type_instance(type_substitute(type.baseType, mapping), args);
+    }
+    
+    if (type.kind == TYPE_FUNCTION) {
+        var paramTypes = arr_map(type.paramTypes, func(t) {
+            return type_substitute(t, mapping);
+        });
+        var returnType = type_substitute(type.returnType, mapping);
+        return type_function(paramTypes, returnType);
+    }
+    
+    if (type.kind == TYPE_OBJECT) {
+        var props = {};
+        obj_forEach(type.properties, func(name, propType) {
+            props[name] = type_substitute(propType, mapping);
+        });
+        return type_object(props);
+    }
+    
+    return type;
+}
+
+# ===== TYPE ENVIRONMENT =====
+
+func typeEnv_create() {
+    return {
+        types: {},
+        parent: null
+    };
+}
+
+func typeEnv_createChild(parent) {
+    return {
+        types: {},
+        parent: parent
+    };
+}
+
+func typeEnv_define(env, name, type) {
+    env.types[name] = type;
+}
+
+func typeEnv_lookup(env, name) {
+    if (env.types[name] != null) {
+        return env.types[name];
+    }
+    
+    if (env.parent != null) {
+        return typeEnv_lookup(env.parent, name);
+    }
+    
+    return null;
+}
+
+func typeEnv_update(env, name, type) {
+    if (env.types[name] != null) {
+        env.types[name] = type;
+        return true;
+    }
+    
+    if (env.parent != null) {
+        return typeEnv_update(env.parent, name, type);
+    }
+    
+    return false;
+}
+
+# ===== BUILT-IN TYPES =====
+
+func typeEnv_createGlobal() {
+    var env = typeEnv_create();
+    
+    # Primitive types
+    typeEnv_define(env, "int", type_primitive(TYPE_INT));
+    typeEnv_define(env, "float", type_primitive(TYPE_FLOAT));
+    typeEnv_define(env, "string", type_primitive(TYPE_STRING));
+    typeEnv_define(env, "bool", type_primitive(TYPE_BOOL));
+    typeEnv_define(env, "void", type_primitive(TYPE_VOID));
+    typeEnv_define(env, "any", type_primitive(TYPE_ANY));
+    
+    # Built-in functions
+    typeEnv_define(env, "print", type_function(
+        [type_primitive(TYPE_ANY)],
+        type_primitive(TYPE_VOID)
+    ));
+    
+    typeEnv_define(env, "println", type_function(
+        [type_primitive(TYPE_ANY)],
+        type_primitive(TYPE_VOID)
+    ));
+    
+    return env;
+}

@@ -1,0 +1,240 @@
+# Nux Quantum Computing Library
+# Uses NuxQuantum through FFI
+
+import "std/io";
+import "std/math";
+
+# Quantum Circuit
+class QuantumCircuit {
+    var handle;
+    var num_qubits;
+    
+    func init(n_qubits) {
+        this.num_qubits = n_qubits;
+        this.handle = ffi_call("nux_quantum_circuit_create", n_qubits);
+    }
+    
+    # Single-qubit gates
+    func h(qubit) {
+        ffi_call("nux_quantum_h", this.handle, qubit);
+    }
+    
+    func x(qubit) {
+        ffi_call("nux_quantum_x", this.handle, qubit);
+    }
+    
+    func y(qubit) {
+        ffi_call("nux_quantum_y", this.handle, qubit);
+    }
+    
+    func z(qubit) {
+        ffi_call("nux_quantum_z", this.handle, qubit);
+    }
+    
+    func phase(qubit, theta) {
+        ffi_call("nux_quantum_phase", this.handle, qubit, theta);
+    }
+    
+    # Two-qubit gates
+    func cnot(control, target) {
+        ffi_call("nux_quantum_cnot", this.handle, control, target);
+    }
+    
+    func swap(qubit1, qubit2) {
+        ffi_call("nux_quantum_swap", this.handle, qubit1, qubit2);
+    }
+    
+    # Execute circuit
+    func execute() {
+        return ffi_call("nux_quantum_execute", this.handle);
+    }
+    
+    # Measure
+    func measure(qubit) {
+        return ffi_call("nux_quantum_measure", this.handle, qubit);
+    }
+    
+    func measure_all() {
+        return ffi_call("nux_quantum_measure_all", this.handle);
+    }
+}
+
+# Quantum Algorithms
+class QuantumAlgorithms {
+    # Bell State (Entanglement)
+    func bell_state() {
+        var circuit = new QuantumCircuit(2);
+        circuit.h(0);
+        circuit.cnot(0, 1);
+        return circuit.execute();
+    }
+    
+    # Quantum Teleportation
+    func teleportation() {
+        var circuit = new QuantumCircuit(3);
+        
+        # Create entangled pair
+        circuit.h(1);
+        circuit.cnot(1, 2);
+        
+        # Alice's operations
+        circuit.cnot(0, 1);
+        circuit.h(0);
+        
+        # Measure
+        var m1 = circuit.measure(0);
+        var m2 = circuit.measure(1);
+        
+        # Bob's corrections
+        if (m2 == 1) circuit.x(2);
+        if (m1 == 1) circuit.z(2);
+        
+        return circuit.execute();
+    }
+    
+    # Grover's Search
+    func grover_search(n_qubits, target) {
+        var circuit = new QuantumCircuit(n_qubits);
+        
+        # Initialize superposition
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.h(i);
+        }
+        
+        # Grover iterations
+        var iterations = Math.floor(Math.sqrt(Math.pow(2, n_qubits)));
+        for (var iter: int = 0; iter < iterations; iter++) {
+            # Oracle (mark target)
+            this.oracle(circuit, target);
+            
+            # Diffusion operator
+            this.diffusion(circuit, n_qubits);
+        }
+        
+        return circuit.measure_all();
+    }
+    
+    func oracle(circuit, target) {
+        # Simplified oracle implementation
+        ffi_call("nux_quantum_oracle", circuit.handle, target);
+    }
+    
+    func diffusion(circuit, n_qubits) {
+        # Diffusion operator
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.h(i);
+        }
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.x(i);
+        }
+        # Multi-controlled Z
+        ffi_call("nux_quantum_mcz", circuit.handle, n_qubits);
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.x(i);
+        }
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.h(i);
+        }
+    }
+    
+    # Quantum Fourier Transform
+    func qft(n_qubits) {
+        var circuit = new QuantumCircuit(n_qubits);
+        
+        for (var i: int = 0; i < n_qubits; i++) {
+            circuit.h(i);
+            for (var j = i + 1; j < n_qubits; j++) {
+                var angle = Math.PI / Math.pow(2, j - i);
+                circuit.phase(j, angle);
+                circuit.cnot(j, i);
+                circuit.phase(j, -angle);
+                circuit.cnot(j, i);
+            }
+        }
+        
+        return circuit.execute();
+    }
+}
+
+# Example: Quantum Random Number Generator
+func quantum_random_number(bits) {
+    var circuit = new QuantumCircuit(bits);
+    
+    # Put all qubits in superposition
+    for (var i: int = 0; i < bits; i++) {
+        circuit.h(i);
+    }
+    
+    # Measure all qubits
+    var results = circuit.measure_all();
+    
+    # Convert to number
+    var number: int = 0;
+    for (var i: int = 0; i < bits; i++) {
+        number += results[i] * Math.pow(2, i);
+    }
+    
+    return number;
+}
+
+# Example: Quantum Cryptography (BB84)
+func bb84_protocol() {
+    println("Quantum Key Distribution (BB84)");
+    
+    var key_length: int = 10;
+    var alice_bits = [];
+    var alice_bases = [];
+    var bob_bases = [];
+    var shared_key = [];
+    
+    # Alice prepares qubits
+    for (var i: int = 0; i < key_length; i++) {
+        var bit = quantum_random_number(1);
+        var basis = quantum_random_number(1);
+        
+        alice_bits.push(bit);
+        alice_bases.push(basis);
+        
+        var circuit = new QuantumCircuit(1);
+        if (bit == 1) circuit.x(0);
+        if (basis == 1) circuit.h(0);
+        
+        # Bob measures
+        var bob_basis = quantum_random_number(1);
+        bob_bases.push(bob_basis);
+        
+        if (bob_basis == 1) circuit.h(0);
+        var measured = circuit.measure(0);
+        
+        # Keep bit if bases match
+        if (alice_bases[i] == bob_bases[i]) {
+            shared_key.push(measured);
+        }
+    }
+    
+    println("Shared key: " + shared_key);
+    return shared_key;
+}
+
+func main() {
+    var algo = new QuantumAlgorithms();
+    
+    # Test Bell state
+    println("Creating Bell state (entanglement):");
+    var bell = algo.bell_state();
+    println(bell);
+    
+    # Test Grover's search
+    println("\nGrover's search for element 5:");
+    var result = algo.grover_search(3, 5);
+    println("Found: " + result);
+    
+    # Quantum random number
+    println("\nQuantum random number (8 bits):");
+    var random = quantum_random_number(8);
+    println(random);
+    
+    # BB84 protocol
+    println("\n");
+    bb84_protocol();
+}

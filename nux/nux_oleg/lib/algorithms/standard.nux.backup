@@ -1,0 +1,429 @@
+// Nux Comprehensive Algorithm Library
+// Basic to advanced algorithms optimized for performance
+
+// ============= SORTING ALGORITHMS =============
+
+// QuickSort (average O(n log n))
+func quicksort<T>(arr: [T]) -> [T] where T: Comparable {
+    if (arr.length <= 1) return arr;
+    
+    var pivot = arr[arr.length / 2];
+    var less = arr.filter((x) => x < pivot);
+    var equal = arr.filter((x) => x == pivot);
+    var greater = arr.filter((x) => x > pivot);
+    
+    return quicksort(less) + equal + quicksort(greater);
+}
+
+// MergeSort (guaranteed O(n log n))
+func mergesort<T>(arr: [T]) -> [T] where T: Comparable {
+    if (arr.length <= 1) return arr;
+    
+    var mid = arr.length / 2;
+    var left = mergesort(arr[0..mid]);
+    var right = mergesort(arr[mid..arr.length]);
+    
+    return merge(left, right);
+}
+
+func merge<T>(left: [T], right: [T]) -> [T] where T: Comparable {
+    var result: [T] = [];
+    var i = 0, j = 0;
+    
+    while (i < left.length && j < right.length) {
+        if (left[i] <= right[j]) {
+            result.push(left[i]);
+            i += 1;
+        } else {
+            result.push(right[j]);
+            j += 1;
+        }
+    }
+    
+    result.extend(left[i..]);
+    result.extend(right[j..]);
+    return result;
+}
+
+// HeapSort (O(n log n), in-place)
+func heapsort<T>(arr: [T]) -> [T] where T: Comparable {
+    // Build max heap
+    for (var i = arr.length / 2 - 1; i >= 0; i--) {
+        heapify(arr, arr.length, i);
+    }
+    
+    // Extract elements from heap
+    for (var i = arr.length - 1; i > 0; i--) {
+        swap(arr, 0, i);
+        heapify(arr, i, 0);
+    }
+    
+    return arr;
+}
+
+// RadixSort (O(nk) for integers)
+func radixsort(arr: [int]) -> [int] {
+    var max_val = arr.max();
+    var exp = 1;
+    
+    while (max_val / exp > 0) {
+        counting_sort_by_digit(arr, exp);
+        exp *= 10;
+    }
+    
+    return arr;
+}
+
+// ============= SEARCHING ALGORITHMS =============
+
+// Binary Search (O(log n))
+func binary_search<T>(arr: [T], target: T) -> Option<int> where T: Comparable {
+    var low = 0;
+    var high = arr.length - 1;
+    
+    while (low <= high) {
+        var mid = (low + high) / 2;
+        
+        if (arr[mid] == target) {
+            return Some(mid);
+        } else if (arr[mid] < target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    
+    return None;
+}
+
+// Interpolation Search (O(log log n) for uniform distribution)
+func interpolation_search(arr: [int], target: int) -> Option<int> {
+    var low = 0;
+    var high = arr.length - 1;
+    
+    while (low <= high && target >= arr[low] && target <= arr[high]) {
+        var pos = low + ((target - arr[low]) * (high - low)) / (arr[high] - arr[low]);
+        
+        if (arr[pos] == target) {
+            return Some(pos);
+        } else if (arr[pos] < target) {
+            low = pos + 1;
+        } else {
+            high = pos - 1;
+        }
+    }
+    
+    return None;
+}
+
+// ============= GRAPH ALGORITHMS =============
+
+// Dijkstra's Shortest Path (O((V + E) log V))
+func dijkstra(graph: Graph, start: int) -> [int] {
+    var dist: [int] = Array.filled(graph.num_vertices, INFINITY);
+    var visited: [bool] = Array.filled(graph.num_vertices, false);
+    var pq = PriorityQueue<(int, int)>.new();
+    
+    dist[start] = 0;
+    pq.push((0, start));
+    
+    while (!pq.is_empty()) {
+        var (d, u) = pq.pop();
+        
+        if (visited[u]) continue;
+        visited[u] = true;
+        
+        for (var (v, weight) in graph.neighbors(u)) {
+            if (dist[u] + weight < dist[v]) {
+                dist[v] = dist[u] + weight;
+                pq.push((dist[v], v));
+            }
+        }
+    }
+    
+    return dist;
+}
+
+// Bellman-Ford (handles negative weights, O(VE))
+func bellman_ford(graph: Graph, start: int) -> Result<[int], string> {
+    var dist: [int] = Array.filled(graph.num_vertices, INFINITY);
+    dist[start] = 0;
+    
+    // Relax edges V-1 times
+    for (var i = 0; i < graph.num_vertices - 1; i++) {
+        for (var edge in graph.edges) {
+            if (dist[edge.from] + edge.weight < dist[edge.to]) {
+                dist[edge.to] = dist[edge.from] + edge.weight;
+            }
+        }
+    }
+    
+    // Check for negative cycles
+    for (var edge in graph.edges) {
+        if (dist[edge.from] + edge.weight < dist[edge.to]) {
+            return Err("Negative cycle detected");
+        }
+    }
+    
+    return Ok(dist);
+}
+
+// Floyd-Warshall (all-pairs shortest path, O(V³))
+func floyd_warshall(graph: Graph) -> [[int]] {
+    var dist = graph.adjacency_matrix();
+    
+    for (var k = 0; k < graph.num_vertices; k++) {
+        for (var i = 0; i < graph.num_vertices; i++) {
+            for (var j = 0; j < graph.num_vertices; j++) {
+                if (dist[i][k] + dist[k][j] < dist[i][j]) {
+                    dist[i][j] = dist[i][k] + dist[k][j];
+                }
+            }
+        }
+    }
+    
+    return dist;
+}
+
+// Kruskal's MST (O(E log E))
+func kruskal_mst(graph: Graph) -> [Edge] {
+    var edges = graph.edges.sort_by((e) => e.weight);
+    var uf = UnionFind.new(graph.num_vertices);
+    var mst: [Edge] = [];
+    
+    for (var edge in edges) {
+        if (!uf.connected(edge.from, edge.to)) {
+            uf.union(edge.from, edge.to);
+            mst.push(edge);
+        }
+    }
+    
+    return mst;
+}
+
+// Prim's MST (O((V + E) log V))
+func prim_mst(graph: Graph, start: int) -> [Edge] {
+    var visited: [bool] = Array.filled(graph.num_vertices, false);
+    var pq = PriorityQueue<Edge>.new();
+    var mst: [Edge] = [];
+    
+    visited[start] = true;
+    for (var edge in graph.edges_from(start)) {
+        pq.push(edge);
+    }
+    
+    while (!pq.is_empty()) {
+        var edge = pq.pop();
+        
+        if (visited[edge.to]) continue;
+        
+        visited[edge.to] = true;
+        mst.push(edge);
+        
+        for (var next_edge in graph.edges_from(edge.to)) {
+            if (!visited[next_edge.to]) {
+                pq.push(next_edge);
+            }
+        }
+    }
+    
+    return mst;
+}
+
+// Topological Sort (O(V + E))
+func topological_sort(graph: Graph) -> [int] {
+    var in_degree: [int] = Array.filled(graph.num_vertices, 0);
+    
+    for (var edge in graph.edges) {
+        in_degree[edge.to] += 1;
+    }
+    
+    var queue: [int] = [];
+    for (var i = 0; i < graph.num_vertices; i++) {
+        if (in_degree[i] == 0) {
+            queue.push(i);
+        }
+    }
+    
+    var result: [int] = [];
+    while (!queue.is_empty()) {
+        var u = queue.pop_front();
+        result.push(u);
+        
+        for (var v in graph.neighbors(u)) {
+            in_degree[v] -= 1;
+            if (in_degree[v] == 0) {
+                queue.push(v);
+            }
+        }
+    }
+    
+    return result;
+}
+
+// ============= DYNAMIC PROGRAMMING =============
+
+// Longest Common Subsequence (O(mn))
+func lcs(a: string, b: string) -> string {
+    var dp: [[int]] = Array.filled(a.length + 1, Array.filled(b.length + 1, 0));
+    
+    for (var i = 1; i <= a.length; i++) {
+        for (var j = 1; j <= b.length; j++) {
+            if (a[i-1] == b[j-1]) {
+                dp[i][j] = dp[i-1][j-1] + 1;
+            } else {
+                dp[i][j] = max(dp[i-1][j], dp[i][j-1]);
+            }
+        }
+    }
+    
+    // Reconstruct LCS
+    return reconstruct_lcs(dp, a, b);
+}
+
+// Knapsack (O(nW))
+func knapsack(weights: [int], values: [int], capacity: int) -> int {
+    var dp: [[int]] = Array.filled(weights.length + 1, Array.filled(capacity + 1, 0));
+    
+    for (var i = 1; i <= weights.length; i++) {
+        for (var w = 1; w <= capacity; w++) {
+            if (weights[i-1] <= w) {
+                dp[i][w] = max(
+                    dp[i-1][w],
+                    dp[i-1][w - weights[i-1]] + values[i-1]
+                );
+            } else {
+                dp[i][w] = dp[i-1][w];
+            }
+        }
+    }
+    
+    return dp[weights.length][capacity];
+}
+
+// Edit Distance (O(mn))
+func edit_distance(a: string, b: string) -> int {
+    var dp: [[int]] = Array.filled(a.length + 1, Array.filled(b.length + 1, 0));
+    
+    for (var i = 0; i <= a.length; i++) dp[i][0] = i;
+    for (var j = 0; j <= b.length; j++) dp[0][j] = j;
+    
+    for (var i = 1; i <= a.length; i++) {
+        for (var j = 1; j <= b.length; j++) {
+            if (a[i-1] == b[j-1]) {
+                dp[i][j] = dp[i-1][j-1];
+            } else {
+                dp[i][j] = 1 + min(
+                    dp[i-1][j],     // delete
+                    dp[i][j-1],     // insert
+                    dp[i-1][j-1]    // replace
+                );
+            }
+        }
+    }
+    
+    return dp[a.length][b.length];
+}
+
+// ============= STRING ALGORITHMS =============
+
+// KMP Pattern Matching (O(n + m))
+func kmp_search(text: string, pattern: string) -> [int] {
+    var lps = compute_lps(pattern);
+    var matches: [int] = [];
+    var i = 0, j = 0;
+    
+    while (i < text.length) {
+        if (text[i] == pattern[j]) {
+            i += 1;
+            j += 1;
+        }
+        
+        if (j == pattern.length) {
+            matches.push(i - j);
+            j = lps[j - 1];
+        } else if (i < text.length && text[i] != pattern[j]) {
+            if (j != 0) {
+                j = lps[j - 1];
+            } else {
+                i += 1;
+            }
+        }
+    }
+    
+    return matches;
+}
+
+// Rabin-Karp (O(n + m) average)
+func rabin_karp(text: string, pattern: string) -> [int] {
+    const BASE = 256;
+    const MOD = 1000000007;
+    
+    var pattern_hash = hash_string(pattern, BASE, MOD);
+    var text_hash = hash_string(text[0..pattern.length], BASE, MOD);
+    var matches: [int] = [];
+    
+    for (var i = 0; i <= text.length - pattern.length; i++) {
+        if (text_hash == pattern_hash) {
+            if (text[i..i+pattern.length] == pattern) {
+                matches.push(i);
+            }
+        }
+        
+        if (i < text.length - pattern.length) {
+            text_hash = rolling_hash(text_hash, text[i], text[i+pattern.length], BASE, MOD);
+        }
+    }
+    
+    return matches;
+}
+
+// ============= MATHEMATICAL ALGORITHMS =============
+
+// Fast Exponentiation (O(log n))
+func fast_pow(base: int, exp: int, mod: int) -> int {
+    var result = 1;
+    var b = base % mod;
+    
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * b) % mod;
+        }
+        b = (b * b) % mod;
+        exp /= 2;
+    }
+    
+    return result;
+}
+
+// GCD (O(log min(a, b)))
+func gcd(a: int, b: int) -> int {
+    while (b != 0) {
+        var temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Prime Sieve (O(n log log n))
+func sieve_of_eratosthenes(n: int) -> [int] {
+    var is_prime: [bool] = Array.filled(n + 1, true);
+    is_prime[0] = false;
+    is_prime[1] = false;
+    
+    for (var i = 2; i * i <= n; i++) {
+        if (is_prime[i]) {
+            for (var j = i * i; j <= n; j += i) {
+                is_prime[j] = false;
+            }
+        }
+    }
+    
+    var primes: [int] = [];
+    for (var i = 2; i <= n; i++) {
+        if (is_prime[i]) primes.push(i);
+    }
+    
+    return primes;
+}

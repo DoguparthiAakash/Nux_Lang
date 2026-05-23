@@ -1,0 +1,17 @@
+[package]
+name = "nux"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+minifb = { version = "0.27", optional = true }
+
+[features]
+default = ["gui"]
+gui = ["minifb"]
+
+[profile.release]
+lto = "off"
+codegen-units = 1
+opt-level = 2 # Good balance
+panic = "abort"

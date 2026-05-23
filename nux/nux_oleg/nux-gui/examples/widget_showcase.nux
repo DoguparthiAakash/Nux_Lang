@@ -1,0 +1,152 @@
+# Nux GUI Widget Showcase Demo
+
+import "gui";
+
+func main() {
+    # Initialize GUI
+    if (!gui.initialize()) {
+        println("Failed to initialize GUI");
+        return;
+    }
+    
+    # Create main window
+    var window = new gui.Window(900, 700, "Nux GUI - Widget Showcase");
+    
+    # Title Label
+    var title = new gui.Label("Nux GUI Widget Showcase");
+    title.setPosition(300.0, 30.0);
+    title.setFontSize(28.0);
+    window.addWidget(title);
+    
+    # Section 1: Buttons
+    var btnLabel = new gui.Label("Buttons:");
+    btnLabel.setPosition(50.0, 100.0);
+    btnLabel.setFontSize(20.0);
+    window.addWidget(btnLabel);
+    
+    var btn1 = new gui.Button("Primary Button");
+    btn1.setPosition(50.0, 140.0);
+    btn1.setSize(150.0, 40.0);
+    window.addWidget(btn1);
+    
+    var btn2 = new gui.Button("Secondary");
+    btn2.setPosition(220.0, 140.0);
+    btn2.setSize(120.0, 40.0);
+    window.addWidget(btn2);
+    
+    var btn3 = new gui.Button("Disabled");
+    btn3.setPosition(360.0, 140.0);
+    btn3.setSize(100.0, 40.0);
+    btn3.setEnabled(false);
+    window.addWidget(btn3);
+    
+    # Section 2: Text Input
+    var inputLabel = new gui.Label("Text Input:");
+    inputLabel.setPosition(50.0, 220.0);
+    inputLabel.setFontSize(20.0);
+    window.addWidget(inputLabel);
+    
+    var textbox1 = new gui.TextBox("Enter your name...");
+    textbox1.setPosition(50.0, 260.0);
+    textbox1.setSize(300.0, 35.0);
+    window.addWidget(textbox1);
+    
+    var textbox2 = new gui.TextBox("Email address");
+    textbox2.setPosition(50.0, 310.0);
+    textbox2.setSize(300.0, 35.0);
+    window.addWidget(textbox2);
+    
+    # Section 3: CheckBoxes
+    var checkLabel = new gui.Label("CheckBoxes:");
+    checkLabel.setPosition(500.0, 100.0);
+    checkLabel.setFontSize(20.0);
+    window.addWidget(checkLabel);
+    
+    var check1 = new gui.CheckBox("Enable notifications");
+    check1.setPosition(500.0, 140.0);
+    window.addWidget(check1);
+    
+    var check2 = new gui.CheckBox("Remember me");
+    check2.setPosition(500.0, 180.0);
+    check2.setChecked(true);
+    window.addWidget(check2);
+    
+    var check3 = new gui.CheckBox("Auto-save");
+    check3.setPosition(500.0, 220.0);
+    window.addWidget(check3);
+    
+    # Section 4: Sliders
+    var sliderLabel = new gui.Label("Sliders:");
+    sliderLabel.setPosition(50.0, 390.0);
+    sliderLabel.setFontSize(20.0);
+    window.addWidget(sliderLabel);
+    
+    var volumeLabel = new gui.Label("Volume:");
+    volumeLabel.setPosition(50.0, 430.0);
+    window.addWidget(volumeLabel);
+    
+    var volumeSlider = new gui.Slider(0.0, 100.0);
+    volumeSlider.setPosition(150.0, 435.0);
+    volumeSlider.setSize(250.0, 10.0);
+    volumeSlider.setValue(75.0);
+    window.addWidget(volumeSlider);
+    
+    var brightnessLabel = new gui.Label("Brightness:");
+    brightnessLabel.setPosition(50.0, 480.0);
+    window.addWidget(brightnessLabel);
+    
+    var brightnessSlider = new gui.Slider(0.0, 100.0);
+    brightnessSlider.setPosition(150.0, 485.0);
+    brightnessSlider.setSize(250.0, 10.0);
+    brightnessSlider.setValue(50.0);
+    window.addWidget(brightnessSlider);
+    
+    # Section 5: Panels
+    var panelLabel = new gui.Label("Panel Container:");
+    panelLabel.setPosition(500.0, 300.0);
+    panelLabel.setFontSize(20.0);
+    window.addWidget(panelLabel);
+    
+    var panel = new gui.Panel();
+    panel.setPosition(500.0, 340.0);
+    panel.setSize(350.0, 200.0);
+    panel.setBackgroundColor(0xF5F5F5FF);
+    window.addWidget(panel);
+    
+    # Info label inside panel
+    var infoLabel = new gui.Label("This is a panel container");
+    infoLabel.setPosition(520.0, 360.0);
+    window.addWidget(infoLabel);
+    
+    var infoLabel2 = new gui.Label("You can add widgets inside it");
+    infoLabel2.setPosition(520.0, 390.0);
+    window.addWidget(infoLabel2);
+    
+    # Footer
+    var footer = new gui.Label("Nux GUI Library v1.0 - C++ Core with Nux Bindings");
+    footer.setPosition(250.0, 650.0);
+    footer.setFontSize(12.0);
+    window.addWidget(footer);
+    
+    # Main loop
+    println("Starting GUI showcase...");
+    var frameCount: int = 0;
+    
+    while (!window.shouldClose()) {
+        window.pollEvents();
+        window.clear(0.95, 0.95, 0.97, 1.0);  # Light background
+        window.render();
+        window.swapBuffers();
+        
+        frameCount = frameCount + 1;
+        if (frameCount % 60 == 0) {
+            println("Running... Frame: " + frameCount);
+        }
+    }
+    
+    # Cleanup
+    gui.shutdown();
+    println("Showcase closed.");
+}
+
+main();

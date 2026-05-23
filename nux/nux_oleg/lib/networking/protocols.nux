@@ -1,0 +1,330 @@
+# Networking - Complete networking stack
+
+# ============= TCP/IP STACK =============
+
+# TCP Socket
+class TCPSocket {
+    var fd: int;
+    var host: string;
+    var port: int;
+    
+    static func connect(host: string, port: int) -> TCPSocket {
+        var fd = socket_create(AF_INET, SOCK_STREAM, 0);
+        socket_connect(fd, host, port);
+        
+        return TCPSocket {
+            fd: fd,
+            host: host,
+            port: port
+        };
+    }
+    
+    func send(data: [byte]) -> int {
+        return socket_send(this.fd, data);
+    }
+    
+    func recv(size: int) -> [byte] {
+        return socket_recv(this.fd, size);
+    }
+    
+    func close() {
+        socket_close(this.fd);
+    }
+}
+
+# TCP Server
+class TCPServer {
+    var fd: int;
+    var host: string;
+    var port: int;
+    
+    static func bind(host: string, port: int) -> TCPServer {
+        var fd = socket_create(AF_INET, SOCK_STREAM, 0);
+        socket_bind(fd, host, port);
+        socket_listen(fd, 128);
+        
+        return TCPServer {
+            fd: fd,
+            host: host,
+            port: port
+        };
+    }
+    
+    func accept() -> TCPSocket {
+        var client_fd = socket_accept(this.fd);
+        return TCPSocket { fd: client_fd };
+    }
+}
+
+# UDP Socket
+class UDPSocket {
+    var fd: int;
+    
+    static func new() -> UDPSocket {
+        var fd = socket_create(AF_INET, SOCK_DGRAM, 0);
+        return UDPSocket { fd: fd };
+    }
+    
+    func send_to(data: [byte], host: string, port: int) -> int {
+        return socket_sendto(this.fd, data, host, port);
+    }
+    
+    func recv_from(size: int) -> ([byte], string, int) {
+        return socket_recvfrom(this.fd, size);
+    }
+}
+
+# ============= HTTP =============
+
+class HTTPClient {
+    func get(url: string) -> HTTPResponse {
+        var parsed = parse_url(url);
+        var socket = TCPSocket.connect(parsed.host, parsed.port);
+        
+        var request = "GET " + parsed.path + " HTTP/1.1\r\n";
+        request += "Host: " + parsed.host + "\r\n";
+        request += "Connection: close\r\n";
+        request += "\r\n";
+        
+        socket.send(request.bytes());
+        
+        var response: string = "";
+        while (true) {
+            var data = socket.recv(4096);
+            if (data.length == 0) break;
+            response += string.from_bytes(data);
+        }
+        
+        socket.close();
+        
+        return parse_http_response(response);
+    }
+    
+    func post(url: string, body: string) -> HTTPResponse {
+        var parsed = parse_url(url);
+        var socket = TCPSocket.connect(parsed.host, parsed.port);
+        
+        var request = "POST " + parsed.path + " HTTP/1.1\r\n";
+        request += "Host: " + parsed.host + "\r\n";
+        request += "Content-Length: " + body.length + "\r\n";
+        request += "Content-Type: application/json\r\n";
+        request += "Connection: close\r\n";
+        request += "\r\n";
+        request += body;
+        
+        socket.send(request.bytes());
+        
+        var response: string = "";
+        while (true) {
+            var data = socket.recv(4096);
+            if (data.length == 0) break;
+            response += string.from_bytes(data);
+        }
+        
+        socket.close();
+        
+        return parse_http_response(response);
+    }
+}
+
+class HTTPResponse {
+    var status: int;
+    var headers: Map<string, string>;
+    var body: string;
+}
+
+# ============= WEBSOCKET =============
+
+class WebSocket {
+    var socket: TCPSocket;
+    var connected: bool = false;
+    
+    static func connect(url: string) -> WebSocket {
+        var parsed = parse_url(url);
+        var socket = TCPSocket.connect(parsed.host, parsed.port);
+        
+        # WebSocket handshake
+        var key = generate_websocket_key();
+        var request = "GET " + parsed.path + " HTTP/1.1\r\n";
+        request += "Host: " + parsed.host + "\r\n";
+        request += "Upgrade: websocket\r\n";
+        request += "Connection: Upgrade\r\n";
+        request += "Sec-WebSocket-Key: " + key + "\r\n";
+        request += "Sec-WebSocket-Version: 13\r\n";
+        request += "\r\n";
+        
+        socket.send(request.bytes());
+        
+        # Read handshake response
+        var response = socket.recv(4096);
+        
+        return WebSocket {
+            socket: socket,
+            connected: true
+        };
+    }
+    
+    func send(message: string) {
+        var frame = create_websocket_frame(message);
+        this.socket.send(frame);
+    }
+    
+    func recv() -> string {
+        var frame = this.socket.recv(4096);
+        return parse_websocket_frame(frame);
+    }
+    
+    func close() {
+        this.socket.close();
+        this.connected = false;
+    }
+}
+
+# ============= DNS =============
+
+class DNSResolver {
+    func resolve(hostname: string) -> string {
+        # Query DNS server
+        var socket = UDPSocket.new();
+        
+        var query = create_dns_query(hostname);
+        socket.send_to(query, "8.8.8.8", 53);
+        
+        var (response, _, _) = socket.recv_from(512);
+        var ip = parse_dns_response(response);
+        
+        return ip;
+    }
+}
+
+# ============= TLS/SSL =============
+
+class TLSSocket {
+    var socket: TCPSocket;
+    var ctx: TLSContext;
+    
+    static func connect(host: string, port: int) -> TLSSocket {
+        var socket = TCPSocket.connect(host, port);
+        var ctx = TLSContext.new();
+        
+        # TLS handshake
+        ctx.handshake(socket);
+        
+        return TLSSocket {
+            socket: socket,
+            ctx: ctx
+        };
+    }
+    
+    func send(data: [byte]) -> int {
+        var encrypted = this.ctx.encrypt(data);
+        return this.socket.send(encrypted);
+    }
+    
+    func recv(size: int) -> [byte] {
+        var encrypted = this.socket.recv(size);
+        return this.ctx.decrypt(encrypted);
+    }
+}
+
+# ============= PROTOCOLS =============
+
+# FTP Client
+class FTPClient {
+    var control_socket: TCPSocket;
+    
+    func connect(host: string, port: int = 21) {
+        this.control_socket = TCPSocket.connect(host, port);
+    }
+    
+    func login(username: string, password: string) {
+        this.send_command("USER " + username);
+        this.send_command("PASS " + password);
+    }
+    
+    func list() -> [string] {
+        this.send_command("LIST");
+        var data = this.recv_data();
+        return data.split("\n");
+    }
+    
+    func download(filename: string) -> [byte] {
+        this.send_command("RETR " + filename);
+        return this.recv_data();
+    }
+}
+
+# SMTP Client
+class SMTPClient {
+    var socket: TCPSocket;
+    
+    func connect(host: string, port: int = 25) {
+        this.socket = TCPSocket.connect(host, port);
+    }
+    
+    func send_email(from: string, to: string, subject: string, body: string) {
+        this.send_command("HELO localhost");
+        this.send_command("MAIL FROM: <" + from + ">");
+        this.send_command("RCPT TO: <" + to + ">");
+        this.send_command("DATA");
+        
+        var message = "From: " + from + "\r\n";
+        message += "To: " + to + "\r\n";
+        message += "Subject: " + subject + "\r\n";
+        message += "\r\n";
+        message += body + "\r\n";
+        message += ".\r\n";
+        
+        this.socket.send(message.bytes());
+    }
+}
+
+# ============= NETWORK UTILITIES =============
+
+# Ping
+func ping(host: string) -> int {
+    var socket = socket_create(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    
+    var packet = create_icmp_echo_request();
+    var start = Time.now_ms();
+    
+    socket_sendto(socket, packet, host, 0);
+    var (response, _, _) = socket_recvfrom(socket, 1024);
+    
+    var end = Time.now_ms();
+    socket_close(socket);
+    
+    return end - start;
+}
+
+# Port Scanner
+func scan_ports(host: string, start_port: int, end_port: int) -> [int] {
+    var open_ports: [int] = [];
+    
+    for (var port = start_port; port <= end_port; port++) {
+        try {
+            var socket = TCPSocket.connect(host, port);
+            socket.close();
+            open_ports.push(port);
+        } catch (e) {
+            # Port closed
+        }
+    }
+    
+    return open_ports;
+}
+
+# Packet Sniffer
+class PacketSniffer {
+    var socket: int;
+    
+    func new() -> PacketSniffer {
+        var socket = socket_create(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+        return PacketSniffer { socket: socket };
+    }
+    
+    func capture() -> Packet {
+        var data = socket_recv(this.socket, 65536);
+        return parse_packet(data);
+    }
+}

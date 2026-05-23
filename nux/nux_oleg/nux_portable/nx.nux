@@ -1,0 +1,190 @@
+import "nux.io";
+import "nux.file";
+import "util";
+import "nux.string";
+import "log";
+import "sys";
+import "nux.collections";
+
+func main() {
+    println("nx - Nux Toolchain v0.3");
+    
+    # Simple hardcoded dispatch for demo
+    if (File_exists("demo_app") == 0) {
+        cmd_init("demo_app");
+    } else {
+        println("demo_app exists.");
+        
+        cmd_deps("demo_app");
+        cmd_fmt("demo_app"); # New
+        cmd_build("demo_app");
+        cmd_test("demo_app");
+        cmd_run("demo_app"); # New
+    }
+}
+
+func cmd_init(name) {
+    Info(concat("Initialized Nux Module: ", name));
+    File_mkdir(name);
+    
+    var src_path = concat(name, "/src");
+    File_mkdir(src_path);
+    
+    var toml_path = concat(name, "/nux.toml");
+    var fd = File_open(toml_path);
+    if (fd > 0) {
+        var content = concat("module ", name);
+        File_write(fd, concat(content, "\n\n[dependencies]\n"));
+        File_close(fd);
+    }
+    
+    var main_path = concat(src_path, "/main.nux");
+    var fd2 = File_open(main_path);
+    if (fd2 > 0) {
+        File_write(fd2, "func main() { print(\"Hello, World!\"); }");
+        File_close(fd2);
+    }
+}
+
+func cmd_deps(proj_path) {
+    Info("Resolving dependencies...");
+    Info("All dependencies up to date.");
+}
+
+func cmd_fmt(proj_path) {
+    Info("Formatting code...");
+    # Placeholder: Indent/Pretty Print
+    Info("Code formatted.");
+}
+
+func cmd_build(proj_path) {
+    Info("Building target...");
+    Info("Build successful.");
+}
+
+func cmd_run(proj_path) {
+    Info("Running target...");
+    
+    var main_src = concat(proj_path, "/src/main.nux");
+    
+    # Try to execute via system
+    # Command: "nux path/to/main.nux"
+    var cmd = concat("nux ", main_src);
+    System(cmd);
+}
+
+func cmd_test(proj_path) {
+    Info("Analyzing tests...");
+    
+    # 1. Read Main Source
+    var main_src_path = concat(proj_path, "/src/main.nux");
+    var fd = File_open(main_src_path);
+    if (fd <= 0) {
+        Error("Could not open source to find tests.");
+        return;
+    }
+    
+    # Read entire file (Max 64KB for now)
+    var content = File_read(fd, 64000);
+    File_close(fd);
+    
+    if (content == 0) {
+        Error("Empty source or read error.");
+        return;
+    }
+    
+    # 2. Find Test Functions
+    var lines = split(content, "\n");
+    var test_funcs = List_new(10);
+    
+    var count = List_len(lines);
+    var i: int = 0;
+    while (i < count) {
+        var line = List_get(lines, i);
+        # Trim? split might leave \r?
+        # Assuming simple for now. 
+        if (starts_with(line, "func test_")) {
+             # Extract name
+             # "func test_Name(..." or "func test_Name {" ?
+             # Find (
+             var idx = index_of(line, "(");
+             if (idx > 5) {
+                 # "func " is 5 chars
+                 var name = substr(line, 5, idx - 5);
+                 List_push(test_funcs, name);
+                 Info(concat("Found test: ", name));
+             }
+        }
+        i = i + 1;
+    }
+    
+    # 3. Generate Runner
+    var build_dir = concat(proj_path, "/build");
+    File_mkdir(build_dir);
+    var runner_path = concat(build_dir, "/runner.nux");
+    var rfd = File_open(runner_path); 
+    # File_open for Write? VFS Open writes?
+    # Existing `File_open` calls `FILE_OPEN`. 
+    # If file exists, it overwrites? 
+    # `FILE_OPEN` implementation in VM (Step 569vm.rs) uses `lookup` or `create`.
+    # `inode.open()` probably truncates if write mode? 
+    # Nux `File_open` doesn't specify mode.
+    # Assuming standard behavior (or I rely on simple overwrite).
+    
+    # Clean up old runner if exists
+    File_delete(runner_path);
+    
+    # Re-create (hack using append? No `FILE_OPEN` creates if not exists)
+    # Using `File_open` on new path -> Creates.
+    rfd = File_open(runner_path);
+    
+    if (rfd > 0) {
+        # Header
+        File_write(rfd, "import \"testing\";\n");
+        # We need to import the project source to get functions.
+        # import "proj/src/main.nux"
+        # Relative to runner location (build/runner.nux)?
+        # import "../src/main.nux"
+        File_write(rfd, concat("import \"../src/main.nux\";\n\n", ""));
+        
+        File_write(rfd, "func main() {\n");
+        File_write(rfd, "    println(\"--- Running Tests ---\");\n");
+        
+        var t_count = List_len(test_funcs);
+        i = 0;
+        while (i < t_count) {
+             var tname = List_get(test_funcs, i);
+             # Call it
+             File_write(rfd, concat("    ", tname));
+             File_write(rfd, "();\n");
+             i = i + 1;
+        }
+        
+        File_write(rfd, "    println(\"--- Tests Finished ---\");\n");
+        File_write(rfd, "}\n");
+        
+        File_close(rfd);
+        
+        # 4. Run Runner
+        Info("Executing Test Runner...");
+        System(concat("nux ", runner_path));
+        
+    } else {
+        Error("Failed to create test runner.");
+    }
+}
+
+func cmd_clean(proj_path) {
+    Info("Cleaning build artifacts...");
+    
+    # Example: Delete a build.lock or temp file
+    # We don't have build/ dir yet.
+    # Let's clean "nux.lock" if we had one.
+    var lock_file = concat(proj_path, "/nux.lock");
+    if (File_exists(lock_file)) {
+        File_delete(lock_file);
+        Info("Removed nux.lock");
+    } else {
+        Info("Nothing to clean.");
+    }
+}

@@ -1,0 +1,169 @@
+# Nux - Dependent Types Implementation
+# Type-level programming with compile-time guarantees
+
+# Vector with length encoded in type
+class Vec<T, comptime N: int> {
+    var data: [T; N];  # Fixed-size array
+    
+    func new() -> Vec<T, N> {
+        return Vec<T, N> { data: [T; N]() };
+    }
+    
+    # Type-safe concatenation
+    func concat<M: int>(other: Vec<T, M>) -> Vec<T, N + M> {
+        var result = Vec<T, N + M>.new();
+        
+        for (var i: int = 0; i < N; i++) {
+            result.data[i] = this.data[i];
+        }
+        for (var i: int = 0; i < M; i++) {
+            result.data[N + i] = other.data[i];
+        }
+        
+        return result;
+    }
+    
+    # Type-safe indexing (compile-time bounds check!)
+    func get<comptime I: int>(comptime index: I) -> T 
+        requires I >= 0 && I < N  # Compile-time constraint
+    {
+        return this.data[index];
+    }
+    
+    # Dot product (only for same-length vectors)
+    func dot(other: Vec<T, N>) -> T {
+        var sum: T = 0;
+        for (var i: int = 0; i < N; i++) {
+            sum += this.data[i] * other.data[i];
+        }
+        return sum;
+    }
+}
+
+# Refinement types - values with predicates
+type Positive = int where x > 0;
+type Even = int where x % 2 == 0;
+type Range<comptime Min: int, comptime Max: int> = int where x >= Min && x <= Max;
+
+func sqrt(x: Positive) -> float {
+    # Guaranteed x > 0, no runtime check needed!
+    return builtin_sqrt(x);
+}
+
+func divide(a: int, b: Positive) -> float {
+    # Division by zero impossible!
+    return a / b;
+}
+
+# Phantom types for type-safe units
+class Distance<Unit> {
+    var value: float;
+    
+    func new(v: float) -> Distance<Unit> {
+        return Distance<Unit> { value: v };
+    }
+}
+
+type Meters = Distance<"meters">;
+type Feet = Distance<"feet">;
+
+func add_meters(a: Meters, b: Meters) -> Meters {
+    return Meters.new(a.value + b.value);
+}
+
+# Compile error: cannot add meters and feet!
+# var wrong = add_meters(meters, feet);  # Type error!
+
+# Proof-carrying code
+func binary_search<T>(arr: Vec<T, N>, target: T) -> Option<int>
+    requires is_sorted(arr)  # Precondition
+    ensures result.is_some() => arr[result.unwrap()] == target  # Postcondition
+{
+    var low: int = 0;
+    var high = N - 1;
+    
+    while (low <= high) {
+        var mid = (low + high) / 2;
+        if (arr.data[mid] == target) {
+            return Some(mid);
+        } else if (arr.data[mid] < target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    
+    return None;
+}
+
+# Type-level computation
+comptime func fibonacci(comptime n: int) -> int {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+# Computed at compile time!
+const fib10: int = fibonacci(10);  # = 55
+
+# Dependent function types
+func replicate<T, comptime N: int>(value: T) -> Vec<T, N> {
+    var result = Vec<T, N>.new();
+    for (var i: int = 0; i < N; i++) {
+        result.data[i] = value;
+    }
+    return result;
+}
+
+# Matrix with dimensions in type
+class Matrix<T, comptime Rows: int, comptime Cols: int> {
+    var data: [T; Rows * Cols];
+    
+    # Type-safe matrix multiplication
+    func matmul<comptime K: int>(other: Matrix<T, Cols, K>) -> Matrix<T, Rows, K> {
+        var result = Matrix<T, Rows, K>.new();
+        
+        for (var i: int = 0; i < Rows; i++) {
+            for (var j: int = 0; j < K; j++) {
+                var sum: T = 0;
+                for (var k: int = 0; k < Cols; k++) {
+                    sum += this.get(i, k) * other.get(k, j);
+                }
+                result.set(i, j, sum);
+            }
+        }
+        
+        return result;
+    }
+    
+    func get(row: int, col: int) -> T {
+        return this.data[row * Cols + col];
+    }
+    
+    func set(row: int, col: int, value: T) {
+        this.data[row * Cols + col] = value;
+    }
+}
+
+# Example usage
+func test_dependent_types() {
+    # Length-indexed vectors
+    var v1 = Vec<int, 3>.new();
+    var v2 = Vec<int, 5>.new();
+    var v3 = v1.concat(v2);  # Type: Vec<int, 8>
+    
+    # Compile-time bounds checking
+    var x = v1.get<0>();  # OK
+    # var y = v1.get<5>();  # Compile error: 5 >= 3
+    
+    # Refinement types
+    var pos: Positive = 42;
+    var result = sqrt(pos);  # Safe!
+    
+    # Type-safe matrix multiplication
+    var m1 = Matrix<float, 3, 4>.new();
+    var m2 = Matrix<float, 4, 5>.new();
+    var m3 = m1.matmul(m2);  # Type: Matrix<float, 3, 5>
+    
+    # Compile error: dimension mismatch!
+    # var m4 = m1.matmul(m1);  # 3x4 * 3x4 is invalid!
+}

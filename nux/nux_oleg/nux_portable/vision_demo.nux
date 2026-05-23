@@ -1,0 +1,16 @@
+import "graphics2d.nux";
+
+func main() {
+    print("Start");
+    var img = img_alloc(80, 24);
+    # ASM block
+    asm {
+        "PUSH 0";
+        "GET_LOCAL 2"; 
+        "PUSH 1";
+        "OP_VISION_DETECT";
+    }
+    img_draw(img, 0, 0);
+    print("Done");
+    # img_free(img);
+}

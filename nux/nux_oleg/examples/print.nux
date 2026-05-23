@@ -1,0 +1,30 @@
+func main() {
+    print("Hello from Nux Environment!");
+    # print line break
+    asm { 
+        PUSH 10 
+        OP_PRINT_CHAR 
+    }
+    
+    print("Time: ");
+    asm { TIME }
+    var t = pop(); 
+    print_val_line(t);
+}
+
+func print_line(s) {
+    print(s);
+    asm { 
+        PUSH 10 
+        OP_PRINT_CHAR 
+    }
+}
+
+func print_val_line(v) {
+    asm { 
+        OP_GET_LOCAL 0 
+        OP_PRINT_VAL 
+        PUSH 10 
+        OP_PRINT_CHAR 
+    }
+}

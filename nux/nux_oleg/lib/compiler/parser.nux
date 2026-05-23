@@ -1,0 +1,624 @@
+# Nux Compiler - Parser
+# Recursive descent parser for self-hosting compiler
+
+# ===== PARSER STATE =====
+
+func parser_create(tokens) {
+    return {
+        tokens: tokens,
+        pos: 0,
+        length: arr_length(tokens)
+    };
+}
+
+func parser_current(parser) {
+    if (parser.pos >= parser.length) {
+        return parser.tokens[parser.length - 1];  # EOF
+    }
+    return parser.tokens[parser.pos];
+}
+
+func parser_peek(parser, offset) {
+    var pos = parser.pos + offset;
+    if (pos >= parser.length) {
+        return parser.tokens[parser.length - 1];
+    }
+    return parser.tokens[pos];
+}
+
+func parser_advance(parser) {
+    if (parser.pos < parser.length) {
+        parser.pos = parser.pos + 1;
+    }
+    return parser_current(parser);
+}
+
+func parser_match(parser, type) {
+    if (parser_current(parser).type == type) {
+        var token = parser_current(parser);
+        parser_advance(parser);
+        return token;
+    }
+    return null;
+}
+
+func parser_expect(parser, type) {
+    var token = parser_match(parser, type);
+    if (token == null) {
+        print("Parse error: expected " + type + " but got " + parser_current(parser).type);
+    }
+    return token;
+}
+
+# ===== PARSE PROGRAM =====
+
+func parser_parse(tokens) {
+    var parser = parser_create(tokens);
+    var statements = [];
+    
+    while (parser_current(parser).type != "EOF") {
+        var stmt = parser_statement(parser);
+        if (stmt != null) {
+            arr_push(statements, stmt);
+        }
+    }
+    
+    return ast_program(statements);
+}
+
+# ===== PARSE STATEMENTS =====
+
+func parser_statement(parser) {
+    var token = parser_current(parser);
+    
+    if (token.type == "FN" || token.type == "FUNC") {
+        return parser_function(parser);
+    }
+    
+    if (token.type == "LET" || token.type == "VAR" || token.type == "CONST") {
+        return parser_varDecl(parser);
+    }
+    
+    if (token.type == "RETURN") {
+        return parser_return(parser);
+    }
+    
+    if (token.type == "IF") {
+        return parser_if(parser);
+    }
+    
+    if (token.type == "WHILE") {
+        return parser_while(parser);
+    }
+    
+    if (token.type == "FOR") {
+        return parser_for(parser);
+    }
+    
+    if (token.type == "BREAK") {
+        parser_advance(parser);
+        parser_match(parser, "SEMICOLON");
+        return ast_break();
+    }
+    
+    if (token.type == "CONTINUE") {
+        parser_advance(parser);
+        parser_match(parser, "SEMICOLON");
+        return ast_continue();
+    }
+    
+    if (token.type == "CLASS") {
+        return parser_class(parser);
+    }
+    
+    if (token.type == "LBRACE") {
+        return parser_block(parser);
+    }
+    
+    return parser_exprStmt(parser);
+}
+
+func parser_class(parser) {
+    parser_advance(parser);  # class
+    
+    var nameToken = parser_expect(parser, "IDENTIFIER");
+    var name = nameToken.value;
+    
+    # Optional Type Parameters: <T>
+    var typeParams = parser_typeParams(parser);
+    
+    # Optional Inheritance: extends Base
+    var baseClass = null;
+    if (parser_match(parser, "EXTENDS")) {
+        baseClass = parser_expect(parser, "IDENTIFIER").value;
+    }
+    
+    parser_expect(parser, "LBRACE");
+    
+    var members = [];
+    while (parser_current(parser).type != "RBRACE" && parser_current(parser).type != "EOF") {
+        var memberToken = parser_current(parser);
+        
+        if (memberToken.type == "FN" || memberToken.type == "FUNC") {
+            arr_push(members, parser_function(parser));
+        } else if (memberToken.type == "VAR" || memberToken.type == "LET" || memberToken.type == "CONST") {
+            arr_push(members, parser_varDecl(parser));
+        } else {
+            # Unexpected token in class
+            parser_advance(parser);
+        }
+    }
+    
+    parser_expect(parser, "RBRACE");
+    
+    return ast_classDecl(name, typeParams, members, baseClass);
+}
+
+# ===== PARSE TYPES =====
+
+func parser_type(parser) {
+    var baseToken = parser_current(parser);
+    var type = null;
+    
+    if (baseToken.type == "TYPE_INT" || baseToken.type == "TYPE_FLOAT" || 
+        baseToken.type == "TYPE_STRING" || baseToken.type == "TYPE_BOOL" ||
+        baseToken.type == "VOID" || baseToken.type == "ANY") {
+        type = type_primitive(baseToken.value);
+        parser_advance(parser);
+    } else if (baseToken.type == "IDENTIFIER") {
+        type = type_generic(baseToken.value, []);
+        parser_advance(parser);
+        
+        # Generic instantiation: Name<Args>
+        if (parser_match(parser, "LT")) {
+            var args = [];
+            while (true) {
+                arr_push(args, parser_type(parser));
+                if (parser_current(parser).type != "COMMA") break;
+                parser_advance(parser);
+            }
+            parser_expect(parser, "GT");
+            type = type_instance(type, args);
+        }
+    }
+    
+    # Array: Type[]
+    while (parser_match(parser, "LBRACKET")) {
+        parser_expect(parser, "RBRACKET");
+        type = type_array(type);
+    }
+    
+    return type;
+}
+
+func parser_typeParams(parser) {
+    var params = [];
+    if (parser_match(parser, "LT")) {
+        while (true) {
+            var param = parser_expect(parser, "IDENTIFIER");
+            arr_push(params, param.value);
+            if (parser_current(parser).type != "COMMA") break;
+            parser_advance(parser);
+        }
+        parser_expect(parser, "GT");
+    }
+    return params;
+}
+
+# ===== PARSE STATEMENTS =====
+
+func parser_function(parser) {
+    parser_advance(parser);  # func/func
+    
+    var nameToken = parser_expect(parser, "IDENTIFIER");
+    var name = nameToken.value;
+    
+    # Optional Type Parameters: <T, U>
+    var typeParams = parser_typeParams(parser);
+    
+    parser_expect(parser, "LPAREN");
+    
+    var params = [];
+    if (parser_current(parser).type != "RPAREN") {
+        while (true) {
+            var paramName = parser_expect(parser, "IDENTIFIER").value;
+            var typeAnnotation = null;
+            
+            if (parser_match(parser, "COLON")) {
+                typeAnnotation = parser_type(parser);
+            }
+            
+            arr_push(params, {
+                name: paramName,
+                typeAnnotation: typeAnnotation
+            });
+            
+            if (parser_current(parser).type != "COMMA") {
+                break;
+            }
+            parser_advance(parser);
+        }
+    }
+    
+    parser_expect(parser, "RPAREN");
+    
+    # Optional Return Type: : Type
+    var returnType = null;
+    if (parser_match(parser, "COLON")) {
+        returnType = parser_type(parser);
+    }
+    
+    var body = parser_block(parser);
+    
+    return ast_functionDecl(name, params, body, typeParams, returnType);
+}
+
+func parser_varDecl(parser) {
+    var isConst = parser_current(parser).type == "CONST";
+    parser_advance(parser);  # var/var/const
+    
+    var nameToken = parser_expect(parser, "IDENTIFIER");
+    var name = nameToken.value;
+    
+    var typeAnnotation = null;
+    if (parser_match(parser, "COLON")) {
+        typeAnnotation = parser_type(parser);
+    }
+    
+    var initializer = null;
+    if (parser_match(parser, "EQ")) {
+        initializer = parser_expression(parser);
+    }
+    
+    parser_match(parser, "SEMICOLON");
+    
+    return ast_varDecl(name, initializer, isConst, typeAnnotation);
+}
+
+func parser_return(parser) {
+    parser_advance(parser);  # return
+    
+    var value = null;
+    if (parser_current(parser).type != "SEMICOLON") {
+        value = parser_expression(parser);
+    }
+    
+    parser_match(parser, "SEMICOLON");
+    
+    return ast_return(value);
+}
+
+func parser_if(parser) {
+    parser_advance(parser);  # if
+    
+    parser_expect(parser, "LPAREN");
+    var condition = parser_expression(parser);
+    parser_expect(parser, "RPAREN");
+    
+    var thenBranch = parser_statement(parser);
+    
+    var elseBranch = null;
+    if (parser_match(parser, "ELSE")) {
+        elseBranch = parser_statement(parser);
+    }
+    
+    return ast_if(condition, thenBranch, elseBranch);
+}
+
+func parser_while(parser) {
+    parser_advance(parser);  # while
+    
+    parser_expect(parser, "LPAREN");
+    var condition = parser_expression(parser);
+    parser_expect(parser, "RPAREN");
+    
+    var body = parser_statement(parser);
+    
+    return ast_while(condition, body);
+}
+
+func parser_for(parser) {
+    parser_advance(parser);  # for
+    
+    parser_expect(parser, "LPAREN");
+    
+    var init = null;
+    if (parser_current(parser).type != "SEMICOLON") {
+        if (parser_current(parser).type == "LET" || parser_current(parser).type == "VAR") {
+            init = parser_varDecl(parser);
+        } else {
+            init = parser_exprStmt(parser);
+        }
+    } else {
+        parser_advance(parser);
+    }
+    
+    var condition = null;
+    if (parser_current(parser).type != "SEMICOLON") {
+        condition = parser_expression(parser);
+    }
+    parser_expect(parser, "SEMICOLON");
+    
+    var increment = null;
+    if (parser_current(parser).type != "RPAREN") {
+        increment = parser_expression(parser);
+    }
+    parser_expect(parser, "RPAREN");
+    
+    var body = parser_statement(parser);
+    
+    return ast_for(init, condition, increment, body);
+}
+
+func parser_block(parser) {
+    parser_expect(parser, "LBRACE");
+    
+    var statements = [];
+    while (parser_current(parser).type != "RBRACE" && parser_current(parser).type != "EOF") {
+        var stmt = parser_statement(parser);
+        if (stmt != null) {
+            arr_push(statements, stmt);
+        }
+    }
+    
+    parser_expect(parser, "RBRACE");
+    
+    return ast_block(statements);
+}
+
+func parser_exprStmt(parser) {
+    var expr = parser_expression(parser);
+    parser_match(parser, "SEMICOLON");
+    return ast_exprStmt(expr);
+}
+
+# ===== PARSE EXPRESSIONS =====
+
+func parser_expression(parser) {
+    return parser_assignment(parser);
+}
+
+func parser_assignment(parser) {
+    var expr = parser_logicalOr(parser);
+    
+    if (parser_match(parser, "EQ")) {
+        var value = parser_assignment(parser);
+        return ast_assign(expr, value);
+    }
+    
+    return expr;
+}
+
+func parser_logicalOr(parser) {
+    var left = parser_logicalAnd(parser);
+    
+    while (parser_current(parser).type == "OR") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_logicalAnd(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_logicalAnd(parser) {
+    var left = parser_equality(parser);
+    
+    while (parser_current(parser).type == "AND") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_equality(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_equality(parser) {
+    var left = parser_comparison(parser);
+    
+    while (parser_current(parser).type == "EQ_EQ" || parser_current(parser).type == "NOT_EQ") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_comparison(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_comparison(parser) {
+    var left = parser_addition(parser);
+    
+    while (parser_current(parser).type == "LT" || 
+           parser_current(parser).type == "GT" ||
+           parser_current(parser).type == "LT_EQ" ||
+           parser_current(parser).type == "GT_EQ") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_addition(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_addition(parser) {
+    var left = parser_multiplication(parser);
+    
+    while (parser_current(parser).type == "PLUS" || parser_current(parser).type == "MINUS") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_multiplication(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_multiplication(parser) {
+    var left = parser_unary(parser);
+    
+    while (parser_current(parser).type == "STAR" || 
+           parser_current(parser).type == "SLASH" ||
+           parser_current(parser).type == "PERCENT") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var right = parser_unary(parser);
+        left = ast_binary(op, left, right);
+    }
+    
+    return left;
+}
+
+func parser_unary(parser) {
+    if (parser_current(parser).type == "NOT" || 
+        parser_current(parser).type == "MINUS") {
+        var op = parser_current(parser).value;
+        parser_advance(parser);
+        var operand = parser_unary(parser);
+        return ast_unary(op, operand);
+    }
+    
+    return parser_postfix(parser);
+}
+
+func parser_postfix(parser) {
+    var expr = parser_primary(parser);
+    
+    while (true) {
+        if (parser_match(parser, "LPAREN")) {
+            var args = [];
+            
+            if (parser_current(parser).type != "RPAREN") {
+                while (true) {
+                    arr_push(args, parser_expression(parser));
+                    
+                    if (parser_current(parser).type != "COMMA") {
+                        break;
+                    }
+                    parser_advance(parser);
+                }
+            }
+            
+            parser_expect(parser, "RPAREN");
+            expr = ast_call(expr, args);
+        } else if (parser_match(parser, "DOT")) {
+            var property = parser_expect(parser, "IDENTIFIER");
+            expr = ast_member(expr, property.value);
+        } else if (parser_match(parser, "LBRACKET")) {
+            var index = parser_expression(parser);
+            parser_expect(parser, "RBRACKET");
+            expr = ast_index(expr, index);
+        } else {
+            break;
+        }
+    }
+    
+    return expr;
+}
+
+func parser_primary(parser) {
+    var token = parser_current(parser);
+    
+    if (token.type == "NUMBER") {
+        parser_advance(parser);
+        return ast_literal(token.value, "number");
+    }
+    
+    if (token.type == "FLOAT") {
+        parser_advance(parser);
+        return ast_literal(token.value, "float");
+    }
+    
+    if (token.type == "STRING") {
+        parser_advance(parser);
+        return ast_literal(token.value, "string");
+    }
+    
+    if (token.type == "TRUE") {
+        parser_advance(parser);
+        return ast_literal(true, "boolean");
+    }
+    
+    if (token.type == "FALSE") {
+        parser_advance(parser);
+        return ast_literal(false, "boolean");
+    }
+    
+    if (token.type == "NULL") {
+        parser_advance(parser);
+        return ast_literal(null, "null");
+    }
+    
+    if (token.type == "NEW") {
+        parser_advance(parser);
+        var typeExpr = parser_type(parser);
+        parser_expect(parser, "LPAREN");
+        var args = [];
+        if (parser_current(parser).type != "RPAREN") {
+            while (true) {
+                arr_push(args, parser_expression(parser));
+                if (parser_current(parser).type != "COMMA") break;
+                parser_advance(parser);
+            }
+        }
+        parser_expect(parser, "RPAREN");
+        return ast_new(typeExpr, args);
+    }
+    
+    if (token.type == "IDENTIFIER") {
+        parser_advance(parser);
+        return ast_identifier(token.value);
+    }
+    
+    if (parser_match(parser, "LPAREN")) {
+        var expr = parser_expression(parser);
+        parser_expect(parser, "RPAREN");
+        return expr;
+    }
+    
+    if (parser_match(parser, "LBRACKET")) {
+        var elements = [];
+        
+        if (parser_current(parser).type != "RBRACKET") {
+            while (true) {
+                arr_push(elements, parser_expression(parser));
+                
+                if (parser_current(parser).type != "COMMA") {
+                    break;
+                }
+                parser_advance(parser);
+            }
+        }
+        
+        parser_expect(parser, "RBRACKET");
+        return ast_array(elements);
+    }
+    
+    if (parser_match(parser, "LBRACE")) {
+        var properties = [];
+        
+        if (parser_current(parser).type != "RBRACE") {
+            while (true) {
+                var key = parser_expect(parser, "IDENTIFIER").value;
+                parser_expect(parser, "COLON");
+                var value = parser_expression(parser);
+                
+                arr_push(properties, ast_property(key, value));
+                
+                if (parser_current(parser).type != "COMMA") {
+                    break;
+                }
+                parser_advance(parser);
+            }
+        }
+        
+        parser_expect(parser, "RBRACE");
+        return ast_object(properties);
+    }
+    
+    print("Parse error: unexpected token " + token.type);
+    return null;
+}

@@ -1,0 +1,95 @@
+# Simple Snake Game for Nux
+# Uses the new graphics functions
+
+func main() {
+    print("Snake Game Starting...");
+    
+    # Game constants
+    var width = 320;
+    var height = 240;
+    var grid_size = 10;
+    var grid_w = width / grid_size;
+    var grid_h = height / grid_size;
+    
+    # Create screen
+    var screen = img_alloc(width, height);
+    
+    # Snake state
+    var snake_x = 15;  # Start in middle
+    var snake_y = 12;
+    var dir_x = 1;     # Moving right
+    var dir_y = 0;
+    var length = 3;
+    
+    # Food
+    var food_x = 10;
+    var food_y = 10;
+    
+    # Score
+    var score = 0;
+    var frame = 0;
+    
+    print("Use arrow keys to play!");
+    print("Starting game loop...");
+    
+    # Game loop
+    while (true) {
+        frame = frame + 1;
+        
+        # Only move every 5 frames (slow down)
+        if (frame % 5 == 0) {
+            # Move snake
+            snake_x = snake_x + dir_x;
+            snake_y = snake_y + dir_y;
+            
+            # Wrap around edges
+            if (snake_x < 0) { snake_x = grid_w - 1; }
+            if (snake_x >= grid_w) { snake_x = 0; }
+            if (snake_y < 0) { snake_y = grid_h - 1; }
+            if (snake_y >= grid_h) { snake_y = 0; }
+            
+            # Check food collision
+            if (snake_x == food_x && snake_y == food_y) {
+                score = score + 1;
+                length = length + 1;
+                # Move food to new position
+                food_x = (food_x + 7) % grid_w;
+                food_y = (food_y + 5) % grid_h;
+                print("Score: ");
+                print(score);
+            }
+        }
+        
+        # Clear screen (black)
+        gfx_clear(screen, 0);
+        
+        # Draw snake head (green)
+        var head_x = snake_x * grid_size;
+        var head_y = snake_y * grid_size;
+        gfx_line(screen, head_x, head_y, head_x + grid_size, head_y, 65280);
+        gfx_line(screen, head_x + grid_size, head_y, head_x + grid_size, head_y + grid_size, 65280);
+        gfx_line(screen, head_x + grid_size, head_y + grid_size, head_x, head_y + grid_size, 65280);
+        gfx_line(screen, head_x, head_y + grid_size, head_x, head_y, 65280);
+        
+        # Draw food (red)
+        var fx = food_x * grid_size;
+        var fy = food_y * grid_size;
+        gfx_circle(screen, fx + grid_size / 2, fy + grid_size / 2, grid_size / 2, 16711680);
+        
+        # Draw score (white pixels in top-left)
+        var i = 0;
+        while (i < score) {
+            gfx_pixel(screen, 5 + i * 3, 5, 16777215);
+            i = i + 1;
+        }
+        
+        # Display
+        img_draw(screen, 0, 0);
+        
+        # Simple delay (busy wait)
+        var delay = 0;
+        while (delay < 100000) {
+            delay = delay + 1;
+        }
+    }
+}

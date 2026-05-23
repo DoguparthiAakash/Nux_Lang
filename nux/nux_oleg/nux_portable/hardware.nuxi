@@ -1,0 +1,20 @@
+// Hardware Control Demo
+// We will write directly to video memory (Simulated via unsafe POKE)
+// Note: In 64-bit UEFI/Limine, there isn't a fixed VGA text buffer at 0xB8000 mapped identically.
+// But we can POKE the Framebuffer if we knew the address.
+// For safety demonstration, we'll POKE a known safe heap address or just draw safely.
+
+fn main() {
+    // Safe Drawing
+    draw_rect(0xFF00FF00, 600, 800, 0, 0); // Green Background
+    
+    // Unsafe Hardware Control
+    unsafe {
+        // Direct Write to Framebuffer (Mock Address 0xA0000 - will likely fault if not mapped, but shows syntax)
+        // In real Anux, we would query the framebuffer address via syscall first.
+        // For now, let's just POKE a dummy "Hardware Register"
+        *0x1000 = 0xDEADBEEF; 
+    }
+    
+    exit();
+}

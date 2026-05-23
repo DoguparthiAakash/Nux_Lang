@@ -1,0 +1,28 @@
+[package]
+name = "nux_embedded"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# No std dependencies for embedded
+embedded-hal = "1.0"
+
+[target.'cfg(target_arch = "xtensa")'.dependencies]
+esp-hal = "0.20"
+esp-backtrace = { version = "0.14", features = ["esp32", "exception-handler", "panic-handler", "println"] }
+esp-println = { version = "0.12", features = ["esp32", "log"] }
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1       # Some optimization for dev builds
+
+[features]
+default = []
+esp32 = []
+stm32 = []
+rp2040 = []

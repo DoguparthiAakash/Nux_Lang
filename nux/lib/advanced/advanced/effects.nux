@@ -1,0 +1,244 @@
+# Nux - Algebraic Effects System
+# Structured concurrency and effect handlers
+
+# Effect declarations
+effect State<T> {
+    func get() -> T;
+    func put(value: T) -> void;
+}
+
+effect Async {
+    func await<T>(future: Future<T>) -> T;
+    func spawn<T>(f: func() -> T) -> Future<T>;
+}
+
+effect Error<E> {
+    func throw(error: E) -> never;
+    func try<T>(f: func() -> T) -> Result<T, E>;
+}
+
+effect IO {
+    func print(msg: string) -> void;
+    func read_line() -> string;
+    func read_file(path: string) -> string;
+    func write_file(path: string, content: string) -> void;
+}
+
+effect Random {
+    func next_int(min: int, max: int) -> int;
+    func next_float() -> float;
+}
+
+# Effect handlers
+handler StateHandler<T>(initial: T) handles State<T> {
+    var state: T = initial;
+    
+    func get() -> T {
+        return state;
+    }
+    
+    func put(value: T) -> void {
+        state = value;
+    }
+}
+
+handler AsyncHandler handles Async {
+    var tasks: [Future<any>] = [];
+    
+    func await<T>(future: Future<T>) -> T {
+        return future.wait();
+    }
+    
+    func spawn<T>(f: func() -> T) -> Future<T> {
+        var future = Future<T>.new();
+        var task = Thread.spawn(() => {
+            var result = f();
+            future.complete(result);
+        });
+        tasks.push(future);
+        return future;
+    }
+}
+
+handler ErrorHandler<E> handles Error<E> {
+    func throw(error: E) -> never {
+        # Unwind stack and propagate
+        builtin_throw(error);
+    }
+    
+    func try<T>(f: func() -> T) -> Result<T, E> {
+        try {
+            var result = f();
+            return Ok(result);
+        } catch (e: E) {
+            return Err(e);
+        }
+    }
+}
+
+handler IOHandler handles IO {
+    func print(msg: string) -> void {
+        ffi_print(msg);
+    }
+    
+    func read_line() -> string {
+        return ffi_read_line();
+    }
+    
+    func read_file(path: string) -> string {
+        return ffi_read_file(path);
+    }
+    
+    func write_file(path: string, content: string) -> void {
+        ffi_write_file(path, content);
+    }
+}
+
+# Effect composition
+func process_file() with State<int>, IO, Error<string> {
+    var count = State.get();
+    var content = IO.read_file("data.txt");
+    
+    if (content.length == 0) {
+        Error.throw("Empty file!");
+    }
+    
+    State.put(count + 1);
+    IO.print("Processed " + count + " files");
+}
+
+# Delimited continuations
+effect Generator<T> {
+    func yield(value: T) -> void;
+}
+
+handler GeneratorHandler<T> handles Generator<T> {
+    var values: [T] = [];
+    
+    func yield(value: T) -> void {
+        values.push(value);
+        # Save continuation and return control
+        builtin_save_continuation();
+    }
+    
+    func collect() -> [T] {
+        return values;
+    }
+}
+
+func fibonacci_generator() with Generator<int> {
+    var a: int = 0;
+    var b: int = 1;
+    
+    while (true) {
+        Generator.yield(a);
+        var temp = a + b;
+        a = b;
+        b = temp;
+    }
+}
+
+# Coroutines using effects
+effect Coroutine<T> {
+    func suspend(value: T) -> void;
+    func resume() -> T;
+}
+
+handler CoroutineHandler<T> handles Coroutine<T> {
+    var continuation: Continuation<T> = null;
+    var suspended_value: T = null;
+    
+    func suspend(value: T) -> void {
+        suspended_value = value;
+        continuation = builtin_capture_continuation();
+        builtin_yield();
+    }
+    
+    func resume() -> T {
+        if (continuation != null) {
+            builtin_resume_continuation(continuation);
+        }
+        return suspended_value;
+    }
+}
+
+# Session types for protocols
+effect Session<Protocol> {
+    func send<T>(value: T) -> void;
+    func receive<T>() -> T;
+    func close() -> void;
+}
+
+# Example: HTTP protocol
+protocol HTTP {
+    Send<Request>;
+    Receive<Response>;
+    Close;
+}
+
+func http_client() with Session<HTTP> {
+    var request = Request { method: "GET", url: "/" };
+    Session.send(request);
+    
+    var response = Session.receive<Response>();
+    println("Status: " + response.status);
+    
+    Session.close();
+}
+
+# Effect tracking in types
+func pure_function(x: int) -> int {
+    # No effects allowed!
+    return x * 2;
+}
+
+func impure_function(x: int) -> int with IO {
+    IO.print("Computing...");
+    return x * 2;
+}
+
+# Effect polymorphism
+func map<T, U, E>(arr: [T], f: func(T) -> U with E) -> [U] with E {
+    var result: [U] = [];
+    for (var item in arr) {
+        result.push(f(item));
+    }
+    return result;
+}
+
+# Example usage
+func test_effects() {
+    # State effect
+    with StateHandler<int>(0) {
+        State.put(42);
+        var x = State.get();
+        println(x);  # 42
+    }
+    
+    # Generator
+    with GeneratorHandler<int>() as gen {
+        fibonacci_generator();
+        var fibs = gen.collect();  # [0, 1, 1, 2, 3, 5, 8, ...]
+    }
+    
+    # Async
+    with AsyncHandler() {
+        var future1 = Async.spawn(() => compute_heavy());
+        var future2 = Async.spawn(() => compute_heavy());
+        
+        var result1 = Async.await(future1);
+        var result2 = Async.await(future2);
+    }
+    
+    # Error handling
+    with ErrorHandler<string>() {
+        var result = Error.try(() => {
+            process_file();
+        });
+        
+        match (result) {
+            Ok(value) => println("Success: " + value),
+            Err(error) => println("Error: " + error)
+        }
+    }
+}

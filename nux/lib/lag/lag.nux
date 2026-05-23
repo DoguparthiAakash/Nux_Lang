@@ -1,0 +1,247 @@
+# Nux LAG — Language Agnostic Gateway
+# Syntax: import nux.lag.<lang>.<version>
+#         nux.lag <lang>.<version> = alias;
+#         var.alias { <foreign code> }
+
+# ===== SUPPORTED LANGUAGES =====
+class Lang {
+    var PYTHON: i32 = 0;
+    var RUST: i32 = 1;
+    var C: i32 = 2;
+    var CPP: i32 = 3;
+    var JAVA: i32 = 4;
+    var ZIG: i32 = 5;
+    var GO: i32 = 6;
+    var RUBY: i32 = 7;
+    var JS: i32 = 8;     # Node.js
+    var LUA: i32 = 9;
+    var JULIA: i32 = 10;
+    var R: i32 = 11;
+    var WASM: i32 = 12;  # WebAssembly (via WASM runtime)
+    var UNKNOWN: i32 = -1;
+
+    func from_str(s: &str) -> i32 {
+        if (s == "python") { return 0; }
+        if (s == "rust")   { return 1; }
+        if (s == "c")      { return 2; }
+        if (s == "c++")    { return 3; }
+        if (s == "java")   { return 4; }
+        if (s == "zig")    { return 5; }
+        if (s == "go")     { return 6; }
+        if (s == "ruby")   { return 7; }
+        if (s == "js")     { return 8; }
+        if (s == "lua")    { return 9; }
+        if (s == "julia")  { return 10; }
+        if (s == "r")      { return 11; }
+        if (s == "wasm")   { return 12; }
+        return -1;
+    }
+    func to_str(id: i32) -> &str {
+        if (id == 0) { return "python"; }
+        if (id == 1) { return "rust"; }
+        if (id == 2) { return "c"; }
+        if (id == 3) { return "c++"; }
+        if (id == 4) { return "java"; }
+        if (id == 5) { return "zig"; }
+        if (id == 6) { return "go"; }
+        if (id == 7) { return "ruby"; }
+        if (id == 8) { return "js"; }
+        if (id == 9) { return "lua"; }
+        if (id == 10) { return "julia"; }
+        if (id == 11) { return "r"; }
+        if (id == 12) { return "wasm"; }
+        return "unknown";
+    }
+}
+
+# ===== LANGUAGE BINDING (nux.lag lang.version = alias) =====
+class LangBinding {
+    var lang_id: i32;        # Lang constant
+    var version: String;     # e.g. "3.14.3"
+    var alias: String;       # user-defined alias e.g. "v1"
+    var runtime_path: String;# resolved path e.g. "/usr/bin/python3"
+    var ready: bool;         # runtime found and loaded
+    var imports: Vec[String]; # "from X import Y" declarations
+}
+
+# ===== LAG REGISTRY =====
+# Global map: alias -> LangBinding
+class LAGRegistry {
+    var bindings: HashMap[String, LangBinding];
+
+    func new() -> @own LAGRegistry {
+        return LAGRegistry { bindings: HashMap.new() };
+    }
+
+    # nux.lag python.3.14.3 = v1;
+    func bind(&mut self, lang: &str, version: &str, alias: &str) -> Result[bool, String] {
+        var id = Lang.from_str(lang);
+        if (id == -1) {
+            return Result.err_val(String.from("Unknown language: ") + lang);
+        }
+        var rt_path = this.resolve_runtime(id, version);
+        if (rt_path.is_none()) {
+            return Result.err_val(
+                String.from("Runtime not found: ") + lang + " " + version +
+                "\nRun: bonfort install " + lang + "@" + version
+            );
+        }
+        var binding = LangBinding {
+            lang_id: id,
+            version: String.from(version),
+            alias: String.from(alias),
+            runtime_path: rt_path.unwrap(),
+            ready: true,
+            imports: Vec.new()
+        };
+        this.bindings.insert(String.from(alias), binding);
+        return Result.ok_val(true);
+    }
+
+    # from python import os  (registers import for the binding)
+    func add_import(&mut self, alias: &str, module: &str) {
+        if (this.bindings.contains(&String.from(alias))) {
+            var b = this.bindings.get(&String.from(alias)).unwrap();
+            b.imports.push(String.from(module));
+        }
+    }
+
+    func get(&self, alias: &str) -> Option[&LangBinding] {
+        return this.bindings.get(&String.from(alias));
+    }
+
+    # Detect runtime path for a language
+    func resolve_runtime(&self, lang_id: i32, version: &str) -> Option[String] {
+        var candidates = this.runtime_candidates(lang_id, version);
+        for (var i = 0; i < candidates.len; i += 1) {
+            var p = candidates.get(i).unwrap();
+            if (file_exists(p)) { return Option.some(p.clone()); }
+        }
+        return Option.none();
+    }
+    func runtime_candidates(&self, lang_id: i32, version: &str) -> Vec[String] {
+        var v = Vec.new();
+        var vshort = version.split('.').get(0).unwrap();  # e.g. "3"
+        if (lang_id == 0) {  # python
+            v.push(String.from("/usr/bin/python") + version);
+            v.push(String.from("/usr/bin/python") + vshort);
+            v.push(String.from("/usr/local/bin/python") + version);
+            v.push(String.from("/usr/bin/python3"));
+            v.push(String.from("~/.nux/runtimes/python/") + version + "/bin/python3");
+        } else if (lang_id == 1) {  # rust
+            v.push(String.from("~/.cargo/bin/rustc"));
+            v.push(String.from("/usr/bin/rustc"));
+            v.push(String.from("~/.nux/runtimes/rust/") + version + "/bin/rustc");
+        } else if (lang_id == 2) {  # c
+            v.push(String.from("/usr/bin/cc"));
+            v.push(String.from("/usr/bin/gcc"));
+            v.push(String.from("/usr/bin/clang"));
+        } else if (lang_id == 3) {  # c++
+            v.push(String.from("/usr/bin/c++"));
+            v.push(String.from("/usr/bin/g++"));
+            v.push(String.from("/usr/bin/clang++"));
+        } else if (lang_id == 4) {  # java
+            v.push(String.from("/usr/bin/java"));
+            v.push(String.from("~/.nux/runtimes/java/") + version + "/bin/java");
+        } else if (lang_id == 5) {  # zig
+            v.push(String.from("/usr/bin/zig"));
+            v.push(String.from("~/.nux/runtimes/zig/") + version + "/zig");
+        } else if (lang_id == 6) {  # go
+            v.push(String.from("/usr/local/go/bin/go"));
+            v.push(String.from("/usr/bin/go"));
+        } else if (lang_id == 8) {  # node.js
+            v.push(String.from("/usr/bin/node"));
+            v.push(String.from("/usr/local/bin/node"));
+        } else if (lang_id == 9) {  # lua
+            v.push(String.from("/usr/bin/lua") + version);
+            v.push(String.from("/usr/bin/lua5.4"));
+            v.push(String.from("/usr/bin/lua"));
+        }
+        return v;
+    }
+}
+
+# ===== FOREIGN CODE BLOCK EXECUTOR =====
+# var.alias { code } => ForeignBlock { alias, code_str }
+
+class ForeignBlock {
+    var alias: String;       # binding alias e.g. "v1"
+    var code: String;        # raw source code of the block
+    var result: Option[String]; # stdout of execution
+    var error: Option[String];  # stderr / error message
+    var exit_code: i32;
+    var success: bool;
+
+    func new(alias: String, code: String) -> @own ForeignBlock {
+        return ForeignBlock {
+            alias: alias, code: code,
+            result: Option.none(),
+            error: Option.none(),
+            exit_code: -1, success: false
+        };
+    }
+}
+
+# Global LAG registry instance (set by runtime)
+var LAG: LAGRegistry = LAGRegistry.new();
+
+# ===== EXECUTOR =====
+class LAGExecutor {
+    var registry: *LAGRegistry;
+    var ovm: *OVM;  # set by OVM at startup
+
+    func new(reg: *LAGRegistry, ovm: *OVM) -> @own LAGExecutor {
+        return LAGExecutor { registry: reg, ovm: ovm };
+    }
+
+    # Execute a foreign block: alias.v1 { code }
+    func exec(&self, block: &mut ForeignBlock) {
+        var binding = this.registry.get(&block.alias);
+        if (binding.is_none()) {
+            block.error = Option.some(String.from("Unknown binding: ") + &block.alias);
+            block.success = false;
+            return;
+        }
+        var b = binding.unwrap();
+        # Build full code: prepend imports
+        var full_code = String.new();
+        for (var i = 0; i < b.imports.len; i += 1) {
+            full_code.push_str("import ");
+            full_code.push_str(b.imports.get(i).unwrap());
+            full_code.push_str("\n");
+        }
+        full_code.push_str(&block.code);
+        # Delegate to OVM
+        var out = this.ovm.run_foreign(b.lang_id, &b.runtime_path, &full_code);
+        block.result = out.0;
+        block.error = out.1;
+        block.exit_code = out.2;
+        block.success = out.2 == 0;
+    }
+
+    # var == true check: did last exec succeed?
+    func is_success(block: &ForeignBlock) -> bool { return block.success; }
+}
+
+# ===== LANGUAGE-SPECIFIC IMPORT RESOLUTION =====
+# Resolves "from python import os" -> adds to binding's import list
+
+class ImportResolver {
+    func resolve_python_import(module: &str) -> String {
+        return String.from("import ") + module;
+    }
+    func resolve_rust_import(crate: &str) -> String {
+        return String.from("use ") + crate + ";";
+    }
+    func resolve_c_import(header: &str) -> String {
+        return String.from("#include <") + header + ".h>";
+    }
+    func resolve_java_import(pkg: &str) -> String {
+        return String.from("import ") + pkg + ";";
+    }
+    func resolve_go_import(pkg: &str) -> String {
+        return String.from("import \"") + pkg + "\"";
+    }
+}
+
+println("Nux LAG v1.0 loaded.");

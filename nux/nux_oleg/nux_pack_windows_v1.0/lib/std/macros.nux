@@ -1,0 +1,271 @@
+# Nux Macros and Code Generation
+# Compile-time metaprogramming
+
+# ===== MACRO SYSTEM =====
+
+class Macro {
+    func constructor(name, transformer) {
+        this.name = name;
+        this.transformer = transformer;
+    }
+    
+    func expand(ast) {
+        return this.transformer(ast);
+    }
+}
+
+# ===== BUILT-IN MACROS =====
+
+# @macro assert
+func macro_assert(condition, message) {
+    return quote {
+        if (!(unquote condition)) {
+            throw new Error("Assertion failed: " + (unquote message));
+        }
+    };
+}
+
+# @macro unless
+func macro_unless(condition, body) {
+    return quote {
+        if (!(unquote condition)) {
+            unquote body;
+        }
+    };
+}
+
+# @macro when
+func macro_when(condition, body) {
+    return quote {
+        if (unquote condition) {
+            unquote body;
+        }
+    };
+}
+
+# @macro loop
+func macro_loop(times, body) {
+    return quote {
+        var __i: int = 0;
+        while (__i < (unquote times)) {
+            unquote body;
+            __i = __i + 1;
+        }
+    };
+}
+
+# @macro with
+func macro_with(resource, body) {
+    return quote {
+        var __resource = (unquote resource);
+        try {
+            unquote body;
+        } finally {
+            if (__resource.close) {
+                __resource.close();
+            }
+        }
+    };
+}
+
+# @macro lazy
+func macro_lazy(expr) {
+    return quote {
+        func() {
+            return (unquote expr);
+        }
+    };
+}
+
+# @macro enum
+func macro_enum(name, values) {
+    var code = "class " + name + " {";
+    
+    var i: int = 0;
+    while (i < arr_length(values)) {
+        code = code + "static " + values[i] + " = " + i + ";";
+        i = i + 1;
+    }
+    
+    code = code + "}";
+    
+    return parse(code);
+}
+
+# @macro match
+func macro_match(value, cases) {
+    var code: string = "(func(__value) {";
+    
+    arr_forEach(cases, func(case) {
+        if (case.pattern == "_") {
+            code = code + "return " + case.body + ";";
+        } else {
+            code = code + "if (__value == " + case.pattern + ") {";
+            code = code + "return " + case.body + ";";
+            code = code + "}";
+        }
+    });
+    
+    code = code + "throw new Error('No match found');";
+    code = code + "})(" + value + ")";
+    
+    return parse(code);
+}
+
+# ===== CODE GENERATION =====
+
+class CodeGenerator {
+    func constructor() {
+        this.code = "";
+        this.indent = 0;
+    }
+    
+    func emit(line) {
+        this.code = this.code + str_repeat("  ", this.indent) + line + "\n";
+    }
+    
+    func increaseIndent() {
+        this.indent = this.indent + 1;
+    }
+    
+    func decreaseIndent() {
+        this.indent = this.indent - 1;
+    }
+    
+    func emitFunction(name, params, body) {
+        this.emit("func " + name + "(" + arr_join(params, ", ") + ") {");
+        this.increaseIndent();
+        this.emit(body);
+        this.decreaseIndent();
+        this.emit("}");
+    }
+    
+    func emitClass(name, methods) {
+        this.emit("class " + name + " {");
+        this.increaseIndent();
+        
+        arr_forEach(methods, func(method) {
+            this.emitFunction(method.name, method.params, method.body);
+        });
+        
+        this.decreaseIndent();
+        this.emit("}");
+    }
+    
+    func getCode() {
+        return this.code;
+    }
+}
+
+# ===== TEMPLATE SYSTEM =====
+
+func template(strings, ...values) {
+    var result: string = "";
+    var i: int = 0;
+    
+    while (i < arr_length(strings)) {
+        result = result + strings[i];
+        
+        if (i < arr_length(values)) {
+            result = result + str_toString(values[i]);
+        }
+        
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func compile_template(template, data) {
+    var code = template;
+    
+    obj_forEach(data, func(key, value) {
+        code = str_replaceAll(code, "{{" + key + "}}", str_toString(value));
+    });
+    
+    return code;
+}
+
+# ===== DSL BUILDER =====
+
+class DSLBuilder {
+    func constructor() {
+        this.rules = [];
+    }
+    
+    func rule(pattern, transformer) {
+        arr_push(this.rules, {pattern: pattern, transformer: transformer});
+    }
+    
+    func parse(input) {
+        var ast = [];
+        
+        arr_forEach(this.rules, func(rule) {
+            if (str_matches(input, rule.pattern)) {
+                arr_push(ast, rule.transformer(input));
+            }
+        });
+        
+        return ast;
+    }
+    
+    func compile(ast) {
+        var code: string = "";
+        
+        arr_forEach(ast, func(node) {
+            code = code + this._compileNode(node);
+        });
+        
+        return code;
+    }
+    
+    func _compileNode(node) {
+        if (node.type == "function") {
+            return "func " + node.name + "() { " + node.body + " }";
+        }
+        
+        if (node.type == "variable") {
+            return "var " + node.name + " = " + node.value + ";";
+        }
+        
+        return "";
+    }
+}
+
+# ===== COMPILE-TIME EVALUATION =====
+
+func const_eval(expr) {
+    # Evaluate expression at compile time
+    return eval(expr);
+}
+
+func const_fold(ast) {
+    # Constant folding optimization
+    if (ast.type == "Binary" && 
+        ast.left.type == "Literal" && 
+        ast.right.type == "Literal") {
+        
+        var result = eval(ast.left.value + " " + ast.operator + " " + ast.right.value);
+        return {type: "Literal", value: result};
+    }
+    
+    return ast;
+}
+
+# ===== INLINE EXPANSION =====
+
+func inline(func) {
+    # Mark function for inlining
+    func.__inline = true;
+    return func;
+}
+
+func expand_inline(ast) {
+    # Expand inline functions
+    if (ast.type == "Call" && ast.callee.__inline) {
+        # Replace call with function body
+        return ast.callee.body;
+    }
+    
+    return ast;
+}

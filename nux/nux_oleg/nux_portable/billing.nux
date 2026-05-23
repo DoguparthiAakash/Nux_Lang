@@ -1,0 +1,49 @@
+import "io.nux";
+import "util.nux";
+
+# Simple Billing/POS System Demo
+
+func main() {
+    IO_clear();
+    println("=== Nux Billing System ===");
+    println("1. New Sale");
+    println("2. Exit");
+    
+    println("Enter Choice:");
+    var choice = input();
+    
+    if (choice == 1) {
+        sale_process();
+    } else {
+        println("Goodbye.");
+    }
+}
+
+func sale_process() {
+    println("--- New Sale ---");
+    println("Enter Item ID (Integer):");
+    var id = input();
+    
+    println("Enter Quantity:");
+    var qty = input();
+    
+    println("Enter Price:");
+    var price = input();
+    
+    var total = qty * price;
+    
+    println("Calculating...");
+    print("Total: ");
+    println(total);
+    
+    # Demonstrate verification
+    if (total > 1000) {
+        println("Big Sale!");
+    }
+    
+    println("Press 1 to continue...");
+    input();
+    main();
+}
+
+main(); # Call main

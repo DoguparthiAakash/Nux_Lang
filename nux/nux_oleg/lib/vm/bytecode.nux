@@ -1,0 +1,390 @@
+# Nux Bytecode VM - Write Once, Run Anywhere
+
+# ============= BYTECODE INSTRUCTION SET =============
+
+enum Opcode {
+    # Stack operations
+    PUSH,           # Push constant
+    POP,            # Pop value
+    DUP,            # Duplicate top
+    SWAP,           # Swap top two
+    
+    # Arithmetic
+    ADD,            # a + b
+    SUB,            # a - b
+    MUL,            # a * b
+    DIV,            # a / b
+    MOD,            # a % b
+    NEG,            # -a
+    
+    # Comparison
+    EQ,             # a == b
+    NE,             # a != b
+    LT,             # a < b
+    LE,             # a <= b
+    GT,             # a > b
+    GE,             # a >= b
+    
+    # Logical
+    AND,            # a && b
+    OR,             # a || b
+    NOT,            # !a
+    
+    # Control flow
+    JMP,            # Unconditional jump
+    JMP_IF,         # Jump if true
+    JMP_IF_NOT,     # Jump if false
+    CALL,           # Call function
+    RET,            # Return from function
+    
+    # Variables
+    LOAD_LOCAL,     # Load local variable
+    STORE_LOCAL,    # Store local variable
+    LOAD_GLOBAL,    # Load global variable
+    STORE_GLOBAL,   # Store global variable
+    
+    # Memory
+    ALLOC,          # Allocate memory
+    FREE,           # Free memory
+    LOAD,           # Load from memory
+    STORE,          # Store to memory
+    
+    # Objects
+    NEW_OBJECT,     # Create object
+    GET_FIELD,      # Get object field
+    SET_FIELD,      # Set object field
+    CALL_METHOD,    # Call method
+    
+    # Arrays
+    NEW_ARRAY,      # Create array
+    GET_INDEX,      # Get array element
+    SET_INDEX,      # Set array element
+    ARRAY_LEN,      # Get array length
+    
+    # Type operations
+    CAST,           # Type cast
+    INSTANCEOF,     # Type check
+    
+    # System
+    SYSCALL,        # System call
+    HALT            # Stop execution
+}
+
+# ============= BYTECODE STRUCTURE =============
+
+struct Instruction {
+    var opcode: Opcode;
+    var operand: int;
+}
+
+struct BytecodeModule {
+    var constants: [any];
+    var instructions: [Instruction];
+    var functions: Map<string, Function>;
+    var globals: Map<string, any>;
+}
+
+struct Function {
+    var name: string;
+    var param_count: int;
+    var local_count: int;
+    var instructions: [Instruction];
+}
+
+# ============= VIRTUAL MACHINE =============
+
+class VM {
+    var stack: [any] = [];
+    var call_stack: [CallFrame] = [];
+    var globals: Map<string, any> = Map.new();
+    var heap: Map<int, any> = Map.new();
+    var next_addr: int = 0;
+    var ip: int = 0;  # Instruction pointer
+    
+    func new() -> VM {
+        return VM {};
+    }
+    
+    func execute(module: BytecodeModule) {
+        this.globals = module.globals;
+        this.ip = 0;
+        
+        while (this.ip < module.instructions.length) {
+            var instr = module.instructions[this.ip];
+            this.execute_instruction(instr, module);
+            this.ip += 1;
+        }
+    }
+    
+    func execute_instruction(instr: Instruction, module: BytecodeModule) {
+        match (instr.opcode) {
+            PUSH => {
+                var value = module.constants[instr.operand];
+                this.stack.push(value);
+            },
+            
+            POP => {
+                this.stack.pop();
+            },
+            
+            ADD => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a + b);
+            },
+            
+            SUB => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a - b);
+            },
+            
+            MUL => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a * b);
+            },
+            
+            DIV => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a / b);
+            },
+            
+            EQ => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a == b);
+            },
+            
+            LT => {
+                var b = this.stack.pop();
+                var a = this.stack.pop();
+                this.stack.push(a < b);
+            },
+            
+            JMP => {
+                this.ip = instr.operand - 1;
+            },
+            
+            JMP_IF => {
+                var cond = this.stack.pop();
+                if (cond) {
+                    this.ip = instr.operand - 1;
+                }
+            },
+            
+            CALL => {
+                var func = module.functions[module.constants[instr.operand]];
+                this.call_function(func);
+            },
+            
+            RET => {
+                var frame = this.call_stack.pop();
+                this.ip = frame.return_addr;
+            },
+            
+            LOAD_LOCAL => {
+                var frame = this.call_stack[this.call_stack.length - 1];
+                this.stack.push(frame.locals[instr.operand]);
+            },
+            
+            STORE_LOCAL => {
+                var frame = this.call_stack[this.call_stack.length - 1];
+                frame.locals[instr.operand] = this.stack.pop();
+            },
+            
+            LOAD_GLOBAL => {
+                var name = module.constants[instr.operand];
+                this.stack.push(this.globals[name]);
+            },
+            
+            STORE_GLOBAL => {
+                var name = module.constants[instr.operand];
+                this.globals[name] = this.stack.pop();
+            },
+            
+            ALLOC => {
+                var addr = this.next_addr;
+                this.next_addr += 1;
+                this.heap[addr] = null;
+                this.stack.push(addr);
+            },
+            
+            LOAD => {
+                var addr = this.stack.pop();
+                this.stack.push(this.heap[addr]);
+            },
+            
+            STORE => {
+                var value = this.stack.pop();
+                var addr = this.stack.pop();
+                this.heap[addr] = value;
+            },
+            
+            HALT => {
+                return;
+            }
+        }
+    }
+    
+    func call_function(func: Function) {
+        var args: [any] = [];
+        for (var i: int = 0; i < func.param_count; i++) {
+            args.push(this.stack.pop());
+        }
+        args.reverse();
+        
+        var frame = CallFrame {
+            function: func,
+            locals: args,
+            return_addr: this.ip
+        };
+        
+        this.call_stack.push(frame);
+        this.ip = -1;  # Will be incremented to 0
+    }
+}
+
+struct CallFrame {
+    var function: Function;
+    var locals: [any];
+    var return_addr: int;
+}
+
+# ============= BYTECODE COMPILER =============
+
+class BytecodeCompiler {
+    var constants: [any] = [];
+    var instructions: [Instruction] = [];
+    var functions: Map<string, Function> = Map.new();
+    
+    func compile(ast: AST) -> BytecodeModule {
+        this.visit(ast);
+        
+        return BytecodeModule {
+            constants: this.constants,
+            instructions: this.instructions,
+            functions: this.functions,
+            globals: Map.new()
+        };
+    }
+    
+    func visit(node: ASTNode) {
+        match (node.type) {
+            "BinaryOp" => this.compile_binary_op(node),
+            "Literal" => this.compile_literal(node),
+            "Variable" => this.compile_variable(node),
+            "Assignment" => this.compile_assignment(node),
+            "If" => this.compile_if(node),
+            "While" => this.compile_while(node),
+            "Function" => this.compile_function(node),
+            "Call" => this.compile_call(node)
+        }
+    }
+    
+    func compile_binary_op(node: ASTNode) {
+        this.visit(node.left);
+        this.visit(node.right);
+        
+        match (node.operator) {
+            "+" => this.emit(ADD, 0),
+            "-" => this.emit(SUB, 0),
+            "*" => this.emit(MUL, 0),
+            "/" => this.emit(DIV, 0),
+            "==" => this.emit(EQ, 0),
+            "<" => this.emit(LT, 0)
+        }
+    }
+    
+    func compile_literal(node: ASTNode) {
+        var index = this.add_constant(node.value);
+        this.emit(PUSH, index);
+    }
+    
+    func emit(opcode: Opcode, operand: int) {
+        this.instructions.push(Instruction {
+            opcode: opcode,
+            operand: operand
+        });
+    }
+    
+    func add_constant(value: any) -> int {
+        this.constants.push(value);
+        return this.constants.length - 1;
+    }
+}
+
+# ============= CROSS-PLATFORM RUNTIME =============
+
+class Runtime {
+    var vm: VM;
+    var platform: Platform;
+    
+    func new() -> Runtime {
+        return Runtime {
+            vm: VM.new(),
+            platform: detect_platform()
+        };
+    }
+    
+    func run(bytecode: [byte]) {
+        var module = deserialize_bytecode(bytecode);
+        this.vm.execute(module);
+    }
+}
+
+enum Platform {
+    Linux_x64,
+    Linux_ARM,
+    Windows_x64,
+    MacOS_x64,
+    MacOS_ARM,
+    WebAssembly,
+    Android,
+    iOS
+}
+
+func detect_platform() -> Platform {
+    #if defined(__linux__) && defined(__x86_64__)
+        return Platform.Linux_x64;
+    #elif defined(__linux__) && defined(__aarch64__)
+        return Platform.Linux_ARM;
+    #elif defined(_WIN64)
+        return Platform.Windows_x64;
+    #elif defined(__APPLE__) && defined(__x86_64__)
+        return Platform.MacOS_x64;
+    #elif defined(__APPLE__) && defined(__aarch64__)
+        return Platform.MacOS_ARM;
+    #elif defined(__wasm__)
+        return Platform.WebAssembly;
+    #else
+        return Platform.Linux_x64;  # Default
+    #endif
+}
+
+# ============= EXAMPLE USAGE =============
+
+func example_bytecode() {
+    # Compile: x = 10 + 20
+    var compiler = BytecodeCompiler.new();
+    
+    compiler.emit(PUSH, compiler.add_constant(10));
+    compiler.emit(PUSH, compiler.add_constant(20));
+    compiler.emit(ADD, 0);
+    compiler.emit(STORE_GLOBAL, compiler.add_constant("x"));
+    compiler.emit(HALT, 0);
+    
+    var module = BytecodeModule {
+        constants: compiler.constants,
+        instructions: compiler.instructions,
+        functions: Map.new(),
+        globals: Map.new()
+    };
+    
+    # Execute
+    var vm = VM.new();
+    vm.execute(module);
+    
+    println("x = " + vm.globals["x"]);  # Output: x = 30
+}
