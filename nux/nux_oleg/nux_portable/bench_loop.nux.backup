@@ -1,9 +1,0 @@
-var start = time();
-var i = 0;
-while (i < 1000000) {
-    i = i + 1;
-}
-var end = time();
-print("Time taken (ms): ");
-print(end - start);
-print("\n");

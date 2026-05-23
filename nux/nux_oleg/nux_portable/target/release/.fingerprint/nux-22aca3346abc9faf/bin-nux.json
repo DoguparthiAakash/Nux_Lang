@@ -1,1 +1,0 @@
-{"rustc":4758242423518056681,"features":"[]","declared_features":"[\"default\", \"gui\", \"minifb\"]","target":5166658571165765027,"profile":17041132708747939549,"path":4942398508502643691,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release/.fingerprint/nux-22aca3346abc9faf/dep-bin-nux","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}

@@ -1,9 +1,0 @@
-#it shows error if it not worked
-#* 
-and it will #* work *# i think so
-ygsaufaygsudygfuasydgf 
-*#
-
-a = 10;
-b = 20;
-println(a + b);

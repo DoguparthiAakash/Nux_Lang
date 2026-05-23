@@ -1,8 +1,0 @@
-println("Hello from Nux!");
-
-var x = 10;
-var y = 20;
-var sum = x + y;
-
-println("Sum:");
-println(sum);

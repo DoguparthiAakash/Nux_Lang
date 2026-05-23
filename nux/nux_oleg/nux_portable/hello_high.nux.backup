@@ -1,4 +1,0 @@
-print("Hello High Level Nux");
-{
-    println("this is just test");
-}
