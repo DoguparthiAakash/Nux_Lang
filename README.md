@@ -2,7 +2,7 @@
   <img src="nux/nux_oleg/vscode_extension/icons/logo.png" width="200" alt="Nux Logo" />
 </p>
 
-# Nux OS/AI Language
+# Nux Language
 
 Nux is a high-performance, memory-safe systems programming language designed for AI, ML, quantum computing, and OS development. It features a tier-based JIT compiler ensuring assembly-level runtime speeds, automatic garbage collection, and seamless interoperability.
 
