@@ -1,0 +1,12 @@
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\debug\deps\minifb-f8df7e7674c04037.d: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\error.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\icon.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key_handler.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\mod.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\windows\mod.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\rate.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\debug\deps\libminifb-f8df7e7674c04037.rmeta: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\error.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\icon.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key_handler.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\mod.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\windows\mod.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\rate.rs
+
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\lib.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\error.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\icon.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\key_handler.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\mod.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\os\windows\mod.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\minifb-0.27.0\src\rate.rs:

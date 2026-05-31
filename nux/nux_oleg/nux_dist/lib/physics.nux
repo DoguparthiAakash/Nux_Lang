@@ -1,0 +1,31 @@
+# physics.nux - Nux Advanced Physics Engine
+# High speed rigid body and collision detection
+
+@memory_limit(4000000)
+
+# Calculate gravity updates in parallel
+func apply_gravity(obj_base, count, dt) {
+    # Each object is assumed to be 4 words: [x, y, vx, vy]
+    var mid = count / 2;
+    if (count > 500) {
+        var t1 = spawn apply_gravity(obj_base, mid, dt);
+        var t2 = spawn apply_gravity(obj_base + (mid * 4 * 8), count - mid, dt);
+        join(t1);
+        join(t2);
+        return 0;
+    }
+    
+    for (var i = 0; i < count; i = i + 1) {
+        var vy_addr = obj_base + (i * 4 * 8) + (3 * 8);
+        var y_addr = obj_base + (i * 4 * 8) + (1 * 8);
+        var vy = peek(vy_addr);
+        var y = peek(y_addr);
+        
+        vy = vy + ((98 * dt) / 10); # Gravity = 9.8, scaled
+        y = y + ((vy * dt) / 1000); # Assuming dt is milliseconds
+        
+        poke(vy_addr, vy);
+        poke(y_addr, y);
+    }
+    return 0;
+}

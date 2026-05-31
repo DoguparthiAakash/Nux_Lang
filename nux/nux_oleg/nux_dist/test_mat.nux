@@ -1,0 +1,43 @@
+import "ml"
+import "alloc"
+
+func debug_mat_mul_row(addr_a, addr_b, addr_res, row, rows_a, cols_a, cols_b) {
+    for (var col = 0; col < cols_b; col = col + 1) {
+        var sum = 0;
+        for (var k = 0; k < cols_a; k = k + 1) {
+            var val_a = peek(addr_a + (row * cols_a + k) * 8);
+            var val_b = peek(addr_b + (k * cols_b + col) * 8);
+            sum = sum + ((val_a * val_b) / 1000);
+        }
+        print("poke row "); println(row);
+        print("poke col "); println(col);
+        print("sum "); println(sum);
+        poke(addr_res + (row * cols_b + col) * 8, sum);
+    }
+    return 0;
+}
+
+func main() {
+    alloc_init(10000, 5000);
+    var matA = alloc(4 * 8);
+    var matB = alloc(4 * 8);
+    var matRes = alloc(4 * 8);
+
+    poke(matA, 1000); poke(matA + 8, 2000);
+    poke(matA + 16, 3000); poke(matA + 24, 4000);
+
+    poke(matB, 2000); poke(matB + 8, 0);
+    poke(matB + 16, 1000); poke(matB + 24, 2000);
+
+    # Mul
+    debug_mat_mul_row(matA, matB, matRes, 0, 2, 2, 2);
+    debug_mat_mul_row(matA, matB, matRes, 1, 2, 2, 2);
+
+    # Print matRes[1,0] which should be 10000
+    print("matRes addr: ");
+    println(matRes);
+    println(peek(matRes));
+    println(peek(matRes + 8));
+    println(peek(matRes + 16));
+    println(peek(matRes + 24));
+}

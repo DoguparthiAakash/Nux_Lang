@@ -1,10 +1,12 @@
 # Nux Quantum Computing Library
-# Uses NuxQuantum through FFI
+# Uses NuxQuantum through FFI, and provides a pure Nux Statevector Simulator
 
 import "std/io";
 import "std/math";
 
-# Quantum Circuit
+# ==========================================
+# 1. ORIGINAL FFI QUANTUM CIRCUIT
+# ==========================================
 class QuantumCircuit {
     var handle;
     var num_qubits;
@@ -59,9 +61,321 @@ class QuantumCircuit {
     }
 }
 
-# Quantum Algorithms
+# ==========================================
+# 2. PURE NUX STATEVECTOR SIMULATOR
+# ==========================================
+class StatevectorSimulator {
+    var num_qubits: int;
+    var size: int;
+    var real: []; # Float array
+    var imag: []; # Float array
+
+    func init(n_qubits: int) {
+        this.num_qubits = n_qubits;
+        
+        # Calculate size = 2^n_qubits
+        var s = 1;
+        for (var i = 0; i < n_qubits; i += 1) {
+            s *= 2;
+        }
+        this.size = s;
+        
+        this.real = [];
+        this.imag = [];
+        for (var i = 0; i < this.size; i += 1) {
+            this.real.push(0.0);
+            this.imag.push(0.0);
+        }
+        
+        # Initialize state to |00...0>
+        this.real[0] = 1.0;
+    }
+
+    # Applies Hadamard gate: H = 1/sqrt(2) * [[1, 1], [1, -1]]
+    func h(&mut self, qubit: int) {
+        var temp_real = [];
+        var temp_imag = [];
+        for (var i = 0; i < this.size; i += 1) {
+            temp_real.push(0.0);
+            temp_imag.push(0.0);
+        }
+
+        var factor = 1.0 / Math.sqrt(2.0);
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) == 0) {
+                var i0 = i;
+                var i1 = i | bit_mask;
+
+                # v0' = (v0 + v1) / sqrt(2)
+                temp_real[i0] = (this.real[i0] + this.real[i1]) * factor;
+                temp_imag[i0] = (this.imag[i0] + this.imag[i1]) * factor;
+
+                # v1' = (v0 - v1) / sqrt(2)
+                temp_real[i1] = (this.real[i0] - this.real[i1]) * factor;
+                temp_imag[i1] = (this.imag[i0] - this.imag[i1]) * factor;
+            }
+        }
+
+        this.real = temp_real;
+        this.imag = temp_imag;
+    }
+
+    # Applies Pauli-X (NOT) gate: X = [[0, 1], [1, 0]]
+    func x(&mut self, qubit: int) {
+        var temp_real = [];
+        var temp_imag = [];
+        for (var i = 0; i < this.size; i += 1) {
+            temp_real.push(0.0);
+            temp_imag.push(0.0);
+        }
+
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) == 0) {
+                var i0 = i;
+                var i1 = i | bit_mask;
+
+                # Swap amplitudes
+                temp_real[i0] = this.real[i1];
+                temp_imag[i0] = this.imag[i1];
+                temp_real[i1] = this.real[i0];
+                temp_imag[i1] = this.imag[i0];
+            }
+        }
+
+        this.real = temp_real;
+        this.imag = temp_imag;
+    }
+
+    # Applies Pauli-Y gate: Y = [[0, -i], [i, 0]]
+    func y(&mut self, qubit: int) {
+        var temp_real = [];
+        var temp_imag = [];
+        for (var i = 0; i < this.size; i += 1) {
+            temp_real.push(0.0);
+            temp_imag.push(0.0);
+        }
+
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) == 0) {
+                var i0 = i;
+                var i1 = i | bit_mask;
+
+                # v0' = -i * v1 = -i * (v1_r + i * v1_i) = v1_i - i * v1_r
+                temp_real[i0] = this.imag[i1];
+                temp_imag[i0] = -this.real[i1];
+
+                # v1' = i * v0 = i * (v0_r + i * v0_i) = -v0_i + i * v0_r
+                temp_real[i1] = -this.imag[i0];
+                temp_imag[i1] = this.real[i0];
+            }
+        }
+
+        this.real = temp_real;
+        this.imag = temp_imag;
+    }
+
+    # Applies Pauli-Z gate: Z = [[1, 0], [0, -1]]
+    func z(&mut self, qubit: int) {
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) != 0) {
+                this.real[i] = -this.real[i];
+                this.imag[i] = -this.imag[i];
+            }
+        }
+    }
+
+    # Applies Phase (R_theta) gate: Phase = [[1, 0], [0, e^(i*theta)]]
+    func phase(&mut self, qubit: int, theta: float) {
+        var cos_t = Math.cos(theta);
+        var sin_t = Math.sin(theta);
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) != 0) {
+                # Multiply by cos_t + i * sin_t
+                var r = this.real[i] * cos_t - this.imag[i] * sin_t;
+                var img = this.real[i] * sin_t + this.imag[i] * cos_t;
+                this.real[i] = r;
+                this.imag[i] = img;
+            }
+        }
+    }
+
+    # Applies Controlled-NOT (CNOT) gate
+    func cnot(&mut self, control: int, target: int) {
+        var temp_real = [];
+        var temp_imag = [];
+        for (var i = 0; i < this.size; i += 1) {
+            temp_real.push(this.real[i]);
+            temp_imag.push(this.imag[i]);
+        }
+
+        var control_mask = 1;
+        for (var k = 0; k < control; k += 1) {
+            control_mask *= 2;
+        }
+
+        var target_mask = 1;
+        for (var k = 0; k < target; k += 1) {
+            target_mask *= 2;
+        }
+
+        for (var i = 0; i < this.size; i += 1) {
+            # Check if control qubit is 1 and target bit is 0
+            if ((i & control_mask) != 0 && (i & target_mask) == 0) {
+                var i0 = i;
+                var i1 = i | target_mask;
+
+                # Swap states
+                temp_real[i0] = this.real[i1];
+                temp_imag[i0] = this.imag[i1];
+                temp_real[i1] = this.real[i0];
+                temp_imag[i1] = this.imag[i0];
+            }
+        }
+
+        this.real = temp_real;
+        this.imag = temp_imag;
+    }
+
+    # Measures a single qubit, performs quantum state collapse, and returns the result (0 or 1)
+    func measure(&mut self, qubit: int) -> int {
+        var bit_mask = 1;
+        for (var k = 0; k < qubit; k += 1) {
+            bit_mask *= 2;
+        }
+
+        # Calculate probability of measuring 0
+        var prob_0 = 0.0;
+        for (var i = 0; i < this.size; i += 1) {
+            if ((i & bit_mask) == 0) {
+                prob_0 += this.real[i] * this.real[i] + this.imag[i] * this.imag[i];
+            }
+        }
+
+        # Sample measurement outcome using standard rand_float
+        var random_val = Math.rand_float();
+        var outcome = if (random_val < prob_0) 0 else 1;
+
+        # Collapse the statevector
+        var prob_outcome = if (outcome == 0) prob_0 else (1.0 - prob_0);
+        if (prob_outcome == 0.0) {
+            return outcome; # Handle edge case
+        }
+        var norm_factor = 1.0 / Math.sqrt(prob_outcome);
+
+        for (var i = 0; i < this.size; i += 1) {
+            var bit_val = if ((i & bit_mask) == 0) 0 else 1;
+            if (bit_val == outcome) {
+                this.real[i] *= norm_factor;
+                this.imag[i] *= norm_factor;
+            } else {
+                this.real[i] = 0.0;
+                this.imag[i] = 0.0;
+            }
+        }
+
+        return outcome;
+    }
+
+    # Measures all qubits and returns outcome bit array
+    func measure_all(&mut self) -> [] {
+        var results = [];
+        for (var i = 0; i < this.num_qubits; i += 1) {
+            results.push(this.measure(i));
+        }
+        return results;
+    }
+}
+
+# ==========================================
+# 3. PURE QUANTUM CIRCUIT SIMULATOR WRAPPER
+# ==========================================
+class PureQuantumCircuit {
+    var simulator: @own StatevectorSimulator;
+
+    func init(n_qubits: int) {
+        this.simulator = new StatevectorSimulator(n_qubits);
+    }
+
+    func h(&mut self, qubit: int) -> @own PureQuantumCircuit {
+        this.simulator.h(qubit);
+        return this;
+    }
+
+    func x(&mut self, qubit: int) -> @own PureQuantumCircuit {
+        this.simulator.x(qubit);
+        return this;
+    }
+
+    func y(&mut self, qubit: int) -> @own PureQuantumCircuit {
+        this.simulator.y(qubit);
+        return this;
+    }
+
+    func z(&mut self, qubit: int) -> @own PureQuantumCircuit {
+        this.simulator.z(qubit);
+        return this;
+    }
+
+    func phase(&mut self, qubit: int, theta: float) -> @own PureQuantumCircuit {
+        this.simulator.phase(qubit, theta);
+        return this;
+    }
+
+    func cnot(&mut self, control: int, target: int) -> @own PureQuantumCircuit {
+        this.simulator.cnot(control, target);
+        return this;
+    }
+
+    func measure(&mut self, qubit: int) -> int {
+        return this.simulator.measure(qubit);
+    }
+
+    func measure_all(&mut self) -> [] {
+        return this.simulator.measure_all();
+    }
+
+    func print_statevector(&self) {
+        println("--- Statevector ---");
+        for (var i = 0; i < this.simulator.size; i += 1) {
+            var r = this.simulator.real[i];
+            var img = this.simulator.imag[i];
+            if (r != 0.0 || img != 0.0) {
+                println("|" + int_to_str(i) + "> : " + float_to_str(r) + " + " + float_to_str(img) + "i");
+            }
+        }
+    }
+}
+
+# ==========================================
+# 4. QUANTUM ALGORITHMS & PROTOCOLS
+# ==========================================
 class QuantumAlgorithms {
-    # Bell State (Entanglement)
+    # Bell State (Entanglement) using FFI
     func bell_state() {
         var circuit = new QuantumCircuit(2);
         circuit.h(0);
@@ -69,125 +383,73 @@ class QuantumAlgorithms {
         return circuit.execute();
     }
     
-    # Quantum Teleportation
-    func teleportation() {
-        var circuit = new QuantumCircuit(3);
-        
-        # Create entangled pair
-        circuit.h(1);
-        circuit.cnot(1, 2);
-        
-        # Alice's operations
-        circuit.cnot(0, 1);
+    # Bell State (Entanglement) using pure simulator
+    func bell_state_pure() -> [] {
+        var circuit = new PureQuantumCircuit(2);
         circuit.h(0);
-        
-        # Measure
-        var m1 = circuit.measure(0);
-        var m2 = circuit.measure(1);
-        
-        # Bob's corrections
-        if (m2 == 1) circuit.x(2);
-        if (m1 == 1) circuit.z(2);
-        
-        return circuit.execute();
-    }
-    
-    # Grover's Search
-    func grover_search(n_qubits, target) {
-        var circuit = new QuantumCircuit(n_qubits);
-        
-        # Initialize superposition
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.h(i);
-        }
-        
-        # Grover iterations
-        var iterations = Math.floor(Math.sqrt(Math.pow(2, n_qubits)));
-        for (var iter: int = 0; iter < iterations; iter++) {
-            # Oracle (mark target)
-            this.oracle(circuit, target);
-            
-            # Diffusion operator
-            this.diffusion(circuit, n_qubits);
-        }
-        
+        circuit.cnot(0, 1);
         return circuit.measure_all();
     }
     
-    func oracle(circuit, target) {
-        # Simplified oracle implementation
-        ffi_call("nux_quantum_oracle", circuit.handle, target);
-    }
-    
-    func diffusion(circuit, n_qubits) {
-        # Diffusion operator
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.h(i);
-        }
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.x(i);
-        }
-        # Multi-controlled Z
-        ffi_call("nux_quantum_mcz", circuit.handle, n_qubits);
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.x(i);
-        }
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.h(i);
-        }
-    }
-    
-    # Quantum Fourier Transform
-    func qft(n_qubits) {
-        var circuit = new QuantumCircuit(n_qubits);
+    # Quantum Teleportation using pure simulator
+    func teleportation_pure() -> [] {
+        var circuit = new PureQuantumCircuit(3);
         
-        for (var i: int = 0; i < n_qubits; i++) {
-            circuit.h(i);
-            for (var j = i + 1; j < n_qubits; j++) {
-                var angle = Math.PI / Math.pow(2, j - i);
-                circuit.phase(j, angle);
-                circuit.cnot(j, i);
-                circuit.phase(j, -angle);
-                circuit.cnot(j, i);
-            }
+        # Step 1: Create entangled Bell state between qubit 1 and 2
+        circuit.h(1);
+        circuit.cnot(1, 2);
+        
+        # Step 2: Prepare state to teleport on qubit 0 (e.g., apply X)
+        circuit.x(0);
+        
+        # Step 3: Alice performs Bell measurement on 0 and 1
+        circuit.cnot(0, 1);
+        circuit.h(0);
+        
+        var m0 = circuit.measure(0);
+        var m1 = circuit.measure(1);
+        
+        # Step 4: Bob applies corrections to qubit 2 based on measurement
+        if (m1 == 1) {
+            circuit.x(2);
+        }
+        if (m0 == 1) {
+            circuit.z(2);
         }
         
-        return circuit.execute();
+        # Qubit 2 should now be in state |1>
+        return [m0, m1, circuit.measure(2)];
     }
 }
 
 # Example: Quantum Random Number Generator
 func quantum_random_number(bits) {
-    var circuit = new QuantumCircuit(bits);
-    
-    # Put all qubits in superposition
+    var circuit = new PureQuantumCircuit(bits);
     for (var i: int = 0; i < bits; i++) {
         circuit.h(i);
     }
-    
-    # Measure all qubits
     var results = circuit.measure_all();
     
-    # Convert to number
+    # Convert bits to int
     var number: int = 0;
+    var base = 1;
     for (var i: int = 0; i < bits; i++) {
-        number += results[i] * Math.pow(2, i);
+        number += results[i] * base;
+        base *= 2;
     }
-    
     return number;
 }
 
-# Example: Quantum Cryptography (BB84)
+# Example: BB84 Protocol
 func bb84_protocol() {
     println("Quantum Key Distribution (BB84)");
     
-    var key_length: int = 10;
+    var key_length: int = 8;
     var alice_bits = [];
     var alice_bases = [];
     var bob_bases = [];
     var shared_key = [];
     
-    # Alice prepares qubits
     for (var i: int = 0; i < key_length; i++) {
         var bit = quantum_random_number(1);
         var basis = quantum_random_number(1);
@@ -195,46 +457,53 @@ func bb84_protocol() {
         alice_bits.push(bit);
         alice_bases.push(basis);
         
-        var circuit = new QuantumCircuit(1);
-        if (bit == 1) circuit.x(0);
-        if (basis == 1) circuit.h(0);
+        var circuit = new PureQuantumCircuit(1);
+        if (bit == 1) {
+            circuit.x(0);
+        }
+        if (basis == 1) {
+            circuit.h(0);
+        }
         
-        # Bob measures
         var bob_basis = quantum_random_number(1);
         bob_bases.push(bob_basis);
         
-        if (bob_basis == 1) circuit.h(0);
+        if (bob_basis == 1) {
+            circuit.h(0);
+        }
         var measured = circuit.measure(0);
         
-        # Keep bit if bases match
         if (alice_bases[i] == bob_bases[i]) {
             shared_key.push(measured);
         }
     }
     
-    println("Shared key: " + shared_key);
+    # Simple list display
+    var key_str = "[";
+    for (var i = 0; i < shared_key.len(); i += 1) {
+        key_str += int_to_str(shared_key[i]) + if (i == shared_key.len() - 1) "" else ", ";
+    }
+    key_str += "]";
+    println("Shared key: " + key_str);
     return shared_key;
 }
 
 func main() {
+    println("--- Pure Quantum Circuit Bell State Test ---");
+    var qc = new PureQuantumCircuit(2);
+    qc.h(0);
+    qc.cnot(0, 1);
+    qc.print_statevector();
+    
+    var bits = qc.measure_all();
+    println("Measured Bell State: " + int_to_str(bits[0]) + ", " + int_to_str(bits[1]));
+    
+    println("\n--- Quantum Teleportation Test ---");
     var algo = new QuantumAlgorithms();
-    
-    # Test Bell state
-    println("Creating Bell state (entanglement):");
-    var bell = algo.bell_state();
-    println(bell);
-    
-    # Test Grover's search
-    println("\nGrover's search for element 5:");
-    var result = algo.grover_search(3, 5);
-    println("Found: " + result);
-    
-    # Quantum random number
-    println("\nQuantum random number (8 bits):");
-    var random = quantum_random_number(8);
-    println(random);
-    
-    # BB84 protocol
-    println("\n");
+    var tele_res = algo.teleportation_pure();
+    println("Alice measurements: " + int_to_str(tele_res[0]) + ", " + int_to_str(tele_res[1]));
+    println("Bob received state (should be 1): " + int_to_str(tele_res[2]));
+
+    println("\n--- BB84 Protocol Test ---");
     bb84_protocol();
 }

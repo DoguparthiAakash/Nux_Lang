@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Bytecode instruction set for NVM
+#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Opcode {

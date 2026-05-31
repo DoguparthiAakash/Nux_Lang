@@ -1,0 +1,104 @@
+// Nux 2D Graphics Library
+
+class Graphics {
+    var width: int;
+    var height: int;
+    var fb_addr: int;
+
+    func init(w, h) {
+        unsafe {
+            vbe_set_mode(w, h, 32);
+            self.width = w;
+            self.height = h;
+            self.fb_addr = vbe_get_fb();
+        }
+    }
+
+    func update() {
+        unsafe { vbe_update(); }
+    }
+
+    func clear(color) {
+        var i: int = 0;
+        var total: int = self.width * self.height;
+        unsafe {
+            while (i < total) {
+                poke32(self.fb_addr + (i * 4), color);
+                i = i + 1;
+            }
+        }
+    }
+
+    func set_pixel(x, y, color) {
+        if (x >= 0) {
+        if (x < self.width) {
+        if (y >= 0) {
+        if (y < self.height) {
+            unsafe {
+                var offset: int = (y * self.width) + x;
+                poke32(self.fb_addr + (offset * 4), color);
+            }
+        }
+        }
+        }
+        }
+    }
+
+    func abs(n) {
+        if (n < 0) {
+            return 0 - n;
+        }
+        return n;
+    }
+
+    func draw_line(x0, y0, x1, y1, color) {
+        var dx: int = self.abs(x1 - x0);
+        var dy: int = 0 - self.abs(y1 - y0);
+        var sx: int = -1;
+        var sy: int = -1;
+        if (x0 < x1) { sx = 1; }
+        if (y0 < y1) { sy = 1; }
+        var err: int = dx + dy;
+        var e2: int = 0;
+
+        var cx: int = x0;
+        var cy: int = y0;
+        var done: int = 0;
+
+        while (done == 0) {
+            self.set_pixel(cx, cy, color);
+            if (cx == x1) {
+                if (cy == y1) {
+                    done = 1;
+                }
+            }
+            if (done == 0) {
+                e2 = 2 * err;
+                if (e2 >= dy) {
+                    err = err + dy;
+                    cx = cx + sx;
+                }
+                if (e2 <= dx) {
+                    err = err + dx;
+                    cy = cy + sy;
+                }
+            }
+        }
+    }
+
+    func draw_rect(x, y, w, h, color) {
+        var cx: int = x;
+        var cy: int = y;
+        var ex: int = x + w;
+        var ey: int = y + h;
+
+        while (cy < ey) {
+            cx = x;
+            while (cx < ex) {
+                self.set_pixel(cx, cy, color);
+                cx = cx + 1;
+            }
+            cy = cy + 1;
+        }
+    }
+}

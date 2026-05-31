@@ -55,8 +55,13 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "MOD" => ops.push(0x14),
             "POW" => ops.push(0x15),
             "FLOORDIV" => ops.push(0x16),
+            "OP_ADD" => ops.push(0x10), // Alias
+            "SWAP" => ops.push(0x17),
             "AND" => ops.push(0x18),
             "OR" => ops.push(0x19),
+            "NOT" => ops.push(0x1A), // Logical NOT
+            "SHL" => ops.push(0x25),
+            "SHR" => ops.push(0x26),
             "EQ" => ops.push(0x90),
             "NEQ" => ops.push(0x91),
             "LT" => ops.push(0x92),
@@ -80,6 +85,14 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_IMG_RESIZE" => ops.push(0x37),
             "OP_IMG_CROP" => ops.push(0x38),
             "OP_IMG_GRAYSCALE" => ops.push(0x39),
+            // Video Buffer Extension
+            "OP_VBE_SET_MODE" => ops.push(0x3A),
+            "OP_VBE_GET_FB" => ops.push(0x3B),
+            "OP_VBE_UPDATE" => ops.push(0x3C),
+            "OP_VBE_GET_KEY" => ops.push(0x3D),
+            "OP_VBE_GET_MOUSE_X" => ops.push(0x3E),
+            "OP_VBE_GET_MOUSE_Y" => ops.push(0x3F),
+            "OP_VBE_GET_MOUSE_DOWN" => ops.push(0x48),
             
             // File I/O
             "FILE_OPEN" => ops.push(0x55),
@@ -91,6 +104,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "FILE_DELETE" => ops.push(0x5C),
             
             "VM_STACK_COPY" => ops.push(0x5B),
+            "DUP" => ops.push(0x5D),
             
             "SYSTEM" => ops.push(0x81),
 
@@ -114,9 +128,13 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "GFX_RECT" => ops.push(0x3D),
             "PEEK8" => ops.push(0x42),
             "POKE8" => ops.push(0x43),
+            "OP_PEEK32" => ops.push(0x4C),
+            "OP_POKE32" => ops.push(0x49),
             "OP_FSIN" => ops.push(0x2A),
             "OP_FCOS" => ops.push(0x2B),
             "OP_FSQRT" => ops.push(0x2C),
+            "OP_FTAN" => ops.push(0x2D),
+            "OP_FPOW" => ops.push(0x46),
             "OP_TO_UPPER" => ops.push(0x69),
             "OP_TO_LOWER" => ops.push(0x6A),
             
@@ -159,15 +177,23 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
                 };
                 ops.extend_from_slice(&num_args.to_le_bytes());
             },
-            "SPAWN" => {
-                 ops.push(0x72); // Note: kernel vm uses 0x72 for spawn? Check vm.rs.
-                 // In vm.rs: const OP_SPAWN: u8 = 0x72;
-                 // It expects a popped function pointer, not an argument?
-                 // Wait, portable used 0x3A. Kernel uses 0x72.
-                 // Lexer says `spawn func_name`.
-                 // High level parser emits `PUSH func_name \n SPAWN`.
-                 // So Compiler just sees SPAWN.
+            "OP_SPAWN" => {
+                ops.push(0xE0);
+                if parts.len() < 2 { return Err(format!("OP_SPAWN missing label")); }
+                label_refs.push((ops.len(), String::from(parts[1])));
+                ops.extend_from_slice(&[0u8; 8]);
+                
+                // Num Args argument
+                let num_args = if parts.len() >= 3 {
+                    parts[2].parse::<i64>().map_err(|_| "Invalid spawn args count")?
+                } else {
+                    0
+                };
+                ops.extend_from_slice(&num_args.to_le_bytes());
             },
+            "OP_JOIN" => ops.push(0xE1),
+            "OP_HW_READ" => ops.push(0xF0),
+            "OP_HW_WRITE" => ops.push(0xF1),
             "LOCK" => ops.push(0x73),
             "UNLOCK" => ops.push(0x74),
             
@@ -180,10 +206,25 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_SEC_WHOAMI" => ops.push(0x67),
             "OP_PUSH_STR" => ops.push(0x68),
             
-            // VBE / Graphics
-            "OP_VBE_SET_MODE" => ops.push(0x3A),
-            "OP_VBE_GET_FB" => ops.push(0x3B),
-            "OP_VBE_UPDATE" => ops.push(0x3C),
+            "OP_PEEK_PTR" => ops.push(0x42),
+            "OP_POKE_PTR" => ops.push(0x43),
+            "OP_SYSCALL" => ops.push(0x47),
+            "OP_UNSAFE_START" => ops.push(0x4A),
+            "OP_UNSAFE_END" => ops.push(0x4B),
+            
+            "OP_ARRAY_ALLOC" => ops.push(0xA0),
+            "OP_ARRAY_GET" => ops.push(0xA1),
+            "OP_ARRAY_SET" => ops.push(0xA2),
+            "OP_THROW" => ops.push(0xA3),
+            "OP_CATCH" => {
+                ops.push(0xA4);
+                if parts.len() < 2 { return Err(format!("OP_CATCH missing label")); }
+                label_refs.push((ops.len(), String::from(parts[1])));
+                ops.extend_from_slice(&[0u8; 8]);
+            },
+            "OP_END_TRY" => ops.push(0xA5),
+
+            // VBE / Graphics handled above
             
             "EXIT" => ops.push(0xFF),
             "BYTE" => {
@@ -197,8 +238,13 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
     }
 
     // Pass 2: Patch Labels
+    println!("DEBUG: alloc addr = {:?}", labels.get("alloc"));
+    println!("DEBUG: fib_iter addr = {:?}", labels.get("fib_iter"));
     for (offset, label_name) in label_refs {
         if let Some(&target_addr) = labels.get(&label_name) {
+             if label_name == "alloc" || label_name == "fib_iter" {
+                 println!("DEBUG: Patching {} at offset {} with {}", label_name, offset, target_addr);
+             }
              let bytes = (target_addr as i64).to_le_bytes();
              for i in 0..8 {
                  ops[offset + i] = bytes[i];

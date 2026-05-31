@@ -1,6 +1,5 @@
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::io::{self, Write};
+use std::path::Path;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 

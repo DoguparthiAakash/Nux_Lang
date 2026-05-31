@@ -1,0 +1,73 @@
+import "sort"
+import "alloc"
+import "crypto"
+import "math"
+
+func fib_iter(n) {
+    if (n <= 1) { return n; }
+    var a = 0;
+    var b = 1;
+    for (var i = 2; i <= n; i = i + 1) {
+        var c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
+}
+
+func sum_to(n) {
+    var s = 0;
+    for (var i = 1; i <= n; i = i + 1) { s = s + i; }
+    return s;
+}
+
+func main() {
+    # --- Math ---
+    println("=== Math ===")
+    var f10 = fib_iter(10)
+    print("fib(10)="); println(f10)
+    var f20 = fib_iter(20)
+    print("fib(20)="); println(f20)
+    var s = sum_to(100)
+    print("sum(1..100)="); println(s)
+
+    # --- Bitwise ---
+    println("=== Bitwise ===")
+    var xr = 72 xor 42
+    print("72 xor 42 = "); println(xr)
+    var an = 0xFF and 170
+    print("0xFF & 170 = "); println(an)
+    var hexval = 0xDEAD
+    print("0xDEAD = "); println(hexval)
+    var binval = 0b1010
+    print("0b1010 = "); println(binval)
+
+    # --- Sort ---
+    println("=== QuickSort ===")
+    poke(8000, 42); poke(8008, 7); poke(8016, 99)
+    poke(8024, 3);  poke(8032, 55); poke(8040, 21)
+    quicksort(8000, 0, 5)
+    print("sorted[0]="); println(peek(8000))
+    print("sorted[5]="); println(peek(8040))
+
+    # --- Alloc ---
+    println("=== Alloc ===")
+    alloc_init(20000, 4000)
+    var b1 = alloc(8)
+    var b2 = alloc(8)
+    poke(b1, 999)
+    poke(b2, 777)
+    print("b1 value="); println(peek(b1))
+    print("b2 value="); println(peek(b2))
+    print("free="); println(alloc_free_bytes())
+
+    # --- Crypto XOR ---
+    println("=== Crypto XOR ===")
+    poke(300, 72); poke(308, 101); poke(316, 108)
+    xor_cipher(300, 3, 42)
+    print("enc[0]="); println(peek(300))
+    xor_cipher(300, 3, 42)
+    print("dec[0]="); println(peek(300))
+
+    println("=== ALL DONE ===")
+}

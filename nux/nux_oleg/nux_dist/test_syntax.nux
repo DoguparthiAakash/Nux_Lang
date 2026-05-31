@@ -1,0 +1,44 @@
+# Test Nux Syntax Simplifications
+
+func test_optional_parens() {
+    print("Testing optional parens...");
+    var x = 5;
+    if x < 10 {
+        x = x + 1;
+    }
+    
+    while x < 8 {
+        x = x + 1;
+    }
+    
+    for i := 0; i < 2; i = i + 1 {
+        x = x + 1;
+    }
+    
+    println(x); # Expected: 10
+}
+
+func test_short_decl() {
+    print("Testing short decl...");
+    a := 100;
+    b := 200;
+    c := a + b;
+    println(c); # Expected: 300
+}
+
+func get_value() {
+    return 42
+}
+
+func test_implicit_return() {
+    print("Testing implicit return...");
+    v := get_value();
+    println(v); # Expected: 42
+}
+
+func main() {
+    test_optional_parens();
+    test_short_decl();
+    test_implicit_return();
+    print("All tests passed!");
+}

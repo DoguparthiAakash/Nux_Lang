@@ -1,0 +1,47 @@
+fn Math_sqrt(x: float) -> float {
+    asm {
+        x
+        OP_FSQRT
+        return
+    }
+}
+
+fn Math_sin(x: float) -> float {
+    asm {
+        x
+        OP_FSIN
+        return
+    }
+}
+
+fn Math_cos(x: float) -> float {
+    asm {
+        x
+        OP_FCOS
+        return
+    }
+}
+
+fn Math_tan(x: float) -> float {
+    asm {
+        x
+        OP_FTAN
+        return
+    }
+}
+
+fn Math_pow(base: float, exponent: float) -> float {
+    asm {
+        base
+        exponent
+        OP_FPOW
+        return
+    }
+}
+
+fn Math_abs(x: float) -> float {
+    if x < 0.0 {
+        return 0.0 - x;
+    }
+    return x;
+}

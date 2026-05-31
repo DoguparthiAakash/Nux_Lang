@@ -1,0 +1,29 @@
+# test_advanced.nux
+
+func test_defer() {
+    defer println("Deferred 1")
+    defer {
+        println("Deferred 2 block")
+    }
+    println("Normal execution")
+}
+
+func test_match(x) {
+    match x {
+        10 {
+            println("Matched 10")
+        }
+        20 {
+            println("Matched 20")
+        }
+        _ {
+            println("Matched default")
+        }
+    }
+}
+
+func main() {
+    test_defer()
+    test_match(20)
+    test_match(5)
+}

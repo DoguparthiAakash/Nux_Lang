@@ -1,0 +1,20 @@
+import "alloc"
+import "physics"
+
+func main() {
+    alloc_init(116, 1000000);
+    var objs = alloc(10 * 4 * 8); # 10 objects, 4 words each
+    
+    # Setup object 0 with y = 1000, vy = 0
+    poke(objs + 0 * 4 * 8 + 1 * 8, 1000);
+    poke(objs + 0 * 4 * 8 + 3 * 8, 0);
+    
+    # Apply gravity for 16ms
+    apply_gravity(objs, 10, 16);
+    
+    var new_y = peek(objs + 0 * 4 * 8 + 1 * 8);
+    var new_vy = peek(objs + 0 * 4 * 8 + 3 * 8);
+    
+    println(new_y);
+    println(new_vy);
+}

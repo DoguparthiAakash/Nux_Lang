@@ -38,7 +38,25 @@ pub use vm::NuxVm;
 
 /// Compile Nux source code to bytecode
 pub fn compile(source: &str) -> Result<Vec<u8>, Vec<CompileError>> {
-    compile_high_level(source)
+    let mut bytecode = compile_high_level(source)?;
+    
+    // Security: Encrypt the bytecode with a basic XOR cipher
+    for b in bytecode.iter_mut() {
+        *b ^= 0x5A;
+    }
+    
+    // Security: Compute FNV-1a checksum
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for &b in &bytecode {
+        hash ^= b as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    
+    // Append magic bytes 'NUX!' and the 8-byte checksum
+    bytecode.extend_from_slice(b"NUX!");
+    bytecode.extend_from_slice(&hash.to_le_bytes());
+    
+    Ok(bytecode)
 }
 
 /// Compile Nux source code to assembly

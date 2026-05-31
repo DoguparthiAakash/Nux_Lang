@@ -1,0 +1,11 @@
+import "alloc"
+
+func main() {
+    alloc_init(10000, 5000);
+    var a = alloc(32);
+    var b = alloc(32);
+    var c = alloc(16);
+    println(a);
+    println(b);
+    println(c);
+}

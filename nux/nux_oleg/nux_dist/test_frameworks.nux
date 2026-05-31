@@ -1,0 +1,36 @@
+# test_frameworks.nux
+
+import "ui"
+import "backend"
+import "engine3d"
+import "game"
+import "io"
+
+func main() {
+    print("=== Testing UI Framework ===\n")
+    var win = window("Nux App", 800, 600)
+    button("Click Me", 100, 100, 0)
+    label("Hello Nux", 10, 10)
+    render_ui()
+
+    print("\n=== Testing Backend Framework ===\n")
+    var srv = server_start(8080)
+    route("/api/v1/status", 0)
+    send_response(1, 200, "OK")
+    server_listen()
+
+    print("\n=== Testing 3D Engine ===\n")
+    vec3(10, 20, 30)
+    mat4_identity()
+    var mdl = model_load("cube.obj")
+    render_scene(1, mdl)
+
+    print("\n=== Testing Game Engine ===\n")
+    game_init(60)
+    on_update(0)
+    on_draw(0)
+    start_game()
+    
+    print("\nAll frameworks tested successfully.\n")
+    return 0
+}

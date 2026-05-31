@@ -1,0 +1,6 @@
+cargo:rerun-if-changed=../target/release/nux.exe
+cargo:rerun-if-changed=../logo.png
+cargo:rerun-if-changed=../nux_file_icon.ico
+cargo:rerun-if-changed=../nuxc_file_icon.ico
+cargo:rerun-if-changed=../nux_uninstall/target/release/nux_remove.exe
+cargo:rerun-if-changed=../lib

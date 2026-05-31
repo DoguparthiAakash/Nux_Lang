@@ -1,0 +1,13 @@
+import "alloc"
+
+func main() {
+    alloc_init(20000, 4000);
+    var b1 = alloc(8);
+    var b2 = alloc(8);
+    print("b1="); println(b1);
+    print("b2="); println(b2);
+    poke(b1, 999);
+    poke(b2, 777);
+    print("peek(b1)="); println(peek(b1));
+    print("peek(b2)="); println(peek(b2));
+}

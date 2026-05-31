@@ -1,0 +1,36 @@
+import "alloc"
+import "crypto"
+
+func main() {
+    alloc_init(116, 1000000);
+    var buf = alloc(8);
+    
+    # Write some data
+    poke(buf + 0 * 8, 100);
+    poke(buf + 1 * 8, 200);
+    poke(buf + 2 * 8, 300);
+    poke(buf + 3 * 8, 400);
+    
+    # Hash
+    var hash1 = fnv1a_hash(buf, 4);
+    println(hash1);
+    
+    # Encrypt
+    xor_cipher(buf, 4, 123456789);
+    
+    # Hash of encrypted
+    var hash2 = fnv1a_hash(buf, 4);
+    println(hash2);
+    
+    # Decrypt
+    xor_cipher(buf, 4, 123456789);
+    
+    # Read back to verify
+    println(peek(buf + 0 * 8));
+    println(peek(buf + 1 * 8));
+    println(peek(buf + 2 * 8));
+    println(peek(buf + 3 * 8));
+    
+    # Sbox test
+    println(sbox_sub(100));
+}

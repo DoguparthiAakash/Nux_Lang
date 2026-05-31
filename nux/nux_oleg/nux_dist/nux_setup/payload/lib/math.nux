@@ -1,0 +1,10 @@
+# math.nux - Math Standard Library
+
+func abs(x) {
+    if (x < 0) {
+        return 0 - x;
+    }
+    return x;
+}
+
+# The VM has sqrt, sin, cos built-in but they are bound to Float types or we can just use FTOI/ITOF

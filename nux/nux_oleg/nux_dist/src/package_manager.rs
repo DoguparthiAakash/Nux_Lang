@@ -1,9 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use std::process::Command;
-use std::io;
+use std::io::{self, Cursor};
 use std::env;
+use semver::VersionReq;
+use zip::ZipArchive;
 use crate::bonfort_config::{BonfortConfig, BonfortLock, LockedPackage, resolve_version};
 
 pub const GLOBAL_NUX_LIB: &str = "/usr/local/lib/nux";
@@ -33,7 +34,7 @@ impl InstallTarget {
     pub fn auto_detect() -> Self {
         if env::var("NUX_LIB_PATH").is_ok() {
             InstallTarget::Venv
-        } else if Path::new("Bonfort.toml").exists() || Path::new("lib").exists() {
+        } else if Path::new("nux.toml").exists() || Path::new("lib").exists() {
             InstallTarget::Local
         } else if Path::new(GLOBAL_NUX_LIB).exists() {
             InstallTarget::Global
@@ -54,30 +55,66 @@ fn get_registry() -> HashMap<&'static str, &'static str> {
     m
 }
 
-fn check_command(cmd: &str) -> bool {
-    Command::new("which")
-        .arg(cmd)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+fn download_and_extract(url: &str, target_dir: &Path) -> Result<(), String> {
+    let response = reqwest::blocking::get(url).map_err(|e| format!("Failed to download: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Download failed with status: {}", response.status()));
+    }
+    
+    let bytes = response.bytes().map_err(|e| format!("Failed to read bytes: {}", e))?;
+    let cursor = Cursor::new(bytes);
+    
+    let mut archive = ZipArchive::new(cursor).map_err(|e| format!("Failed to parse zip: {}", e))?;
+    
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        // Remove the top-level directory from the path
+        let outpath = match file.enclosed_name() {
+            Some(path) => {
+                let mut components = path.components();
+                components.next(); // Skip the root directory
+                let rest = components.as_path();
+                if rest.as_os_str().is_empty() { continue; }
+                target_dir.join(rest)
+            },
+            None => continue,
+        };
+        
+        if file.name().ends_with('/') {
+            fs::create_dir_all(&outpath).map_err(|e| format!("Failed to create dir: {}", e))?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(&p).map_err(|e| format!("Failed to create dir: {}", e))?;
+                }
+            }
+            let mut outfile = fs::File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
+            io::copy(&mut file, &mut outfile).map_err(|e| format!("Failed to write file: {}", e))?;
+        }
+    }
+    
+    Ok(())
 }
 
 pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
     println!("Installing package: {} (version: {})", package_name, version_req);
     
-    // Check prerequisites
-    if !check_command("curl") {
-        eprintln!("Error: 'curl' is required for installation.");
-        return;
-    }
-    if !check_command("unzip") {
-        eprintln!("Error: 'unzip' is required for installation.");
-        return;
-    }
+    // SemVer validation
+    let _req = match VersionReq::parse(version_req) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Error: Invalid version requirement '{}': {}", version_req, e);
+            if version_req != "latest" && version_req != "*" {
+                return;
+            }
+            VersionReq::STAR
+        }
+    };
 
     let registry = get_registry();
     let url = match registry.get(package_name) {
-        Some(u) => u,
+        Some(u) => *u,
         None => {
             eprintln!("Error: Package '{}' not found in registry.", package_name);
             return;
@@ -100,101 +137,35 @@ pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
          let _ = fs::remove_dir_all(&package_dir);
     }
     
-    let temp_zip = target_base.join(format!("{}.zip", package_name));
-    
-    println!("Downloading from: {}", url);
-    
-    // 1. Download with curl
-    let status = Command::new("curl")
-        .arg("-L") // Follow redirects
-        .arg("-o")
-        .arg(&temp_zip)
-        .arg(url)
-        .status();
-        
-    match status {
-        Ok(s) => if !s.success() {
-            eprintln!("Error: curl failed to download package.");
-            return;
-        },
-        Err(e) => {
-            eprintln!("Failed to execute curl: {}", e);
-            return;
-        }
+    if let Err(e) = fs::create_dir_all(&package_dir) {
+        eprintln!("Error creating package directory: {}", e);
+        return;
     }
     
-    println!("Extracting...");
+    println!("Downloading and extracting from: {}", url);
     
-    // 2. Unzip
-    let status = Command::new("unzip")
-        .arg("-q") // Quiet
-        .arg("-o") // Overwrite
-        .arg(&temp_zip)
-        .arg("-d")
-        .arg(&target_base)
-        .status();
-        
-    match status {
-        Ok(s) => if !s.success() {
-            eprintln!("Error: unzip failed.");
-            let _ = fs::remove_file(&temp_zip);
-            return;
-        },
-        Err(e) => {
-            eprintln!("Failed to execute unzip: {}", e);
-            let _ = fs::remove_file(&temp_zip);
-            return;
-        }
+    if let Err(e) = download_and_extract(url, &package_dir) {
+        eprintln!("Installation failed: {}", e);
+        let _ = fs::remove_dir_all(&package_dir);
+        return;
     }
     
-    // Clean up zip
-    let _ = fs::remove_file(&temp_zip);
-    
-    // 3. Rename folder
-    let entries = fs::read_dir(&target_base).unwrap();
-    let mut extracted_name = None;
-    
-    for entry in entries {
-        if let Ok(entry) = entry {
-            if let Ok(ft) = entry.file_type() {
-                if ft.is_dir() {
-                    let name = entry.file_name();
-                    let name_str = name.to_string_lossy();
-                    if name_str != package_name && !registry.contains_key(name_str.as_ref()) {
-                         extracted_name = Some(name.into_string().unwrap());
-                         break;
-                    }
-                }
-            }
-        }
-    }
-    
-    if let Some(old_name) = extracted_name {
-        let old_path = target_base.join(&old_name);
-        if let Err(e) = fs::rename(&old_path, &package_dir) {
-             eprintln!("Warning: Failed to rename '{}' to '{}': {}", old_name, package_name, e);
-             eprintln!("The package is installed at: {}", old_path.display());
-        } else {
-             println!("✓ Package installed to: {}", package_dir.display());
-        }
-    } else {
-        println!("✓ Package installed (could not determine specific folder).");
-    }
+    println!("Successfully installed {} v{}", package_name, version_req);
 }
 
 pub fn install_from_config(target: InstallTarget) {
-    let bonfort_toml = Path::new("Bonfort.toml");
-    let bonfort_lock = Path::new("Bonfort.lock");
+    let bonfort_toml = Path::new("nux.toml");
+    let bonfort_lock = Path::new("nux.lock");
     
     if !bonfort_toml.exists() {
-        eprintln!("Error: Bonfort.toml not found. Run 'bonfort init' or create it.");
+        eprintln!("Error: nux.toml not found. Run 'nux new' to create a project.");
         return;
     }
 
     let config = match BonfortConfig::from_file(bonfort_toml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error reading Bonfort.toml: {}", e);
+            eprintln!("Error reading nux.toml: {}", e);
             return;
         }
     };
@@ -239,14 +210,14 @@ pub fn install_from_config(target: InstallTarget) {
 
     if installed_at_least_one {
         if let Err(e) = lock.to_file(bonfort_lock) {
-            eprintln!("Warning: Could not save Bonfort.lock: {}", e);
+            eprintln!("Warning: Could not save nux.lock: {}", e);
         } else {
-            println!("✓ Created/Updated Bonfort.lock");
+            println!("✓ Created/Updated nux.lock");
         }
     } else if !config.dependencies.is_empty() {
-        println!("All dependencies satisfied by Bonfort.lock");
+        println!("All dependencies satisfied by nux.lock");
     } else {
-        println!("No dependencies found in Bonfort.toml");
+        println!("No dependencies found in nux.toml");
     }
 }
 

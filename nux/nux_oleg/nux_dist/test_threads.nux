@@ -1,0 +1,28 @@
+func thread_worker(id) {
+    print("Worker started: ");
+    println(id);
+    var sum = 0;
+    for (var i = 0; i < 1000; i = i + 1) {
+        sum = sum + i;
+    }
+    print("Worker finished: ");
+    println(id);
+    return sum;
+}
+
+func main() {
+    print("Spawning threads...");
+    println(0);
+    
+    var t1 = spawn thread_worker(1);
+    var t2 = spawn thread_worker(2);
+    
+    var res1 = join(t1);
+    var res2 = join(t2);
+    
+    print("Results: ");
+    println(res1);
+    println(res2);
+    
+    return 0;
+}

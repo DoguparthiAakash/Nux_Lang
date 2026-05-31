@@ -1,0 +1,49 @@
+# quantum.nux - Quantum Simulation Library (1-qubit)
+# State is [alpha, beta] representing amplitudes in fixed point (scale = 1000).
+
+import "alloc"
+import "math"
+
+# Initialize a new qubit in the |0> state
+func q_new() {
+    var q = alloc(16);
+    poke(q + 0, 1000); # alpha = 1.0
+    poke(q + 8, 0);    # beta = 0.0
+    return q;
+}
+
+# Apply Hadamard gate
+# H = 1/sqrt(2) * [1  1]
+#                 [1 -1]
+func q_hadamard(q) {
+    var alpha = peek(q + 0);
+    var beta = peek(q + 8);
+    
+    # 1/sqrt(2) * 1000 ~= 707
+    var new_alpha = ((alpha + beta) * 707) / 1000;
+    var new_beta = ((alpha - beta) * 707) / 1000;
+    
+    poke(q + 0, new_alpha);
+    poke(q + 8, new_beta);
+}
+
+# Apply Pauli-X gate (NOT)
+func q_pauli_x(q) {
+    var alpha = peek(q + 0);
+    var beta = peek(q + 8);
+    
+    poke(q + 0, beta);
+    poke(q + 8, alpha);
+}
+
+# Apply Pauli-Z gate
+func q_pauli_z(q) {
+    var beta = peek(q + 8);
+    poke(q + 8, 0 - beta);
+}
+
+# Get probability of measuring |1>
+func q_prob_1(q) {
+    var beta = peek(q + 8);
+    return (beta * beta) / 1000;
+}

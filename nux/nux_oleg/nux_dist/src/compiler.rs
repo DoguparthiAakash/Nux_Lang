@@ -93,6 +93,9 @@ pub struct Parser {
     classes: BTreeMap<String, ClassInfo>,
     current_class_name: Option<String>,
     current_class_fields: BTreeMap<String, u32>,
+    pub in_unsafe_block: bool,
+    pub enums: BTreeMap<String, BTreeMap<String, i64>>,
+    pub traits: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -125,6 +128,9 @@ impl Parser {
             classes: BTreeMap::new(),
             current_class_name: None,
             current_class_fields: BTreeMap::new(),
+            in_unsafe_block: false,
+            enums: BTreeMap::new(),
+            traits: BTreeMap::new(),
         }
     }
 
@@ -219,6 +225,12 @@ impl Parser {
                          self.synchronize();
                      }
                 },
+                Token::Trait => {
+                     if let Err(e) = self.parse_trait() {
+                         self.errors.push(e);
+                         self.synchronize();
+                     }
+                },
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
                 Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
@@ -230,7 +242,6 @@ impl Parser {
                 },
                 Token::Import => { 
                     self.advance();
-                    // Import Logic
                      let raw_name = match &self.current_token {
                         Token::String(s) => s.clone(),
                         _ => {
@@ -241,13 +252,8 @@ impl Parser {
                     self.advance();
                     if self.current_token == Token::SemiColon { self.advance(); }
                     
-                    // 1. Resolve Path
                     let rel = raw_name.replace(".", "/");
                     let file_name = format!("{}.nux", rel);
-                    
-                    // Search Paths:
-                    // 1. $NUX_LIB_PATH/file_name
-                    // 2. lib/file_name
                     
                     let mut src_content: Option<String> = None;
                     
@@ -267,35 +273,8 @@ impl Parser {
                          }
                     }
                     
-                    // Fallback check for root/lib prefix if user provided it manually?
-                    // User asked for "by name".
-                    
                     if let Some(src) = src_content {
-                        // 3. Nested Parse
-                        // We need to inject definitions.
-                        // Recursive call to register functions/classes/globals.
-                        
-                        // Save current state issues?
-                        // Lexer is stateful. We are "pausing" current lexer to parse another source?
-                        // Actually, easier to Append source to standard definition lists.
-                        // But we want to parse it.
-                        
-                        // Hack: Create a new Parser for the import, populate ITS definitions, 
-                        // then merge them into current definitions. 
-                        // BUT Globals need address fixups?
-                        // Shared Global Counter?
-                        // This implies `Parser` should share context.
-                        
-                        // For this task, assuming imports just add Functions/Classes.
-                        // Globals in imports might collide or overlap if not careful.
-                        // We will merge "definitions" string.
-                        
-                        // Ideally: `self.parse_import(&src, &mut definitions)?`
-                        // But I need access to `parse_func` etc.
-                        
                         let mut imported_defs = String::new();
-                        // We temporarily swap lexer? No.
-                        // Helper method:
                         self.parse_imported_source(&src, &mut definitions);
                         
                     } else {
@@ -323,8 +302,23 @@ impl Parser {
                     self.advance();
                     main_body.push_str("POKE\n");
                 },
+                Token::Poke32 => {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected ( for poke32".to_string()); }
+                    self.advance();
+                    self.parse_expression(&mut main_body)?; 
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(&mut main_body)?; 
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                    self.advance();
+                    main_body.push_str("OP_POKE32\n");
+                },
                 _ => {
-                    self.error_at_current(format!("Unexpected token at top level: {:?}", self.current_token));
+                    let msg = self.format_unexpected_token(&self.current_token, "Unexpected token at top level:");
+                    self.error_at_current(msg);
                     self.advance();
                 }
             }
@@ -353,21 +347,8 @@ impl Parser {
     }
 
     fn parse_imported_source(&mut self, source: &str, definitions: &mut String) {
-        // Recursive parse
-        // We instantiate a new parser for the import?
-        // But we need to update state (e.g. classes).
-        // For now, let's just parse top-level definitions and Append them.
-        
         let mut sub_parser = Parser::new(source);
-        // Share Class Definitions?
-        // Ideally we pass context. 
-        // For simplicity: We run `parse_to_asm` but ignore main body, only keep definitions?
-        // But `parse_to_asm` generates code.
-        // We need `parse_top_level`.
-        
-        // Manual loop over sub_parser
         loop {
-            // println!("DEBUG: Import token: {:?}", sub_parser.current_token);
             match sub_parser.current_token {
                 Token::EOF => break,
                 Token::Class => {
@@ -383,14 +364,12 @@ impl Parser {
                     }
                 },
                 Token::Import => { 
-                    // Transitive imports!
                      if let Token::String(raw_name) = &sub_parser.current_token {
                         let rel = raw_name.replace(".", "/");
                         let file_name = format!("{}.nux", rel);
                         
                         let mut src_content: Option<String> = None;
                         
-                        // Check NUX_LIB_PATH first
                         if let Ok(env_path) = std::env::var("NUX_LIB_PATH") {
                             let path = std::path::Path::new(&env_path).join(&file_name);
                             if path.exists() {
@@ -400,7 +379,6 @@ impl Parser {
                             }
                         }
                         
-                        // Fallback to local lib/
                         if src_content.is_none() {
                              let path = std::path::Path::new("lib").join(&file_name);
                              if let Ok(content) = std::fs::read_to_string(&path) {
@@ -409,13 +387,6 @@ impl Parser {
                         }
                         
                         if let Some(src) = src_content {
-                             // Recurse
-                             // Note: infinite recursion possible if cyclic imports exist.
-                             // For now, we trust the user. 
-                             // Ideally we pass a "visited" set.
-                             // But since we are appending definitions, we might define things twice?
-                             // No, duplicate keys in BTreeMap overwrite or we should check?
-                             // Current parser structs overwrite.
                              self.parse_imported_source(&src, definitions);
                         } else {
                              eprintln!("Warning: Transitive import not found: {}", raw_name);
@@ -424,17 +395,13 @@ impl Parser {
                      sub_parser.advance();
                      if sub_parser.current_token == Token::SemiColon { sub_parser.advance(); }
                 },
-                _ => { sub_parser.advance(); } // Skip top level statements in imports (Globals skipped?)
+                _ => { sub_parser.advance(); }
             }
         }
         
-
-        
-        // Merge Classes (if any)
         for (k, v) in sub_parser.classes {
             self.classes.insert(k, v);
         }
-        // Merge Bound Types
         for (k, v) in sub_parser.bound_types {
             self.bound_types.insert(k, v);
         }
@@ -444,27 +411,108 @@ impl Parser {
         Err(CompileError::new(msg, self.current_span))
     }
 
+    fn format_unexpected_token(&self, token: &Token, context: &str) -> String {
+        match token {
+            Token::Identifier(s) => {
+                let lower = s.to_lowercase();
+                match lower.as_str() {
+                    "string" | "int" | "float" | "char" | "byte" | "short" | "long" => {
+                        format!("{} Unexpected identifier '{}'. Note: Nux data types are lowercase (e.g. '{}').", context, s, lower)
+                    },
+                    _ => format!("{} Unexpected identifier '{}'. Check your syntax and variable names.", context, s)
+                }
+            },
+            _ => format!("{} {:?}", context, token)
+        }
+    }
+
+    fn parse_trait(&mut self) -> Result<(), CompileError> {
+        self.advance();
+        let trait_name = match &self.current_token {
+            Token::Identifier(s) => s.clone(),
+            _ => return self.error("Expected trait name".to_string())
+        };
+        self.advance();
+        
+        if self.current_token != Token::LBrace {
+            return self.error("Expected '{' for trait".to_string());
+        }
+        self.advance();
+        
+        let mut methods = Vec::new();
+        while self.current_token != Token::RBrace && self.current_token != Token::EOF {
+            if self.current_token == Token::SemiColon {
+                self.advance();
+                continue;
+            }
+            if self.current_token == Token::Func || self.current_token == Token::Fn {
+                self.advance();
+                let method_name = match &self.current_token {
+                    Token::Identifier(s) => s.clone(),
+                    _ => return self.error("Expected method name in trait".to_string())
+                };
+                self.advance();
+                if self.current_token != Token::LParen { return self.error("Expected '(' in trait method".to_string()); }
+                self.advance();
+                while self.current_token != Token::RParen && self.current_token != Token::EOF {
+                    self.advance();
+                }
+                if self.current_token != Token::RParen { return self.error("Expected ')'".to_string()); }
+                self.advance();
+                if self.current_token == Token::Minus {
+                    self.advance(); if self.current_token == Token::Gt { self.advance(); self.advance(); }
+                }
+                if self.current_token == Token::SemiColon { self.advance(); }
+                methods.push(method_name);
+            } else {
+                return self.error("Only functions are allowed in traits".to_string());
+            }
+        }
+        
+        if self.current_token != Token::RBrace {
+            return self.error("Expected '}' at end of trait".to_string());
+        }
+        self.advance();
+        self.traits.insert(trait_name, methods);
+        Ok(())
+    }
+
     fn parse_class(&mut self, out: &mut String) -> Result<(), CompileError> {
         self.advance(); 
         let name = match &self.current_token {
             Token::Identifier(s) => s.clone(),
             _ => return self.error("Expected class name".to_string()),
         };
-        // println!("DEBUG: Found class {}", name);
         self.advance();
         
         self.current_class_name = Some(name.clone());
         self.current_class_fields.clear();
         
+        let mut implemented_traits = Vec::new();
+        if self.current_token == Token::Colon {
+            self.advance();
+            while let Token::Identifier(t) = &self.current_token {
+                implemented_traits.push(t.clone());
+                self.advance();
+                if self.current_token == Token::Comma { self.advance(); } else { break; }
+            }
+        }
+        
         if self.current_token != Token::LBrace { return self.error("Expected '{' after class name".to_string()); }
         self.advance();
         
         let mut fields = BTreeMap::new();
+        let mut methods = std::collections::HashSet::new();
         let mut offset = 0;
         
         while self.current_token != Token::RBrace && self.current_token != Token::EOF {
+            if self.current_token == Token::SemiColon {
+                self.advance();
+                continue;
+            }
             if self.current_token == Token::Func {
-                self.parse_func(out, &name)?;
+                let m_name = self.parse_func(out, &name)?;
+                methods.insert(m_name);
             } else if self.current_token == Token::Var {
                 self.advance();
                 let field_name = match &self.current_token {
@@ -481,16 +529,28 @@ impl Parser {
                 }
                 if self.current_token == Token::SemiColon { self.advance(); }
             } else {
-                return self.error("Only functions/fields allowed in classes for now".to_string());
+                return self.error(format!("Only functions/fields allowed in classes for now, got {:?}", self.current_token));
             }
         }
-        self.classes.insert(name, ClassInfo { fields, size: offset });
+        self.classes.insert(name.clone(), ClassInfo { fields, size: offset });
         
         if self.current_token != Token::RBrace { return self.error("Expected '}'".to_string()); }
         self.advance();
         
         self.current_class_name = None;
         self.current_class_fields.clear();
+        
+        for tr in implemented_traits {
+            if let Some(trait_methods) = self.traits.get(&tr) {
+                for m in trait_methods {
+                    if !methods.contains(m) {
+                        return self.error(format!("Class '{}' missing trait method '{}::{}'", name, tr, m));
+                    }
+                }
+            } else {
+                return self.error(format!("Unknown trait '{}' implemented by class '{}'", tr, name));
+            }
+        }
         
         Ok(())
     }
@@ -541,11 +601,12 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_func(&mut self, out: &mut String, class_prefix: &str) -> Result<(), CompileError> {
+    fn parse_func(&mut self, out: &mut String, class_prefix: &str) -> Result<String, CompileError> {
         self.advance();
         if self.current_token == Token::Var {
              self.advance();
-             return self.parse_bound_type_decl();
+             self.parse_bound_type_decl()?;
+             return Ok("".to_string());
         }
 
         let name = match &self.current_token {
@@ -591,7 +652,7 @@ impl Parser {
         self.enter_scope(); 
         
         if !class_prefix.is_empty() {
-             args.insert(0, "this".to_string());
+             args.insert(0, "self".to_string());
         }
 
         let num_args = args.len() as i64;
@@ -613,7 +674,7 @@ impl Parser {
         out.push_str("PUSH 0\nRET\n");
         out.push_str(&format!("skip_{}:\n", full_name));
         
-        Ok(())
+        Ok(name)
     }
     
     fn parse_block(&mut self, out: &mut String) -> Result<(), CompileError> {
@@ -640,14 +701,47 @@ impl Parser {
         match &self.current_token {
              Token::Print => {
                  self.advance();
-                 self.parse_print(out, true)?;  // Now adds newline by default
+                 self.parse_print(out, true)?;
              },
              Token::Println => {
                  self.advance();
-                 self.parse_print(out, false)?;  // Legacy: no newline
+                 self.parse_print(out, false)?;
+             },
+             Token::SemiColon => {
+                 self.advance();
+                 return Ok(());
              },
              Token::Identifier(name) => {
                  let part1 = name.clone();
+                 if part1 == "vbe_set_mode" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_VBE_SET_MODE\n");
+                     return Ok(());
+                 }
+                 if part1 == "vbe_update" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_VBE_UPDATE\n");
+                     return Ok(());
+                 }
                  if part1 == "sleep" {
                      self.advance(); 
                      if self.current_token != Token::LParen { return self.error("Expected ( for sleep".to_string()); }
@@ -661,7 +755,48 @@ impl Parser {
                      return Ok(());
                  }
                  
-                 // --- DataManager Intrinsics ---
+                  if part1 == "poke_ptr" {
+                      self.advance();
+                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                      self.advance();
+                      self.parse_expression(out)?;
+                      if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                      self.advance();
+                      self.parse_expression(out)?;
+                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                      self.advance();
+                      if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                      else if self.current_token == Token::SemiColon { self.advance(); }
+                      out.push_str("OP_POKE_PTR\n");
+                      return Ok(());
+                  }
+
+                 if part1 == "peek_ptr" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_PEEK_PTR\n");
+                     return Ok(());
+                 }
+
+                 if part1 == "syscall" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_SYSCALL\n");
+                     return Ok(());
+                 }
+                 
                  if part1 == "dm_get" {
                      self.advance();
                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -670,7 +805,7 @@ impl Parser {
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                      self.advance();
                      if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
-                     else if self.current_token == Token::SemiColon { self.advance(); } // Allow missing semi for expr
+                     else if self.current_token == Token::SemiColon { self.advance(); }
                      out.push_str("OP_DM_GET\n");
                      return Ok(());
                  }
@@ -690,7 +825,6 @@ impl Parser {
                      return Ok(());
                  }
                  
-                 // --- Security Intrinsics ---
                  if part1 == "sec_login" {
                      self.advance();
                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -707,7 +841,7 @@ impl Parser {
                      return Ok(());
                  }
                  if part1 == "sec_whoami" {
-                     self.advance(); // skip name
+                     self.advance();
                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -740,7 +874,7 @@ impl Parser {
                                    else if self.current_token == Token::SemiColon { self.advance(); }
                                    let loc = self.declare_var(part1.clone(), Type::Int);
                                    if let VarLocation::Global(addr) = loc {
-                                       out.push_str(&format!("PUSH {}\nPOKE\n", addr));
+                                       out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr));
                                    }
                                } else {
                                    return self.error(format!("Undefined variable '{}' (use 'var {}')", part1, part1));
@@ -772,11 +906,15 @@ impl Parser {
                               if let Some(cinfo) = self.classes.get(&cname) { *cinfo.fields.get(&member).unwrap() } 
                               else { return self.error(format!("Unknown class '{}'", cname)); }
                           } else {
-                             let mut found = None;
-                             for (cname, cinfo) in &self.classes {
-                                 if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); }
+                             if let Some(off) = self.current_class_fields.get(&member) {
+                                 *off
+                             } else {
+                                 let mut found = None;
+                                 for (cname, cinfo) in &self.classes {
+                                     if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); }
+                                 }
+                                 if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
                              }
-                             if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
                           };
                           match loc {
                               VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
@@ -821,7 +959,16 @@ impl Parser {
                            return self.error("Expected = or ( after member name".to_string());
                       }
                  } else {
-                       return self.error(format!("Unexpected token: {:?}", self.current_token));
+                       if let Token::Identifier(ref s) = self.current_token {
+                           let lower = part1.to_lowercase();
+                           match lower.as_str() {
+                               "string" | "int" | "float" | "char" | "byte" | "short" | "long" => {
+                                   return self.error(format!("Unexpected identifier '{}' after '{}'. Note: Nux types are lowercase (e.g. '{}'). Did you mean to declare a variable?", s, part1, lower));
+                               },
+                               _ => return self.error(format!("Unexpected identifier '{}' after '{}'.", s, part1))
+                           }
+                       }
+                       return self.error(self.format_unexpected_token(&self.current_token, "Unexpected token in statement:"));
                  }
              },
              Token::Input => {
@@ -945,11 +1092,27 @@ impl Parser {
                  self.loop_stack.pop();
              },
              Token::LBrace => { self.parse_block(out)?; },
+             Token::Unsafe => {
+                 self.advance();
+                 if self.current_token != Token::LBrace { return self.error("Expected { after unsafe".to_string()); }
+                 self.advance();
+                 out.push_str("OP_UNSAFE_START\n");
+                 while self.current_token != Token::RBrace && self.current_token != Token::EOF {
+                     self.parse_statement_impl(out, true)?;
+                 }
+                 if self.current_token == Token::RBrace { self.advance(); }
+                 out.push_str("OP_UNSAFE_END\n");
+             },
              Token::Peek => {
                  self.parse_expression(out)?; 
                  if self.current_token == Token::SemiColon { self.advance(); }
              },
+             Token::Peek32 => {
+                 self.parse_expression(out)?; 
+                 if self.current_token == Token::SemiColon { self.advance(); }
+             },
              Token::Poke => { self.parse_poke(out)?; },
+             Token::Poke32 => { self.parse_poke32(out)?; },
              Token::Break => {
                  match self.loop_stack.last() { Some(label) => out.push_str(&format!("JMP {}\n", label.1)), None => return self.error("Break outside loop".to_string()) }
                  self.advance(); if self.current_token == Token::SemiColon { self.advance(); }
@@ -964,48 +1127,21 @@ impl Parser {
                      if let Token::String(s) = &self.current_token { 
                          out.push_str(s); out.push('\n'); self.advance(); 
                      } else if let Token::Identifier(name) = &self.current_token {
-                         // Resolve Variable
-                     // Check variable resolution
-                     match self.resolve_var(name) {
-                         Some((_loc, _typ)) => {
-                             // Variable exists
-                         },
-                         None => {
-                             // Variable doesn't exist
-                             // Assuming this block was meant to verify existence or infer type
-                             // For now, if we are parsing an expression context, maybe we don't need this specific undefined check 
-                             // if it's handled elsewhere.
-                             // But checking the context (lines 840-860 are likely in parse_primary or similar)
-                         }
-                     }
-                     // Actually, looking at the previous file view, it seems I need to see the context to know what to replace.
-                     // The error was: if let Some(idx) = self.resolve_local(name) ... else if let Some(addr) = self.globals.get(name)
-                     // This mimics the logic in `parse_statement_impl` around line 616:
-                     /*
-                        match self.resolve_var(&part1) {
-                            Some((loc, _typ)) => ...
-                            None => ...
-                     */
-                     // So I should replace the offending block with resolve_var usage.
-                     
                      if let Some((loc, _)) = self.resolve_var(name) {
                           match loc {
                               VarLocation::Local(idx) => {
-                                  // Emit OP_GET_LOCAL
                                   out.push_str(&format!("OP_GET_LOCAL {}\n", idx));
                               },
                               VarLocation::Global(addr) => {
-                                  // Emit PUSH addr; PEEK
                                   out.push_str(&format!("PUSH {}\nPEEK\n", addr));
                               }
                           }
                      } else {
-                          // If it's not a variable, assume it's an opcode or label to be emitted directly
                           out.push_str(name); out.push('\n');
                      }
                          self.advance();
                      } else if let Token::Number(n) = &self.current_token {
-                         out.push_str(&format!("{}\n", n)); // Emit number as is (arg)
+                         out.push_str(&format!("{}\n", n));
                          self.advance();
                      } else if self.current_token == Token::Comma || self.current_token == Token::SemiColon { 
                          self.advance(); 
@@ -1068,7 +1204,7 @@ impl Parser {
                   self.parse_expression(out)?; self.advance(); self.parse_expression(out)?; self.advance(); self.parse_expression(out)?; self.advance();
                   out.push_str("OP_IMG_GET\nPOP\n"); if self.current_token == Token::SemiColon { self.advance(); }
              },
-             _ => { return self.error(format!("Unexpected token: {:?}", self.current_token)); }
+             _ => { return self.error(self.format_unexpected_token(&self.current_token, "Unexpected token in statement:")); }
         }
         Ok(())
     }
@@ -1111,7 +1247,9 @@ impl Parser {
                 self.advance();
              } else {
                 let t = self.parse_expression(out)?;
-                if t == Type::Float { out.push_str("PRINT_FLOAT\n"); } else { out.push_str("PRINT_VAL\n"); }
+                if t == Type::Float { out.push_str("PRINT_FLOAT\n"); } 
+                else if t == Type::Char { out.push_str("PRINT_CHAR\n"); }
+                else { out.push_str("PRINT_VAL\n"); }
              }
              if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
              self.advance();
@@ -1129,6 +1267,16 @@ impl Parser {
         self.parse_expression(out)?; if self.current_token != Token::RParen { return self.error("Expected )".to_string()); } self.advance();
         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); } self.advance();
         out.push_str("POKE\n");
+        Ok(())
+    }
+
+    fn parse_poke32(&mut self, out: &mut String) -> Result<(), CompileError> {
+        self.advance();
+        if self.current_token != Token::LParen { return self.error("Expected ( for poke32".to_string()); } self.advance();
+        self.parse_expression(out)?; if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
+        self.parse_expression(out)?; if self.current_token != Token::RParen { return self.error("Expected )".to_string()); } self.advance();
+        if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); } self.advance();
+        out.push_str("OP_POKE32\n");
         Ok(())
     }
     
@@ -1344,45 +1492,9 @@ impl Parser {
             },
             Token::Identifier(name) => {
                 let part1 = name.clone(); self.advance();
-                if self.current_token == Token::LParen {
-                    self.advance(); let mut arg_count = 0;
-                    if self.current_token != Token::RParen { loop { self.parse_expression(out)?; arg_count += 1; if self.current_token == Token::Comma { self.advance(); } else { break; } } }
-                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); } self.advance();
-                    out.push_str(&format!("CALL {} {}\n", part1, arg_count)); Ok(Type::Int)
-                } else {
-                    let (loc, mut typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
-                    match loc { VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); }, VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n\n", idx)); } }
-                    while self.current_token == Token::Dot {
-                        self.advance();
-                        let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
-                        self.advance();
-                        let offset = if let Type::Class(cname) = &typ {
-                             if let Some(cinfo) = self.classes.get(cname) { 
-                                 if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
-                             } else { return self.error(format!("Unknown class '{}'", cname)); }
-                        } else {
-                             // Fallback: Check current class context first?
-                             // If `this` is Type::Int (arg), we don't know it's a class instance.
-                             // But we can check `current_class_fields`.
-                             if let Some(off) = self.current_class_fields.get(&member) {
-                                 *off
-                             } else {
-                                 let mut found = None; for (cname, cinfo) in &self.classes { if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); } }
-                                 if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
-                             }
-                        };
-
-                        out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset)); typ = Type::Unknown;
-                    }
-                    Ok(typ)
-                }
-            },
-            Token::LParen => { self.advance(); let t = self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); Ok(t) },
-            Token::Peek => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("PEEK\n"); Ok(Type::Int) },
-            Token::Identifier(name) => {
-                let func_name = name.clone();
-                // Check for intrinsic functions that can be used as expressions
-                if func_name == "sec_login" {
+                
+                // Intrinsics
+                if part1 == "sec_login" {
                     self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
@@ -1394,7 +1506,25 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_SEC_LOGIN\n");
                     return Ok(Type::Int);
-                } else if func_name == "sec_whoami" {
+                } else if part1 == "syscall" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_SYSCALL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "peek_ptr" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_PEEK_PTR\n");
+                    return Ok(Type::Int);
+                } else if part1 == "sec_whoami" {
                     self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
@@ -1402,7 +1532,7 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_SEC_WHOAMI\n");
                     return Ok(Type::String);
-                } else if func_name == "dm_get" {
+                } else if part1 == "dm_get" {
                     self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
@@ -1411,7 +1541,48 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_DM_GET\n");
                     return Ok(Type::String);
-                } else if func_name == "dm_set" {
+                } else if part1 == "vbe_get_fb" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_VBE_GET_FB\n");
+                    return Ok(Type::Int);
+                } else if part1 == "vbe_get_key" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_VBE_GET_KEY\n");
+                    return Ok(Type::Int);
+                } else if part1 == "vbe_mouse_x" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_VBE_GET_MOUSE_X\n");
+                    return Ok(Type::Int);
+                } else if part1 == "vbe_mouse_y" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_VBE_GET_MOUSE_Y\n");
+                    return Ok(Type::Int);
+                } else if part1 == "vbe_mouse_down" {
+                    self.advance();
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_VBE_GET_MOUSE_DOWN\n");
+                    return Ok(Type::Int);
+                } else if part1 == "dm_set" {
                     self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
@@ -1423,11 +1594,57 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_DM_SET\n");
                     return Ok(Type::Int);
+                } else if self.current_token == Token::LParen {
+                    self.advance(); let mut arg_count = 0;
+                    if self.current_token != Token::RParen { loop { self.parse_expression(out)?; arg_count += 1; if self.current_token == Token::Comma { self.advance(); } else { break; } } }
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); } self.advance();
+                    out.push_str(&format!("CALL {} {}\n", part1, arg_count)); Ok(Type::Int)
+                } else {
+                    let (loc, mut typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                    match loc { VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); }, VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n\n", idx)); } }
+                    while self.current_token == Token::Dot {
+                        self.advance();
+                        let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
+                        self.advance();
+                        if self.current_token == Token::LParen {
+                             let cname = if let Type::Class(n) = &typ { n.clone() } else { 
+                                 if let Some(ref cn) = self.current_class_name { cn.clone() } else { return self.error(format!("Variable is not an object")); }
+                             };
+                             self.advance();
+                             let mut arg_count = 1;
+                             if self.current_token != Token::RParen {
+                                  loop {
+                                      self.parse_expression(out)?; arg_count += 1;
+                                      if self.current_token == Token::Comma { self.advance(); } else { break; }
+                                  }
+                             }
+                             if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                             self.advance();
+                             out.push_str(&format!("CALL {}_{} {}\n", cname, member, arg_count));
+                             typ = Type::Int;
+                        } else {
+                            let offset = if let Type::Class(cname) = &typ {
+                                 if let Some(cinfo) = self.classes.get(cname) { 
+                                     if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                                 } else { return self.error(format!("Unknown class '{}'", cname)); }
+                            } else {
+                                 if let Some(off) = self.current_class_fields.get(&member) {
+                                     *off
+                                 } else {
+                                     let mut found = None; for (cname, cinfo) in &self.classes { if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); } }
+                                     if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
+                                 }
+                            };
+                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset)); typ = Type::Unknown;
+                        }
+                    }
+                    Ok(typ)
                 }
-                // Fall through to default error
-                return self.error(format!("Unexpected token in expression: {:?}", self.current_token));
             },
-            _ => return self.error(format!("Unexpected token in expression: {:?}", self.current_token)),
+            Token::LParen => { self.advance(); let t = self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); Ok(t) },
+            Token::Peek => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("PEEK\n"); Ok(Type::Int) },
+            Token::Peek32 => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_PEEK32\n"); Ok(Type::Int) },
+            _ => return self.error(self.format_unexpected_token(&self.current_token, "Unexpected token in expression:")),
         }
     }
 }

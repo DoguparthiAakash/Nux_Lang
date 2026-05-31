@@ -1,0 +1,23 @@
+import "quantum"
+import "alloc"
+
+func main() {
+    alloc_init(116, 1000000);
+    
+    var q = q_new();
+    
+    # State is |0>
+    println(q_prob_1(q));
+    
+    # Apply Hadamard, state becomes 1/sqrt(2) (|0> + |1>)
+    q_hadamard(q);
+    
+    # Probability of measuring |1> should be ~500 (50%)
+    println(q_prob_1(q));
+    
+    # Apply Hadamard again, state should return to |0>
+    q_hadamard(q);
+    
+    # Probability of |1> should be ~0
+    println(q_prob_1(q));
+}

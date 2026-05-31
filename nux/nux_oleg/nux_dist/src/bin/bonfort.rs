@@ -5,10 +5,10 @@ use std::path::Path;
 use std::collections::HashMap;
 
 use nux::package_manager::{self, InstallTarget};
-use nux::bonfort_config::{BonfortConfig, BonfortLock, LockedPackage, PackageMetadata};
+use nux::bonfort_config::{BonfortConfig, PackageMetadata};
 
 fn main() {
-    let mut args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         print_usage();

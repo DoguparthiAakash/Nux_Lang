@@ -1,0 +1,59 @@
+# ai.nux - Artificial Intelligence & ML Library
+# Provides primitive matrix operations and feedforward neural network functions
+# Note: Since Nux lacks complex floating-point arrays, we represent vectors as memory allocations.
+
+import "alloc"
+import "math"
+
+# Create a new dense vector of size n
+func vec_new(size) {
+    return alloc(size * 8);
+}
+
+# Dot product of two vectors
+func dot_product(v1_ptr, v2_ptr, size) {
+    var sum = 0;
+    var i = 0;
+    while (i < size) {
+        var val1 = peek(v1_ptr + (i * 8));
+        var val2 = peek(v2_ptr + (i * 8));
+        # Assume scaling by 1000 for fixed point
+        sum = sum + ((val1 * val2) / 1000);
+        i = i + 1;
+    }
+    return sum;
+}
+
+# Sigmoid activation approximation (fixed point * 1000)
+func sigmoid(x) {
+    if (x < (0 - 5000)) { return 0; }
+    if (x > 5000) { return 1000; }
+    
+    # Linear approximation
+    var s = (x / 10) + 500;
+    if (s < 0) { return 0; }
+    if (s > 1000) { return 1000; }
+    return s;
+}
+
+# Feedforward one layer
+func layer_forward(inputs_ptr, weights_ptr, biases_ptr, outputs_ptr, in_size, out_size) {
+    var j = 0;
+    while (j < out_size) {
+        # Calculate dot product of inputs and the j-th row of weights
+        var w_row_ptr = weights_ptr + (j * in_size * 8);
+        var dot = dot_product(inputs_ptr, w_row_ptr, in_size);
+        
+        # Add bias
+        var bias = peek(biases_ptr + (j * 8));
+        var z = dot + bias;
+        
+        # Activation
+        var a = sigmoid(z);
+        
+        # Store output
+        poke(outputs_ptr + (j * 8), a);
+        
+        j = j + 1;
+    }
+}

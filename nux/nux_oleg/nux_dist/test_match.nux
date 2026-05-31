@@ -1,0 +1,21 @@
+enum Color {
+    Red = 10,
+    Green = 20,
+    Blue = 30
+}
+
+func main() {
+    var c: int = Color::Green;
+    
+    match (c) {
+        Color::Red => {
+            println("Red");
+        }
+        Color::Green => {
+            println("Green");
+        }
+        _ => {
+            println("Unknown");
+        }
+    }
+}

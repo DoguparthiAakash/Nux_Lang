@@ -1,0 +1,24 @@
+import "sort"
+
+func main() {
+    print("=== Sort: QuickSort ===");
+    poke(4000, 42);
+    poke(4008, 7);
+    poke(4016, 99);
+    poke(4024, 3);
+    poke(4032, 55);
+    poke(4040, 21);
+    print("Before: ");
+    for (var i = 0; i < 6; i = i + 1) {
+        print(peek(4000 + i * 8)); print(" ");
+    }
+    println(0);
+    
+    quicksort(4000, 0, 5);
+    
+    print("After:  ");
+    for (var j = 0; j < 6; j = j + 1) {
+        print(peek(4000 + j * 8)); print(" ");
+    }
+    println(0);
+}

@@ -22,10 +22,18 @@ path = "src/bin/bonfort.rs"
 which = "4.0"
 toml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.11", features = ["blocking"] }
+zip = "0.6"
+semver = "1.0"
+minifb = { version = "0.27", optional = true }
 
+[features]
+default = ["minifb"]
+minifb = ["dep:minifb"]
 
-
-
-
-
-
+[profile.release]
+opt-level = "z"  # Optimize for size
+lto = true       # Link Time Optimization
+codegen-units = 1
+panic = "abort"
+strip = true     # Strip symbols

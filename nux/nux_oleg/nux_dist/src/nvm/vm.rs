@@ -9,6 +9,7 @@ pub struct NuxVM {
     stack: Vec<Value>,
     globals: HashMap<String, Value>,
     call_stack: Vec<CallFrame>,
+    #[allow(dead_code)]
     ip: usize, // Instruction pointer
 }
 

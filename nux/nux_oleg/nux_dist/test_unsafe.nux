@@ -1,0 +1,16 @@
+func main() {
+    println("Before unsafe");
+    unsafe {
+        asm {
+            "PUSH 100",
+            "PRINT_VAL",
+            "PUSH 10",
+            "PRINT_CHAR"
+        }
+        var x: int = 42;
+        
+        poke(100, 200);
+        var y: int = peek(100);
+    }
+    println("After unsafe");
+}

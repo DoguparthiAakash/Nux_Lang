@@ -1,0 +1,13 @@
+[package]
+name = "test_proj"
+version = "0.1.0"
+authors = []
+edition = "2024"
+
+[dependencies]
+
+[build]
+optimization_level = 2
+debug = false
+target = "native"
+parallel = true

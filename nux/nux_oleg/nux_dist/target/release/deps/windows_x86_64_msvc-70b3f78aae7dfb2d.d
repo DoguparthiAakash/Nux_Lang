@@ -1,0 +1,7 @@
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\windows_x86_64_msvc-70b3f78aae7dfb2d.d: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.52.6\src\lib.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\libwindows_x86_64_msvc-70b3f78aae7dfb2d.rlib: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.52.6\src\lib.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\libwindows_x86_64_msvc-70b3f78aae7dfb2d.rmeta: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.52.6\src\lib.rs
+
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\windows_x86_64_msvc-0.52.6\src\lib.rs:

@@ -1,0 +1,16 @@
+fn File_read(path: string) -> string {
+    asm {
+        path
+        FILE_READ
+        return
+    }
+}
+
+fn File_write(path: string, content: string) {
+    asm {
+        path
+        content
+        FILE_WRITE
+        return
+    }
+}

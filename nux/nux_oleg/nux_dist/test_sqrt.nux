@@ -1,0 +1,9 @@
+fn Math_sqrt(x: float) -> float { 
+    asm { 
+        x 
+        OP_FSQRT 
+        return 
+    } 
+} 
+var result = Math::sqrt(16.0); 
+print(result);

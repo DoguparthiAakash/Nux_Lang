@@ -1,8 +1,6 @@
 // Polyglot Parser - Handles parsing of multi-language code blocks
 // This module extends the Nux parser to support embedded foreign language code
 
-use std::collections::HashMap;
-
 /// Supported foreign languages
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ForeignLanguage {

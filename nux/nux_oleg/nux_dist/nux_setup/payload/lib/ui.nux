@@ -1,0 +1,97 @@
+# ui.nux - Nux Standard UI & Graphics Primitives
+
+# Initialize the window with given dimensions
+func vbe_set_mode(width, height, bpp) {
+    asm {
+        width
+        height
+        bpp
+        "OP_VBE_SET_MODE"
+    }
+}
+
+# Get the memory address of the Framebuffer
+func vbe_get_fb() {
+    asm {
+        "OP_VBE_GET_FB"
+        "RET"
+    }
+}
+
+# Flush the framebuffer to the screen
+func vbe_update() {
+    asm {
+        "OP_VBE_UPDATE"
+    }
+}
+
+# Check if a key is pressed (e.g. 87 for W, 65 for A, 83 for S, 68 for D, 37 for Left, 38 for Up)
+func vbe_get_key(key_code) {
+    asm {
+        key_code
+        "OP_VBE_GET_KEY"
+        "RET"
+    }
+}
+
+# Get mouse state. Returns mdown, my, mx on the stack.
+func vbe_get_mouse_x() {
+    asm {
+        "OP_VBE_GET_MOUSE"
+        "POP"
+        "POP"
+        "RET"
+    }
+}
+
+func vbe_get_mouse_y() {
+    asm {
+        "OP_VBE_GET_MOUSE"
+        "POP"
+        "SWAP"
+        "POP"
+        "RET"
+    }
+}
+
+func vbe_get_mouse_down() {
+    asm {
+        "OP_VBE_GET_MOUSE"
+        "SWAP"
+        "POP"
+        "SWAP"
+        "POP"
+        "RET"
+    }
+}
+
+# Plot a pixel at (x,y) with a specific 32-bit ARGB color
+func draw_pixel(fb_addr, x, y, width, height, color) {
+    if (x >= 0) {
+        if (x < width) {
+            if (y >= 0) {
+                if (y < height) {
+                    var offset = (y * width) + x;
+                    poke(fb_addr + (offset * 4), color);
+                }
+            }
+        }
+    }
+}
+
+# Clear the entire screen to a single color
+func clear_screen(fb_addr, width, height, color) {
+    var total_pixels = width * height;
+    for (var i = 0; i < total_pixels; i = i + 1) {
+        poke(fb_addr + (i * 4), color);
+    }
+}
+
+# Draw a filled rectangle
+func draw_rect(fb_addr, screen_w, screen_h, x, y, w, h, color) {
+    for (var py = y; py < y + h; py = py + 1) {
+        for (var px = x; px < x + w; px = px + 1) {
+            draw_pixel(fb_addr, px, py, screen_w, screen_h, color);
+        }
+    }
+}

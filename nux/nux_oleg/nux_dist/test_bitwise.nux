@@ -1,0 +1,8 @@
+func main() {
+    var x = 72 xor 42;
+    println(x);
+    var y = 0xFF and 255;
+    println(y);
+    var z = 5 or 10;
+    println(z);
+}

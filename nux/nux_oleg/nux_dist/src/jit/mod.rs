@@ -18,8 +18,10 @@ pub struct JitCompiler {
 /// Hot spot tracking for functions
 #[derive(Debug)]
 struct HotSpot {
+    #[allow(dead_code)]
     function_id: usize,
     call_count: u64,
+    #[allow(dead_code)]
     loop_iterations: u64,
     compilation_tier: CompilationTier,
 }

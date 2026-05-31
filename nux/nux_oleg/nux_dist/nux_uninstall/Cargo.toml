@@ -1,0 +1,7 @@
+[package]
+name = "nux_remove"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winreg = "0.50.0"

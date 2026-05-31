@@ -1,0 +1,22 @@
+class Point {
+    var x: int;
+    var y: int;
+    
+    func move(dx: int, dy: int) {
+        this.x = this.x + dx;
+        this.y = this.y + dy;
+    }
+}
+
+func main() {
+    let p = new Point();
+    p.x = 10;
+    p.y = 20;
+    println(p.x);
+    println(p.y);
+    
+    p.move(5, -5);
+    
+    println(p.x);
+    println(p.y);
+}

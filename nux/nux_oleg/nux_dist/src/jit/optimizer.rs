@@ -5,6 +5,7 @@ use crate::nvm::bytecode::{Opcode, BytecodeChunk, Value};
 use std::collections::{HashMap, HashSet};
 
 /// Advanced JIT optimizer with multiple optimization passes
+#[allow(dead_code)]
 pub struct AdvancedOptimizer {
     inline_threshold: usize,
     escape_analysis_enabled: bool,
@@ -65,7 +66,7 @@ impl AdvancedOptimizer {
 
     /// Constant propagation - replace variables with known constant values
     fn constant_propagation(&self, mut chunk: BytecodeChunk) -> BytecodeChunk {
-        let mut constants: HashMap<usize, Value> = HashMap::new();
+        let constants: HashMap<usize, Value> = HashMap::new();
         let mut new_code = Vec::new();
         let mut i = 0;
 
@@ -76,7 +77,7 @@ impl AdvancedOptimizer {
                 Opcode::LOAD_CONST => {
                     // Track constant loads
                     let const_idx = chunk.code[i + 1] as usize;
-                    let value = chunk.constants[const_idx].clone();
+                    let _value = chunk.constants[const_idx].clone();
                     
                     new_code.push(chunk.code[i]);
                     new_code.push(chunk.code[i + 1]);
@@ -84,7 +85,7 @@ impl AdvancedOptimizer {
                 }
                 Opcode::STORE_VAR => {
                     // Store constant value for variable
-                    let var_idx = chunk.code[i + 1] as usize;
+                    let _var_idx = chunk.code[i + 1] as usize;
                     new_code.push(chunk.code[i]);
                     new_code.push(chunk.code[i + 1]);
                     i += 2;
@@ -199,7 +200,7 @@ impl AdvancedOptimizer {
             if let Some(opcode) = Opcode::from_u8(chunk.code[i]) {
                 match opcode {
                     Opcode::CALL => {
-                        let arg_count = chunk.code[i + 1];
+                        let _arg_count = chunk.code[i + 1];
                         // Check if function is small enough to inline
                         // For now, just copy the call
                         new_code.push(chunk.code[i]);
@@ -230,7 +231,7 @@ impl AdvancedOptimizer {
         // Analyze object allocations to determine if they escape
         // Objects that don't escape can be stack-allocated
         
-        let mut escaping_objects: HashSet<usize> = HashSet::new();
+        let _escaping_objects: HashSet<usize> = HashSet::new();
         let mut i = 0;
 
         while i < chunk.code.len() {

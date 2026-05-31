@@ -1,0 +1,17 @@
+# Test ASI (Automatic Semicolon Insertion)
+
+func get_value() {
+    return 42
+}
+
+func main() {
+    x := 10
+    y := 20
+    
+    if x < y {
+        println(x)
+    }
+    
+    val := get_value()
+    println(val)
+}
