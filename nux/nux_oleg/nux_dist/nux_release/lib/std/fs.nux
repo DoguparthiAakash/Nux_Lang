@@ -1,0 +1,13 @@
+class Fs {
+    func read(self, path) {
+        return fs_read(path);
+    }
+    
+    func write(self, path, data) {
+        return fs_write(path, data);
+    }
+    
+    func exists(self, path) {
+        return fs_exists(path);
+    }
+}

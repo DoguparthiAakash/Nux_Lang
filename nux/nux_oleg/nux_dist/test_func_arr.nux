@@ -1,0 +1,14 @@
+# Test arr_new inside function
+func make_arr() {
+    var a = arr_new(4);
+    arr_set(a, 0, 100);
+    arr_set(a, 1, 200);
+    arr_set(a, 2, 300);
+    arr_set(a, 3, 400);
+    return a;
+}
+
+var x = make_arr();
+print(arr_len(x));
+print(arr_get(x, 0));
+print(arr_get(x, 3));

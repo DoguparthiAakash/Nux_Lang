@@ -1,0 +1,12 @@
+import "net";
+import "flask";
+import "math";
+import "os";
+
+func main() {
+    var app = new App;
+    app.init(8080);
+    app.run();
+}
+
+main();

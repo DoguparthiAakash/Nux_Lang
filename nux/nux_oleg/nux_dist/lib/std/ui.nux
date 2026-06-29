@@ -1,0 +1,73 @@
+# Nux Minimal GUI Framework
+
+class Button {
+    var x ;
+    var y ;
+    var width ;
+    var height ;
+    var color_normal ;
+    var color_hover ;
+    var color_pressed ;
+    
+    # State: 0 = Normal, 1 = Hover, 2 = Pressed
+    var state ;
+    var clicked ;
+
+    func init(bx, by, bw, bh, norm, hov, press) {
+        self.x = bx;
+        self.y = by;
+        self.width = bw;
+        self.height = bh;
+        self.color_normal = norm;
+        self.color_hover = hov;
+        self.color_pressed = press;
+        self.state = 0;
+        self.clicked = 0;
+    }
+
+    func update() {
+        var mx = vbe_mouse_x();
+        var my = vbe_mouse_y();
+        var mdown = vbe_mouse_down();
+
+        self.clicked = 0;
+
+        # Bounding box collision
+        if (mx >= self.x) {
+        if (mx <= self.x + self.width) {
+        if (my >= self.y) {
+        if (my <= self.y + self.height) {
+            if (mdown == 1) {
+                self.state = 2; # Pressed
+            } else {
+                # If it was pressed and now released, that's a click!
+                if (self.state == 2) {
+                    self.clicked = 1;
+                }
+                self.state = 1; # Hover
+            }
+            return 1;
+        }}}}
+        
+        self.state = 0; # Normal
+        return 0;
+    }
+
+    func is_clicked() {
+        return self.clicked;
+    }
+
+    func draw(gfx) {
+        var c = self.color_normal;
+        if (self.state == 1) { c = self.color_hover; }
+        if (self.state == 2) { c = self.color_pressed; }
+
+        Graphics_draw_rect(gfx, self.x, self.y, self.width, self.height, c);
+        
+        # Draw a basic border (white)
+        Graphics_draw_line(gfx, self.x, self.y, self.x + self.width, self.y, 16777215);
+        Graphics_draw_line(gfx, self.x, self.y, self.x, self.y + self.height, 16777215);
+        Graphics_draw_line(gfx, self.x + self.width, self.y, self.x + self.width, self.y + self.height, 16777215);
+        Graphics_draw_line(gfx, self.x, self.y + self.height, self.x + self.width, self.y + self.height, 16777215);
+    }
+}

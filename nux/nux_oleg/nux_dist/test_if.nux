@@ -1,1 +1,9 @@
-class Test { func foo() { if (1) { return 1; } else { return 0; } } }
+class Test {
+    func forward() {
+        if (1 >= 0) {
+            print("if");
+        } else {
+            print("else");
+        }
+    }
+}

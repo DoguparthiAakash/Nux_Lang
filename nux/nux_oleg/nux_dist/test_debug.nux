@@ -1,32 +1,11 @@
-func add(a, b) {
-    return a + b;
+# Debug: test multiple arr_new 
+func test() {
+    var a = arr_new(5);
+    print(arr_len(a));
+    var b = arr_new(2);
+    print(arr_len(b));
+    var c = arr_new(4);
+    print(arr_len(c));
+    return 0;
 }
-
-func counter(n) {
-    var s = 0;
-    var i = 0;
-    while (i < n) {
-        print("i=");
-        println(i);
-        s = s + 1;
-        i = i + 1;
-    }
-    return s;
-}
-
-func main() {
-    # Direct arg access
-    var r1 = add(3, 5);
-    print("add(3,5)=");
-    println(r1);
-
-    # Simple local var
-    var x = 42;
-    print("x=");
-    println(x);
-
-    # While loop with locals
-    var c = counter(10);
-    print("counter(10)=");
-    println(c);
-}
+test();

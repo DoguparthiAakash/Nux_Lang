@@ -1,23 +1,22 @@
-import "quantum"
-import "alloc"
+import "std/openql";
 
 func main() {
-    alloc_init(116, 1000000);
+    print("Testing Quantum Register...\n");
+    var qreg = new QRegister();
+    qreg.init(2); // 2 qubits
     
-    var q = q_new();
+    // Entangle qubit 0 and qubit 1
+    print("Entangling qubits...\n");
+    qreg.entangle(0, 1);
     
-    # State is |0>
-    println(q_prob_1(q));
+    print("Measuring...\n");
+    var c0 = qreg.measure(0);
+    var c1 = qreg.measure(1);
     
-    # Apply Hadamard, state becomes 1/sqrt(2) (|0> + |1>)
-    q_hadamard(q);
-    
-    # Probability of measuring |1> should be ~500 (50%)
-    println(q_prob_1(q));
-    
-    # Apply Hadamard again, state should return to |0>
-    q_hadamard(q);
-    
-    # Probability of |1> should be ~0
-    println(q_prob_1(q));
+    print("Qubit 0: ");
+    print(c0);
+    print("\nQubit 1: ");
+    print(c1);
+    print("\nDone.\n");
 }
+main();

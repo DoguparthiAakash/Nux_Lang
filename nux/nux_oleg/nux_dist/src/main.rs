@@ -8,6 +8,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::process;
 use std::io::{Read, Seek, SeekFrom, Write};
+use std::thread;
+use std::time::Duration;
+
+use colored::Colorize;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use nux::package_manager;
 use nux::venv_manager;
@@ -56,6 +61,7 @@ fn main() {
         "test" => cmd_test(&args[2..]),
         "clean" => cmd_clean(&args[2..]),
         "check" => cmd_check(&args[2..]),
+        "build-ext" => cmd_build_ext(&args[2..]),
         "compile" => cmd_compile(&args[2..]),
         "pkg" => cmd_pkg(&args[2..]),
 
@@ -74,51 +80,79 @@ fn main() {
 }
 
 fn print_version() {
-    println!("Nux Programming Language v{}", env!("CARGO_PKG_VERSION"));
-    println!("A standalone polyglot language with zero dependencies");
+    let logo_color1 = (0, 200, 255);
+    let logo_color2 = (150, 50, 255);
+    
+    println!();
+    println!("  {} {} {}", 
+        "-".truecolor(logo_color1.0, logo_color1.1, logo_color1.2).bold(),
+        "Nux".truecolor(logo_color2.0, logo_color2.1, logo_color2.2).bold(),
+        env!("CARGO_PKG_VERSION").truecolor(150, 150, 150)
+    );
+    println!("  {}", "A High-Performance AI Programming Language".truecolor(100, 100, 100).italic());
 }
 
 fn print_help() {
-    println!("Nux Programming Language v{}", env!("CARGO_PKG_VERSION"));
+    print_version();
     println!();
-    println!("USAGE:");
-    println!("    nux [COMMAND] [OPTIONS]");
+    
+    let box_color = (60, 60, 70);
+    let category_color = (255, 100, 150);
+    let cmd_color = (0, 200, 255);
+    let desc_color = (180, 180, 180);
+    
+    println!("  {}", "o Usage".truecolor(255, 255, 255).bold());
+    println!("  {} {} {}
+", "- ".truecolor(box_color.0, box_color.1, box_color.2), "nux".truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(), "<command> [args]".truecolor(100, 100, 100));
+    
+    println!("  {}", "o Commands".truecolor(255, 255, 255).bold());
+    
+    let cmds = vec![
+        ("o  Project", vec![
+            ("new <name>", "Create a new Nux workspace"),
+            ("build", "Compile project to bytecode"),
+            ("run [file]", "Execute a script or project"),
+            ("test", "Run test suite"),
+            ("clean", "Remove build artifacts"),
+        ]),
+        ("o  Ecosystem", vec![
+            ("pkg <cmd>", "Manage packages (install, remove, list)"),
+            ("venv <cmd>", "Manage isolated virtual environments"),
+        ]),
+        ("o  Advanced", vec![
+            ("compile <file>", "Compile to .nuxc executable"),
+            ("build-ext <f>", "Compile .cux native extension"),
+            ("repl", "Start the interactive console"),
+        ]),
+    ];
+    
+    for (i, (category, group)) in cmds.iter().enumerate() {
+        println!("  {} {}", "-".truecolor(box_color.0, box_color.1, box_color.2), category.truecolor(category_color.0, category_color.1, category_color.2).bold());
+        for (j, (cmd, desc)) in group.iter().enumerate() {
+            let is_last_group = i == cmds.len() - 1;
+            let prefix = if is_last_group { " " } else { "" };
+            let sub_prefix = if j == group.len() - 1 { "-" } else { "-" };
+            println!("  {}   {} {:<16} {}", 
+                prefix.truecolor(box_color.0, box_color.1, box_color.2),
+                sub_prefix.truecolor(box_color.0, box_color.1, box_color.2),
+                cmd.truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(),
+                desc.truecolor(desc_color.0, desc_color.1, desc_color.2)
+            );
+        }
+        if i != cmds.len() - 1 {
+            println!("  {}", "".truecolor(box_color.0, box_color.1, box_color.2));
+        }
+    }
     println!();
-    println!("COMMANDS:");
-    println!("  Project Management:");
-    println!("    new <name>              Create a new Nux project");
-    println!("    build [--release]       Build the current project");
-    println!("    run [file.nux]          Compile and run a Nux file");
-    println!("    test                    Run project tests");
-    println!("    clean                   Remove build artifacts");
-    println!("    check                   Check code without building");
-    println!();
-    println!("  Compilation:");
-    println!("    compile <file>          Compile to bytecode");
-    println!("      --output <file>       Specify output file");
-    println!("      --release             Optimize for release");
-    println!("      --standalone          Compile to standalone native executable");
-    println!();
-    println!("  Package Management:");
-    println!("    pkg install [name]      Install a package from registry or nux.toml");
-    println!("    pkg remove <name>       Remove a package");
-    println!("    pkg list                List installed packages");
-    println!("    pkg update [name]       Update one or all packages");
-    println!();
-    println!("  Interactive:");
-    println!("    repl                    Start interactive stateless REPL");
-    println!();
-    println!("  Other:");
-    println!("    version, -v, --version  Print version");
-    println!("    help, -h, --help        Print this help");
-    println!();
-    println!("EXAMPLES:");
-    println!("    nux new my_project");
-    println!("    nux run main.nux");
-    println!("    nux compile main.nux --output main.nuxc");
-    println!();
-    println!("LEGACY USAGE:");
-    println!("    nux <file.nux>          Compile to assembly and display");
+}
+fn create_spinner(msg: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(ProgressStyle::default_spinner()
+        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+        .template("{spinner:.bright_magenta} {msg}").unwrap());
+    pb.set_message(msg.to_string());
+    pb.enable_steady_tick(Duration::from_millis(80));
+    pb
 }
 
 fn cmd_new(args: &[String]) {
@@ -183,34 +217,27 @@ fn cmd_build(args: &[String]) {
     let release = args.contains(&"--release".to_string());
     let current_dir = env::current_dir().unwrap();
     
-    // Check for nux.toml
     if !current_dir.join("nux.toml").exists() {
-        eprintln!("Error: Not a Nux project (nux.toml not found)");
-        eprintln!("Run 'nux new <name>' to create a new project");
+        eprintln!("\n  {} Not a Nux project. Run {} to initialize.", "✕".red().bold(), "nux new".cyan());
         process::exit(1);
     }
     
-    // Find main.nux
     let main_file = current_dir.join("src").join("main.nux");
     if !main_file.exists() {
-        eprintln!("Error: src/main.nux not found");
+        eprintln!("\n  {} Source file {} missing.", "✕".red().bold(), "src/main.nux".cyan());
         process::exit(1);
     }
     
-    println!("   \x1b[1;32mCompiling\x1b[0m project...");
+    let pb = create_spinner("Compiling project...");
     
-    // Read and compile
-    let source = match fs::read_to_string(&main_file) {
-        Ok(content) => content,
-        Err(e) => {
-            eprintln!("Error reading main.nux: {}", e);
-            process::exit(1);
-        }
-    };
+    let source = fs::read_to_string(&main_file).unwrap_or_else(|_| {
+        pb.finish_and_clear();
+        eprintln!("  {} Failed to read main.nux", "✕".red().bold());
+        process::exit(1);
+    });
     
     match compile(&source) {
         Ok(bytecode) => {
-            // Create target directory
             let target_dir = current_dir.join("target");
             let build_dir = if release {
                 target_dir.join("release")
@@ -218,28 +245,21 @@ fn cmd_build(args: &[String]) {
                 target_dir.join("debug")
             };
             
-            if let Err(e) = fs::create_dir_all(&build_dir) {
-                eprintln!("Error creating target directory: {}", e);
-                process::exit(1);
-            }
+            fs::create_dir_all(&build_dir).unwrap();
             
-            // Get project name from directory
             let project_name = current_dir.file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("output");
             
             let output_file = build_dir.join(format!("{}.nuxc", project_name));
+            fs::write(&output_file, bytecode).unwrap();
             
-            if let Err(e) = fs::write(&output_file, bytecode) {
-                eprintln!("Error writing output: {}", e);
-                process::exit(1);
-            }
-            
-            let mode = if release { "release [optimized]" } else { "dev [unoptimized + debuginfo]" };
-            println!("    \x1b[1;32mFinished\x1b[0m {} target(s)", mode);
-            println!("    \x1b[1;36mOutput\x1b[0m: {}", output_file.display());
+            pb.finish_and_clear();
+            let mode = if release { "release" } else { "debug" };
+            println!("  {} {} [{}] → {}", "✔".green().bold(), project_name.white().bold(), mode.dimmed(), output_file.display().to_string().cyan());
         }
         Err(errors) => {
+            pb.finish_and_clear();
             print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
             process::exit(1);
         }
@@ -248,67 +268,46 @@ fn cmd_build(args: &[String]) {
 
 fn cmd_run(args: &[String]) {
     if args.is_empty() {
-        // Try to run project
         let current_dir = env::current_dir().unwrap();
         if current_dir.join("nux.toml").exists() {
-            // Build and run project
             cmd_build(&[]);
-            
-            let project_name = current_dir.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("output");
-            
+            let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
             let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.nuxc", project_name));
             
             if let Ok(bytecode) = fs::read(&bytecode_file) {
-                println!("     \x1b[1;36mRunning\x1b[0m `{}`", project_name);
+                println!("  {} {}\n", "▶".bright_magenta(), project_name.white().bold());
                 let mut vm = NuxVm::new(bytecode);
                 vm.run();
             } else {
-                eprintln!("Error: Build output not found");
+                eprintln!("  {} Build output not found", "✕".red().bold());
                 process::exit(1);
             }
         } else {
-            eprintln!("Error: No file specified and not in a Nux project");
-            eprintln!("Usage: nux run <file.nux>");
+            eprintln!("  {} No file specified", "✕".red().bold());
             process::exit(1);
         }
     } else {
-        // Run specific file
         let input_file = &args[0];
         
         if input_file.ends_with(".nuxc") {
-            // Run pre-compiled bytecode
-            let bytecode = match fs::read(input_file) {
-                Ok(bytes) => bytes,
-                Err(e) => {
-                    eprintln!("Error reading file '{}': {}", input_file, e);
-                    process::exit(1);
-                }
-            };
-            
-            println!("     \x1b[1;36mRunning\x1b[0m {}...", input_file);
+            let bytecode = fs::read(input_file).unwrap();
+            println!("  {} {}\n", "▶".bright_magenta(), input_file.white().bold());
             let mut vm = NuxVm::new(bytecode);
             vm.run();
         } else {
-            // Compile and run source file
-            let source = match fs::read_to_string(input_file) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!("Error reading file '{}': {}", input_file, e);
-                    process::exit(1);
-                }
-            };
+            let source = fs::read_to_string(input_file).unwrap();
             
-            println!("   \x1b[1;32mCompiling\x1b[0m {}...", input_file);
+            let pb = create_spinner(&format!("Compiling {}...", input_file));
             
             match compile(&source) {
                 Ok(bytecode) => {
-                    println!("     \x1b[1;36mRunning\x1b[0m...");
+                    pb.finish_and_clear();
+                    println!("  {} {}\n", "▶".bright_magenta(), input_file.white().bold());
                     let mut vm = NuxVm::new(bytecode);
                     vm.run();
                 }
                 Err(errors) => {
+                    pb.finish_and_clear();
                     print_errors(&source, errors, input_file);
                     process::exit(1);
                 }
@@ -372,8 +371,7 @@ fn cmd_check(_args: &[String]) {
 
 fn cmd_compile(args: &[String]) {
     if args.is_empty() {
-        eprintln!("Error: Input file required");
-        eprintln!("Usage: nux compile <file> [--output <file>]");
+        eprintln!("  {} Input file required", "✕".red().bold());
         process::exit(1);
     }
     
@@ -393,26 +391,19 @@ fn cmd_compile(args: &[String]) {
     let source = match fs::read_to_string(input_file) {
         Ok(content) => content,
         Err(e) => {
-            eprintln!("Error reading file '{}': {}", input_file, e);
+            eprintln!("  {} Error reading file '{}': {}", "✕".red().bold(), input_file, e);
             process::exit(1);
         }
     };
     
-    println!("   Compiling {} to bytecode...", input_file);
-    match nux::compile_to_asm(&source) {
-        Ok(asm_text) => {
-            let _ = fs::write("debug.asm", &asm_text);
-        }
-        Err(_) => {}
-    }
+    let pb = create_spinner(&format!("Compiling {}...", input_file));
+    let _ = nux::compile_to_asm(&source).map(|asm| fs::write("debug.asm", asm));
+    
     match compile(&source) {
         Ok(bytecode) => {
             if standalone {
                 let exe_path = env::current_exe().unwrap();
-                if let Err(e) = fs::copy(&exe_path, &output_file) {
-                    eprintln!("Error creating standalone exe: {}", e);
-                    process::exit(1);
-                }
+                fs::copy(&exe_path, &output_file).unwrap();
                 
                 let mut out_file = fs::OpenOptions::new().append(true).open(&output_file).unwrap();
                 out_file.write_all(&bytecode).unwrap();
@@ -420,19 +411,39 @@ fn cmd_compile(args: &[String]) {
                 out_file.write_all(&bc_len.to_le_bytes()).unwrap();
                 out_file.write_all(b"NUX_STANDALONE").unwrap();
                 
-                println!("✓ Compiled Standalone Executable to {}", output_file);
+                pb.finish_and_clear();
+                println!("  {} Standalone Executable: {}", "✔".green().bold(), output_file.cyan());
             } else {
-                match fs::write(&output_file, bytecode) {
-                    Ok(_) => println!("✓ Compiled to {}", output_file),
-                    Err(e) => {
-                        eprintln!("Error writing output: {}", e);
-                        process::exit(1);
-                    }
-                }
+                fs::write(&output_file, bytecode).unwrap();
+                pb.finish_and_clear();
+                println!("  {} Compiled: {}", "✔".green().bold(), output_file.cyan());
             }
         }
         Err(errors) => {
+            pb.finish_and_clear();
             print_errors(&source, errors, input_file);
+            process::exit(1);
+        }
+    }
+}
+
+fn cmd_build_ext(args: &[String]) {
+    if args.is_empty() {
+        eprintln!("  {} Input .cux file required", "✕".red().bold());
+        process::exit(1);
+    }
+    
+    let input_file = &args[0];
+    let pb = create_spinner(&format!("Building CUX extension: {}...", input_file));
+    
+    match nux::cux::compile_cux(input_file) {
+        Ok(out_path) => {
+            pb.finish_and_clear();
+            println!("  {} Extension compiled successfully: {}", "✔".green().bold(), out_path.display().to_string().cyan());
+        }
+        Err(e) => {
+            pb.finish_and_clear();
+            eprintln!("  {} Failed to compile extension: {}", "✕".red().bold(), e);
             process::exit(1);
         }
     }
@@ -641,27 +652,25 @@ fn highlight_syntax(line: &str) -> String {
 }
 
 fn print_errors(source: &str, errors: Vec<nux::CompileError>, file_name: &str) {
-    eprintln!("\n\x1b[1;31merror\x1b[0m: could not compile `{}` due to previous errors\n", file_name);
+    println!("\n  {} Compilation aborted due to {} error(s)\n", "◆".truecolor(255, 50, 50).bold(), errors.len().to_string().truecolor(255, 255, 255).bold());
     
     let lines: Vec<&str> = source.lines().collect();
 
     for err in errors {
-        eprintln!("\x1b[1;31merror\x1b[0m: {}", err.message);
-        eprintln!("  \x1b[1;34m-->\x1b[0m {}:{}:{}", file_name, err.span.line, err.span.col);
+        println!("  {} {}", "Error:".truecolor(255, 50, 50).bold(), err.message.truecolor(220, 220, 220).bold());
+        println!("  {} {}:{}:{}\n", "╰─►".truecolor(100, 100, 100), file_name.truecolor(0, 255, 255), err.span.line, err.span.col);
         
         let line_idx = if err.span.line > 0 { err.span.line - 1 } else { 0 };
         
         if line_idx < lines.len() {
             let line_str = lines[line_idx];
-            let line_num_str = err.span.line.to_string();
-            let padding = " ".repeat(line_num_str.len());
+            let line_num_str = format!("{:>4}", err.span.line);
             
             let highlighted_line = highlight_syntax(line_str);
-            eprintln!(" \x1b[1;34m{} |\x1b[0m {}", line_num_str, highlighted_line);
+            println!(" {} │ {}", line_num_str.truecolor(80, 80, 80), highlighted_line);
             
             let col_idx = if err.span.col > 0 { err.span.col - 1 } else { 0 };
             
-            // Handle tab characters vs spaces for pointer alignment
             let mut pointer_padding = String::new();
             for (i, c) in line_str.chars().enumerate() {
                 if i >= col_idx { break; }
@@ -672,8 +681,8 @@ fn print_errors(source: &str, errors: Vec<nux::CompileError>, file_name: &str) {
                 }
             }
             
-            eprintln!(" \x1b[1;34m{} |\x1b[0m \x1b[1;31m{}^\x1b[0m", padding, pointer_padding);
+            println!("      │ {}{}", pointer_padding, "▲".truecolor(255, 50, 50).bold());
         }
-        eprintln!();
+        println!();
     }
 }

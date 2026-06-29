@@ -1,0 +1,18 @@
+<idea-plugin>
+    <id>com.nux.ide</id>
+    <name>Nux IDE</name>
+    <vendor email="support@nuxlang.org" url="http://nuxlang.org">Nux Foundation</vendor>
+
+    <description><![CDATA[
+    A beautiful, unique IDE for the Nux programming language. <br>
+    Built on the JetBrains open-source platform, providing advanced quantum and classical language features.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="Nux File" implementationClass="com.nux.ide.NuxFileType" fieldName="INSTANCE" language="Nux" extensions="nux"/>
+        <!-- <syntaxHighlighter key="Nux" implementationClass="com.nux.ide.NuxSyntaxHighlighter"/> -->
+        <colorSettingsPage implementation="com.nux.ide.NuxColorSettingsPage"/>
+    </extensions>
+</idea-plugin>

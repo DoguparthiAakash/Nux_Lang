@@ -1,0 +1,43 @@
+# OpenQL Avalon inspired Quantum Simulation Framework for Nux
+
+class QRegister {
+    var size;
+
+    func init(s) {
+        self.size = s;
+        // Allocate qubits using the new quantum intrinsic
+        q_alloc(s);
+    }
+    
+    func h(target) {
+        q_h(target);
+    }
+    
+    func x(target) {
+        q_x(target);
+    }
+    
+    func z(target) {
+        q_z(target);
+    }
+    
+    func cx(control, target) {
+        q_cx(control, target);
+    }
+    
+    func measure(target) {
+        return q_measure(target);
+    }
+    
+    // Entangle two qubits (Bell state)
+    func entangle(q1, q2) {
+        self.h(q1);
+        self.cx(q1, q2);
+    }
+}
+
+func create_qreg(size) {
+    var qreg = new QRegister;
+    qreg.init(size);
+    return qreg;
+}

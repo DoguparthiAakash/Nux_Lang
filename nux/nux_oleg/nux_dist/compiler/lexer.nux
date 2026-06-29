@@ -1,0 +1,138 @@
+# Nux Self-Hosted Lexer
+
+import "core";
+
+class Token {
+    var type;
+    var value;
+
+    func init(t, v) {
+        this.type = t;
+        this.value = v;
+    }
+}
+
+class Lexer {
+    var source;
+    var pos;
+    var length;
+
+    func init(source_code) {
+        this.source = source_code;
+        this.pos = 0;
+        this.length = str_len(this.source);
+    }
+
+    func is_eof() {
+        if (this.pos >= this.length) {
+            return 1;
+        }
+        return 0;
+    }
+
+    func peek() {
+        if (this.pos >= this.length) {
+            return 0;
+        }
+        return str_char(this.source, this.pos);
+    }
+
+    func advance() {
+        var c = this.peek();
+        this.pos = this.pos + 1;
+        return c;
+    }
+
+    func skip_whitespace() {
+        var c = this.peek();
+        while (c == 32 || c == 9 || c == 10 || c == 13) {
+            this.advance();
+            c = this.peek();
+        }
+    }
+
+    func skip_comment() {
+        var c = this.peek();
+        if (c == 35) { # '#' character
+            while (c != 10 && c != 0) {
+                this.advance();
+                c = this.peek();
+            }
+        }
+    }
+
+    func is_alpha(c) {
+        if (c >= 65 && c <= 90) { return 1; } # A-Z
+        if (c >= 97 && c <= 122) { return 1; } # a-z
+        if (c == 95) { return 1; } # _
+        return 0;
+    }
+
+    func is_digit(c) {
+        if (c >= 48 && c <= 57) { return 1; } # 0-9
+        return 0;
+    }
+
+    func next_token() {
+        this.skip_whitespace();
+        this.skip_comment();
+        this.skip_whitespace();
+
+        if (this.is_eof() == 1) {
+            return Token_new(0, ""); # EOF
+        }
+
+        var start_pos = this.pos;
+        var c = this.peek();
+
+        # Identifiers
+        if (this.is_alpha(c) == 1) {
+            while (this.is_alpha(c) == 1 || this.is_digit(c) == 1) {
+                this.advance();
+                c = this.peek();
+            }
+            var val = str_sub(this.source, start_pos, this.pos);
+            return Token_new(1, val);
+        }
+
+        # Numbers
+        if (this.is_digit(c) == 1) {
+            while (this.is_digit(c) == 1) {
+                this.advance();
+                c = this.peek();
+            }
+            var val = str_sub(this.source, start_pos, this.pos);
+            return Token_new(2, val);
+        }
+
+        # Strings
+        if (c == 34) { # '"' character
+            this.advance();
+            start_pos = this.pos;
+            c = this.peek();
+            while (c != 34 && c != 0) {
+                this.advance();
+                c = this.peek();
+            }
+            var val = str_sub(this.source, start_pos, this.pos);
+            this.advance(); # Consume closing quote
+            return Token_new(3, val);
+        }
+
+        # Operators
+        this.advance();
+        if (c == 43) { return Token_new(4, "+"); }
+        if (c == 45) { return Token_new(5, "-"); }
+        if (c == 42) { return Token_new(6, "*"); }
+        if (c == 47) { return Token_new(7, "/"); }
+        if (c == 40) { return Token_new(8, "("); }
+        if (c == 41) { return Token_new(9, ")"); }
+        if (c == 123) { return Token_new(10, "{"); }
+        if (c == 125) { return Token_new(11, "}"); }
+        if (c == 61) { return Token_new(12, "="); }
+        if (c == 59) { return Token_new(13, ";"); }
+        if (c == 44) { return Token_new(14, ","); }
+
+        return Token_new(99, "?"); # Unknown
+    }
+}

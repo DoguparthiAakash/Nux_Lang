@@ -1,0 +1,7 @@
+func test() {
+    if (1) {
+        print("Yes");
+    }
+    return 0;
+}
+test();

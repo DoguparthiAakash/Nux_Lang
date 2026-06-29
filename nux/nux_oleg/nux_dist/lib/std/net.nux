@@ -1,0 +1,52 @@
+class TcpServer {
+    var id ;
+    
+    func init(self, port) {
+        self.id = net_listen(port);
+    }
+    
+    func accept(self) {
+        return net_accept(self.id);
+    }
+    
+    func close(self) {
+        net_close(self.id);
+    }
+}
+
+class TcpClient {
+    var id ;
+    
+    func init(self, client_id) {
+        self.id = client_id;
+    }
+    
+    func read(self) {
+        return net_read(self.id);
+    }
+    
+    func write(self, data) {
+        return net_write(self.id, data);
+    }
+    
+    func close(self) {
+        net_close(self.id);
+    }
+}
+
+class TcpTlsServer {
+    var id ;
+    
+    func init(self, port, cert_file, key_file) {
+        self.id = net_listen_tls(port, cert_file, key_file);
+    }
+    
+    func accept(self) {
+        return net_accept(self.id);
+    }
+    
+    func close(self) {
+        net_close(self.id);
+    }
+}
+

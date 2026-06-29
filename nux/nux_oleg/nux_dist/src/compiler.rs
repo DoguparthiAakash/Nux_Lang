@@ -272,6 +272,12 @@ impl Parser {
                              src_content = Some(content);
                          }
                     }
+                     if src_content.is_none() {
+                          let path = std::path::Path::new("lib").join("std").join(&file_name);
+                          if let Ok(content) = std::fs::read_to_string(&path) {
+                              src_content = Some(content);
+                          }
+                     }
                     
                     if let Some(src) = src_content {
                         let mut imported_defs = String::new();
@@ -364,6 +370,7 @@ impl Parser {
                     }
                 },
                 Token::Import => { 
+                     sub_parser.advance();
                      if let Token::String(raw_name) = &sub_parser.current_token {
                         let rel = raw_name.replace(".", "/");
                         let file_name = format!("{}.nux", rel);
@@ -385,6 +392,12 @@ impl Parser {
                                  src_content = Some(content);
                              }
                         }
+                     if src_content.is_none() {
+                          let path = std::path::Path::new("lib").join("std").join(&file_name);
+                          if let Ok(content) = std::fs::read_to_string(&path) {
+                              src_content = Some(content);
+                          }
+                     }
                         
                         if let Some(src) = src_content {
                              self.parse_imported_source(&src, definitions);
@@ -478,6 +491,7 @@ impl Parser {
     }
 
     fn parse_class(&mut self, out: &mut String) -> Result<(), CompileError> {
+        println!("DEBUG: enter parse_class");
         self.advance(); 
         let name = match &self.current_token {
             Token::Identifier(s) => s.clone(),
@@ -602,6 +616,7 @@ impl Parser {
     }
 
     fn parse_func(&mut self, out: &mut String, class_prefix: &str) -> Result<String, CompileError> {
+        println!("DEBUG: enter parse_func");
         self.advance();
         if self.current_token == Token::Var {
              self.advance();
@@ -661,8 +676,13 @@ impl Parser {
         for (i, arg) in args.iter().enumerate() {
              let offset = i as i64;
              let loc = VarLocation::Local(offset);
+             let typ = if i == 0 && !class_prefix.is_empty() {
+                 Type::Class(class_prefix.to_string())
+             } else {
+                 Type::Int
+             };
              if let Some(scope) = self.scopes.last_mut() {
-                 scope.insert(arg.clone(), (loc, Type::Int));
+                 scope.insert(arg.clone(), (loc, typ));
              }
         }
         
@@ -698,6 +718,7 @@ impl Parser {
     }
 
     fn parse_statement_impl(&mut self, out: &mut String, expect_semi: bool) -> Result<(), CompileError> {
+        println!("DEBUG: parse_statement_impl, token: {:?}, expect_semi: {}", self.current_token, expect_semi);
         match &self.current_token {
              Token::Print => {
                  self.advance();
@@ -713,9 +734,41 @@ impl Parser {
              },
              Token::Identifier(name) => {
                  let part1 = name.clone();
-                 if part1 == "vbe_set_mode" {
+                 
+                 if part1 == "arr_set" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_ARRAY_SET\n");
+                     return Ok(());
+                 }
+                 if part1 == "arr_fill" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_ARRAY_FILL\n");
+                     return Ok(());
+                 }
+
+                   if part1 == "vbe_set_mode" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
@@ -732,8 +785,7 @@ impl Parser {
                      return Ok(());
                  }
                  if part1 == "vbe_update" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                      self.advance();
@@ -743,8 +795,7 @@ impl Parser {
                      return Ok(());
                  }
                  if part1 == "sleep" {
-                     self.advance(); 
-                     if self.current_token != Token::LParen { return self.error("Expected ( for sleep".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected ( for sleep".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -756,8 +807,7 @@ impl Parser {
                  }
                  
                   if part1 == "poke_ptr" {
-                      self.advance();
-                      if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                       self.advance();
                       self.parse_expression(out)?;
                       if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
@@ -772,8 +822,7 @@ impl Parser {
                   }
 
                  if part1 == "peek_ptr" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -785,8 +834,7 @@ impl Parser {
                  }
 
                  if part1 == "syscall" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -798,8 +846,7 @@ impl Parser {
                  }
                  
                  if part1 == "dm_get" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -810,8 +857,7 @@ impl Parser {
                      return Ok(());
                  }
                  if part1 == "dm_set" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
@@ -826,8 +872,7 @@ impl Parser {
                  }
                  
                  if part1 == "sec_login" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      self.parse_expression(out)?;
                      if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
@@ -841,8 +886,7 @@ impl Parser {
                      return Ok(());
                  }
                  if part1 == "sec_whoami" {
-                     self.advance();
-                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                      self.advance();
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                      self.advance();
@@ -852,7 +896,6 @@ impl Parser {
                      return Ok(());
                  }
 
-                 self.advance(); 
                  if self.current_token == Token::Eq {
                         match self.resolve_var(&part1) {
                             Some((loc, _typ)) => {
@@ -900,7 +943,7 @@ impl Parser {
                       self.advance();
                       let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
                       self.advance();
-                      if self.current_token == Token::Eq {
+                        if self.current_token == Token::Eq {
                           let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
                           let offset = if let Type::Class(cname) = typ {
                               if let Some(cinfo) = self.classes.get(&cname) { *cinfo.fields.get(&member).unwrap() } 
@@ -1098,7 +1141,7 @@ impl Parser {
                  self.advance();
                  out.push_str("OP_UNSAFE_START\n");
                  while self.current_token != Token::RBrace && self.current_token != Token::EOF {
-                     self.parse_statement_impl(out, true)?;
+                     self.parse_statement_or_expr(out)?;
                  }
                  if self.current_token == Token::RBrace { self.advance(); }
                  out.push_str("OP_UNSAFE_END\n");
@@ -1495,7 +1538,6 @@ impl Parser {
                 
                 // Intrinsics
                 if part1 == "sec_login" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1507,7 +1549,6 @@ impl Parser {
                     out.push_str("OP_SEC_LOGIN\n");
                     return Ok(Type::Int);
                 } else if part1 == "syscall" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1516,7 +1557,6 @@ impl Parser {
                     out.push_str("OP_SYSCALL\n");
                     return Ok(Type::Int);
                 } else if part1 == "peek_ptr" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1525,15 +1565,84 @@ impl Parser {
                     out.push_str("OP_PEEK_PTR\n");
                     return Ok(Type::Int);
                 } else if part1 == "sec_whoami" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                     self.advance();
                     out.push_str("OP_SEC_WHOAMI\n");
                     return Ok(Type::String);
-                } else if part1 == "dm_get" {
+                } else if part1 == "arr_get" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_ARRAY_GET\n");
+                    return Ok(Type::Int);
+                } else if part1 == "arr_set" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_ARRAY_SET\n");
+                    return Ok(Type::Int);
+                } else if part1 == "arr_len" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_ARRAY_LEN\n");
+                    return Ok(Type::Int);
+                } else if part1 == "arr_fill" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_ARRAY_FILL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "ffi_load" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_FFI_LOAD\n");
+                    return Ok(Type::Int);
+                } else if part1 == "ffi_invoke" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?; 
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?; 
+                    
+                    let mut arg_count = 0;
+                    while self.current_token == Token::Comma {
+                        self.advance();
+                        self.parse_expression(out)?;
+                        arg_count += 1;
+                    }
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str(&format!("PUSH {}\n", arg_count));
+                    out.push_str("OP_FFI_CALL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "dm_get" {
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1542,7 +1651,6 @@ impl Parser {
                     out.push_str("OP_DM_GET\n");
                     return Ok(Type::String);
                 } else if part1 == "vbe_get_fb" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -1550,7 +1658,6 @@ impl Parser {
                     out.push_str("OP_VBE_GET_FB\n");
                     return Ok(Type::Int);
                 } else if part1 == "vbe_get_key" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1559,7 +1666,6 @@ impl Parser {
                     out.push_str("OP_VBE_GET_KEY\n");
                     return Ok(Type::Int);
                 } else if part1 == "vbe_mouse_x" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -1567,7 +1673,6 @@ impl Parser {
                     out.push_str("OP_VBE_GET_MOUSE_X\n");
                     return Ok(Type::Int);
                 } else if part1 == "vbe_mouse_y" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -1575,7 +1680,6 @@ impl Parser {
                     out.push_str("OP_VBE_GET_MOUSE_Y\n");
                     return Ok(Type::Int);
                 } else if part1 == "vbe_mouse_down" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -1583,7 +1687,6 @@ impl Parser {
                     out.push_str("OP_VBE_GET_MOUSE_DOWN\n");
                     return Ok(Type::Int);
                 } else if part1 == "dm_set" {
-                    self.advance();
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
                     self.parse_expression(out)?;
@@ -1594,6 +1697,47 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_DM_SET\n");
                     return Ok(Type::Int);
+                } else if part1 == "file_read" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("FILE_READ\n");
+                    return Ok(Type::String);
+                } else if part1 == "str_len" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_STR_LEN\n");
+                    return Ok(Type::Int);
+                } else if part1 == "str_char" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_STR_CHAR\n");
+                    return Ok(Type::Int);
+                } else if part1 == "str_sub" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_STR_SUB\n");
+                    return Ok(Type::String);
                 } else if self.current_token == Token::LParen {
                     self.advance(); let mut arg_count = 0;
                     if self.current_token != Token::RParen { loop { self.parse_expression(out)?; arg_count += 1; if self.current_token == Token::Comma { self.advance(); } else { break; } } }

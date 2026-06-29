@@ -1,4 +1,4 @@
-import "alloc"
+import "alloc";
 func main() {
     alloc_init(5000, 200);
     var b1 = alloc(16);

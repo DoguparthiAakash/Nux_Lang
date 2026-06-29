@@ -1,0 +1,11 @@
+// Test: Multi-import and from...import syntax
+import "math", "os";
+use "core";
+from "string" import split;
+
+fn main() {
+    let x = my_sin(3);
+    print(x);
+}
+
+main();

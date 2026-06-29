@@ -3,9 +3,80 @@
 
 use std::vec::Vec;
 use std::string::String;
-use std::io::{self, Write, BufRead};
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex, RwLock};
+use std::collections::{HashMap, BTreeMap};
+use rand::Rng;
+use num_complex::Complex64;
+use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
+use rustls::ServerConfig;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
+use rustls_pemfile::{certs, private_key};
+use std::fs::File;
+use std::io::BufReader;
+
+pub enum NuxStream {
+    Tcp(TcpStream),
+    Tls(rustls::StreamOwned<rustls::ServerConnection, TcpStream>),
+}
+
+impl NuxStream {
+    pub fn shutdown(&self, how: std::net::Shutdown) -> io::Result<()> {
+        match self {
+            NuxStream::Tcp(s) => s.shutdown(how),
+            NuxStream::Tls(s) => s.get_ref().shutdown(how),
+        }
+    }
+}
+
+impl Read for NuxStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self {
+            NuxStream::Tcp(s) => s.read(buf),
+            NuxStream::Tls(s) => s.read(buf),
+        }
+    }
+}
+
+impl Write for NuxStream {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            NuxStream::Tcp(s) => s.write(buf),
+            NuxStream::Tls(s) => s.write(buf),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            NuxStream::Tcp(s) => s.flush(),
+            NuxStream::Tls(s) => s.flush(),
+        }
+    }
+}
+
+pub enum NuxListener {
+    Tcp(TcpListener),
+    Tls(TcpListener, Arc<ServerConfig>),
+}
+
+impl NuxListener {
+    pub fn accept(&self) -> io::Result<NuxStream> {
+        match self {
+            NuxListener::Tcp(l) => {
+                let (stream, _) = l.accept()?;
+                Ok(NuxStream::Tcp(stream))
+            },
+            NuxListener::Tls(l, config) => {
+                let (stream, _) = l.accept()?;
+                let conn = rustls::ServerConnection::new(Arc::clone(config)).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                let tls_stream = rustls::StreamOwned::new(conn, stream);
+                Ok(NuxStream::Tls(tls_stream))
+            }
+        }
+    }
+}
 use std::convert::TryInto;
-use std::sync::{Arc, RwLock, Mutex};
 // use std::thread;
 
 #[cfg(feature = "minifb")]
@@ -21,10 +92,14 @@ unsafe impl Send for SendWindow {}
 
 pub struct SharedVmState {
     pub memory: RwLock<Vec<u8>>,
+    pub heap_ptr: std::sync::atomic::AtomicUsize,
     pub heap_strings: RwLock<Vec<String>>,
     pub heap_arrays: RwLock<Vec<Vec<i64>>>,
+    pub quantum_state: RwLock<Vec<Complex64>>,
     pub threads: Mutex<std::collections::HashMap<i64, std::thread::JoinHandle<i64>>>,
     pub next_thread_id: std::sync::atomic::AtomicI64,
+    pub listeners: RwLock<Vec<NuxListener>>,
+    pub connections: RwLock<Vec<NuxStream>>,
 }
 
 pub struct Stack {
@@ -123,10 +198,14 @@ impl NuxVm {
             base_pointer: 0,
             shared: Arc::new(SharedVmState {
                 memory: RwLock::new(vec![0u8; 64 * 1024]),
+                heap_ptr: std::sync::atomic::AtomicUsize::new(8),
                 heap_strings: RwLock::new(Vec::new()),
                 heap_arrays: RwLock::new(Vec::new()),
+                quantum_state: RwLock::new(Vec::new()),
                 threads: Mutex::new(std::collections::HashMap::new()),
                 next_thread_id: std::sync::atomic::AtomicI64::new(1),
+                listeners: RwLock::new(Vec::new()),
+                connections: RwLock::new(Vec::new()),
             }),
             #[cfg(feature = "minifb")]
             window: None,
@@ -464,6 +543,14 @@ impl NuxVm {
                          self.stack.push((heap_strings.len() - 1) as i64);
                     } else { self.stack.push(0); }
                 },
+                0x6B => { // PRINT_STR
+                    let id = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    if id < heap_strings.len() {
+                        print!("{}", heap_strings[id]);
+                        io::stdout().flush().unwrap();
+                    }
+                },
                 0x44 => { // OP_GET_LOCAL
                     let offset = self.read_i64() as usize;
                     let idx = self.base_pointer + offset;
@@ -583,6 +670,124 @@ impl NuxVm {
                     self.is_unsafe = false;
                 },
                 
+                
+                0xEA => { // OP_Q_ALLOC
+                    let size = self.stack.pop().unwrap() as usize;
+                    let num_amplitudes = 1 << size;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    q_state.clear();
+                    q_state.resize(num_amplitudes, Complex64::new(0.0, 0.0));
+                    q_state[0] = Complex64::new(1.0, 0.0);
+                },
+                0xEB => { // OP_Q_H
+                    let target = self.stack.pop().unwrap() as usize;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    let n = q_state.len();
+                    let bit = 1 << target;
+                    let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+                    for i in 0..n {
+                        if (i & bit) == 0 {
+                            let a = q_state[i];
+                            let b = q_state[i | bit];
+                            q_state[i] = (a + b) * inv_sqrt2;
+                            q_state[i | bit] = (a - b) * inv_sqrt2;
+                        }
+                    }
+                },
+                0xEC => { // OP_Q_X
+                    let target = self.stack.pop().unwrap() as usize;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    let n = q_state.len();
+                    let bit = 1 << target;
+                    for i in 0..n {
+                        if (i & bit) == 0 {
+                            let temp = q_state[i];
+                            q_state[i] = q_state[i | bit];
+                            q_state[i | bit] = temp;
+                        }
+                    }
+                },
+                0xED => { // OP_Q_Z
+                    let target = self.stack.pop().unwrap() as usize;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    let n = q_state.len();
+                    let bit = 1 << target;
+                    for i in 0..n {
+                        if (i & bit) != 0 {
+                            q_state[i] = q_state[i] * -1.0;
+                        }
+                    }
+                },
+                0xEE => { // OP_Q_CX
+                    let target = self.stack.pop().unwrap() as usize;
+                    let control = self.stack.pop().unwrap() as usize;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    let n = q_state.len();
+                    let cbit = 1 << control;
+                    let tbit = 1 << target;
+                    for i in 0..n {
+                        if (i & cbit) != 0 && (i & tbit) == 0 {
+                            let temp = q_state[i];
+                            q_state[i] = q_state[i | tbit];
+                            q_state[i | tbit] = temp;
+                        }
+                    }
+                },
+                0xEF => { // OP_Q_MEASURE
+                    let target = self.stack.pop().unwrap() as usize;
+                    let mut q_state = self.shared.quantum_state.write().unwrap();
+                    let n = q_state.len();
+                    let bit = 1 << target;
+                    let mut prob_zero = 0.0;
+                    for i in 0..n {
+                        if (i & bit) == 0 {
+                            prob_zero += q_state[i].norm_sqr();
+                        }
+                    }
+                    
+                    let random_val: f64 = rand::random();
+                    let outcome = if random_val < prob_zero { 0 } else { 1 };
+                    
+                    let norm = if outcome == 0 { prob_zero.sqrt() } else { (1.0 - prob_zero).sqrt() };
+                    
+                    for i in 0..n {
+                        if ((i & bit) == 0 && outcome == 1) || ((i & bit) != 0 && outcome == 0) {
+                            q_state[i] = Complex64::new(0.0, 0.0);
+                        } else {
+                            q_state[i] = q_state[i] / norm;
+                        }
+                    }
+                    self.stack.push(outcome as i64);
+                },
+
+                0xE7 => { // OP_FFI_PYTHON
+                    let code_ptr = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    let code_str = if code_ptr < heap_strings.len() { heap_strings[code_ptr].clone() } else { String::new() };
+                    drop(heap_strings);
+                    
+                    let output = std::process::Command::new("python").arg("-c").arg(code_str).output();
+                    let res = if let Ok(o) = output { String::from_utf8_lossy(&o.stdout).to_string() } else { String::new() };
+                    
+                    let mut heap_strings_mut = self.shared.heap_strings.write().unwrap();
+                    heap_strings_mut.push(res);
+                    self.stack.push((heap_strings_mut.len() - 1) as i64);
+                },
+                0xE8 => { // OP_FFI_C
+                    let code_ptr = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    let code_str = if code_ptr < heap_strings.len() { heap_strings[code_ptr].clone() } else { String::new() };
+                    drop(heap_strings);
+                    
+                    std::fs::write(".tmp_inline.c", code_str).unwrap();
+                    let _ = std::process::Command::new("gcc").arg(".tmp_inline.c").arg("-o").arg(".tmp_inline.exe").status();
+                    let output = std::process::Command::new("./.tmp_inline.exe").output();
+                    let res = if let Ok(o) = output { String::from_utf8_lossy(&o.stdout).to_string() } else { String::new() };
+                    
+                    let mut heap_strings_mut = self.shared.heap_strings.write().unwrap();
+                    heap_strings_mut.push(res);
+                    self.stack.push((heap_strings_mut.len() - 1) as i64);
+                },
                 0xE0 => { // SPAWN_THREAD
                     let dest = self.read_i64() as usize;
                     let num_args = self.read_i64() as usize;
@@ -872,9 +1077,18 @@ impl NuxVm {
                 
                 // Image Intrinsics (Mock/Simple)
                 0x31 => { // OP_IMG_ALLOC
-                    let _h = self.stack.pop().unwrap() as usize;
-                    let _w = self.stack.pop().unwrap() as usize;
-                    self.stack.push(0); 
+                    let h = self.stack.pop().unwrap() as usize;
+                    let w = self.stack.pop().unwrap() as usize;
+                    let bytes = w * h * 8; // Each field/pixel is 8 bytes
+                    let ptr = self.shared.heap_ptr.fetch_add(bytes, std::sync::atomic::Ordering::SeqCst);
+                    {
+                        let mut memory = self.shared.memory.write().unwrap();
+                        if ptr + bytes > memory.len() {
+                            let new_len = (ptr + bytes).max(memory.len() * 2);
+                            memory.resize(new_len, 0);
+                        }
+                    }
+                    self.stack.push(ptr as i64);
                 },
                 
                 0x20 => { // DRAW_RECT (stub)
@@ -905,7 +1119,234 @@ impl NuxVm {
                     self.stack.pop(); // addr
                 },
                 
-                _ => { 
+                                  0xB0 => { // OP_NET_LISTEN
+                      let port = self.stack.pop().unwrap_or(0) as u16;
+                      let mut lock = self.shared.listeners.write().unwrap();
+                      let id = lock.len();
+                      if let Ok(listener) = std::net::TcpListener::bind(format!("0.0.0.0:{}", port)) {
+                          lock.push(NuxListener::Tcp(listener));
+                          self.stack.push(id as i64);
+                      } else {
+                          self.stack.push(-1);
+                      }
+                  },
+                                  0xB1 => { // OP_NET_ACCEPT
+                      let id = self.stack.pop().unwrap_or(0) as usize;
+                      let lock = self.shared.listeners.read().unwrap();
+                      if id < lock.len() {
+                          if let Ok(stream) = lock[id].accept() {
+                              let mut conn_lock = self.shared.connections.write().unwrap();
+                              let conn_id = conn_lock.len();
+                              conn_lock.push(stream);
+                              self.stack.push(conn_id as i64);
+                          } else {
+                              self.stack.push(-1);
+                          }
+                      } else {
+                          self.stack.push(-1);
+                      }
+                  },
+                0xB2 => { // OP_NET_READ (conn_id) -> pushes string
+                    let id = self.stack.pop().unwrap_or(0) as usize;
+                    let mut lock = self.shared.connections.write().unwrap();
+                    if id < lock.len() {
+                        use std::io::Read;
+                        let mut buf = vec![0; 4096];
+                        let n = lock[id].read(&mut buf).unwrap_or(0);
+                        buf.truncate(n);
+                        let s = String::from_utf8_lossy(&buf).to_string();
+                        let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                        heap_strings.push(s);
+                        self.stack.push((heap_strings.len() - 1) as i64);
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
+                0xB3 => { // OP_NET_WRITE (conn_id, str_id)
+                    let str_id = self.stack.pop().unwrap_or(0) as usize;
+                    let id = self.stack.pop().unwrap_or(0) as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    let data = if str_id < heap_strings.len() {
+                        heap_strings[str_id].clone()
+                    } else {
+                        String::new()
+                    };
+                    drop(heap_strings);
+                    
+                    let mut lock = self.shared.connections.write().unwrap();
+                    if id < lock.len() {
+                        use std::io::Write;
+                        lock[id].write_all(data.as_bytes()).unwrap_or(());
+                        lock[id].flush().unwrap_or(());
+                        self.stack.push(1);
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
+                0xB4 => { // OP_NET_CLOSE (conn_id)
+                    let id = self.stack.pop().unwrap_or(0) as usize;
+                    let mut lock = self.shared.connections.write().unwrap();
+                    if id < lock.len() {
+                        use std::net::Shutdown;
+                        lock[id].shutdown(Shutdown::Both).unwrap_or(());
+                        self.stack.push(1);
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
+                                                                                        0xC0 => { // OP_FS_READ
+                        let path_id = self.stack.pop().unwrap_or(0) as usize;
+                        let mut path = String::new();
+                        {
+                            let heap_strings = self.shared.heap_strings.read().unwrap();
+                            if path_id < heap_strings.len() { path = heap_strings[path_id].clone(); }
+                        }
+                        let content = std::fs::read_to_string(path).unwrap_or_default();
+                        let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                        let id = heap_strings.len();
+                        heap_strings.push(content);
+                        self.stack.push(id as i64);
+                    }
+                    0xC1 => { // OP_FS_WRITE
+                        let data_id = self.stack.pop().unwrap_or(0) as usize;
+                        let path_id = self.stack.pop().unwrap_or(0) as usize;
+                        let mut path = String::new();
+                        let mut data = String::new();
+                        {
+                            let heap_strings = self.shared.heap_strings.read().unwrap();
+                            if path_id < heap_strings.len() { path = heap_strings[path_id].clone(); }
+                            if data_id < heap_strings.len() { data = heap_strings[data_id].clone(); }
+                        }
+                        let res = std::fs::write(path, data).is_ok();
+                        self.stack.push(if res { 1 } else { 0 });
+                    }
+                    0xC2 => { // OP_FS_EXISTS
+                        let path_id = self.stack.pop().unwrap_or(0) as usize;
+                        let mut path = String::new();
+                        {
+                            let heap_strings = self.shared.heap_strings.read().unwrap();
+                            if path_id < heap_strings.len() { path = heap_strings[path_id].clone(); }
+                        }
+                        let res = std::path::Path::new(&path).exists();
+                        self.stack.push(if res { 1 } else { 0 });
+                    }
+                    0xC5 => { // OP_OS_ENV
+                        let key_id = self.stack.pop().unwrap_or(0) as usize;
+                        let mut key = String::new();
+                        {
+                            let heap_strings = self.shared.heap_strings.read().unwrap();
+                            if key_id < heap_strings.len() { key = heap_strings[key_id].clone(); }
+                        }
+                        let val = std::env::var(key).unwrap_or_default();
+                        let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                        let id = heap_strings.len();
+                        heap_strings.push(val);
+                        self.stack.push(id as i64);
+                    }
+                    0xC6 => { // OP_OS_CWD
+                        let val = std::env::current_dir().unwrap_or_default().to_string_lossy().to_string();
+                        let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                        let id = heap_strings.len();
+                        heap_strings.push(val);
+                        self.stack.push(id as i64);
+                    }
+                    0xC7 => { // OP_OS_EXEC
+                        let cmd_id = self.stack.pop().unwrap_or(0) as usize;
+                        let mut cmd = String::new();
+                        {
+                            let heap_strings = self.shared.heap_strings.read().unwrap();
+                            if cmd_id < heap_strings.len() { cmd = heap_strings[cmd_id].clone(); }
+                        }
+                        let output = Command::new("cmd")
+                            .args(&["/C", &cmd])
+                            .output();
+                        let val = if let Ok(o) = output { String::from_utf8_lossy(&o.stdout).to_string() } else { String::new() };
+                        let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                        let id = heap_strings.len();
+                        heap_strings.push(val);
+                        self.stack.push(id as i64);
+                    }
+                    0xCA => { // OP_TIME_NOW
+                        let start = SystemTime::now();
+                        let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+                        self.stack.push(since_the_epoch.as_millis() as i64);
+                    }
+                    0xCB => { // OP_TIME_SLEEP
+                        let ms = self.stack.pop().unwrap_or(0) as u64;
+                        std::thread::sleep(std::time::Duration::from_millis(ms));
+                    }
+                    0xB5 => { // OP_NET_LISTEN_TLS
+                       let key_file_id = self.stack.pop().unwrap_or(0) as usize;
+                       let cert_file_id = self.stack.pop().unwrap_or(0) as usize;
+                       let port = self.stack.pop().unwrap_or(0) as u16;
+                       
+                       let mut cert_file = String::new();
+                       let mut key_file = String::new();
+                       
+                       {
+                           let heap_strings = self.shared.heap_strings.read().unwrap();
+                           if cert_file_id < heap_strings.len() {
+                               cert_file = heap_strings[cert_file_id].clone();
+                           }
+                           if key_file_id < heap_strings.len() {
+                               key_file = heap_strings[key_file_id].clone();
+                           }
+                       }
+                       
+                       let mut lock = self.shared.listeners.write().unwrap();
+                       let id = lock.len();
+                       
+                       eprintln!("DEBUG: cert_file = '{}', key_file = '{}'", cert_file, key_file);
+                       
+                       let certs_res = (|| -> Result<Vec<CertificateDer<'static>>, Box<dyn std::error::Error>> {
+                           let mut reader = BufReader::new(File::open(&cert_file)?);
+                           let certs: Result<Vec<_>, _> = certs(&mut reader).collect();
+                           Ok(certs?)
+                       })();
+                       
+                       let key_res = (|| -> Result<PrivateKeyDer<'static>, Box<dyn std::error::Error>> {
+                           let mut reader = BufReader::new(File::open(&key_file)?);
+                           Ok(private_key(&mut reader)?.ok_or("No private key found")?)
+                       })();
+                       
+                       match (certs_res, key_res) {
+                           (Ok(certs_der), Ok(key_der)) => {
+                               match ServerConfig::builder().with_no_client_auth().with_single_cert(certs_der, key_der) {
+                                   Ok(config) => {
+                                       match std::net::TcpListener::bind(format!("0.0.0.0:{}", port)) {
+                                           Ok(listener) => {
+                                               lock.push(NuxListener::Tls(listener, Arc::new(config)));
+                                               self.stack.push(id as i64);
+                                           },
+                                           Err(e) => {
+                                               eprintln!("Failed to bind to port {}: {}", port, e);
+                                               self.stack.push(-1);
+                                           }
+                                       }
+                                   },
+                                   Err(e) => {
+                                       eprintln!("Failed to configure TLS: {}", e);
+                                       self.stack.push(-1);
+                                   }
+                               }
+                           },
+                           (Err(e1), Err(e2)) => {
+                               eprintln!("Failed to read cert file: {}", e1);
+                               eprintln!("Failed to read key file: {}", e2);
+                               self.stack.push(-1);
+                           },
+                           (Err(e), _) => {
+                               eprintln!("Failed to read cert file: {}", e);
+                               self.stack.push(-1);
+                           },
+                           (_, Err(e)) => {
+                               eprintln!("Failed to read key file: {}", e);
+                               self.stack.push(-1);
+                           }
+                       }
+                  },
+
+                  _ => { 
                     // eprintln!("Unknown OpCode: 0x{:02X} at {}", op, self.ip - 1);
                 }
             }

@@ -1,0 +1,29 @@
+import "ffi";
+
+class Window {
+    var ffi;
+    var is_open;
+
+    func init(title, width, height) {
+        this.ffi = ffi_load("E:/nux/Nux_Lang/nux_ui/target/release/nux_ui.dll");
+        ffi_invoke(this.ffi, "ffi_window_create", 0, width, height); # Pass 0 for title string to use default
+        this.is_open = 1;
+    }
+
+    func update() {
+        var res = ffi_invoke(this.ffi, "ffi_window_update");
+        if (res == 0) {
+            this.is_open = 0;
+        }
+        return res;
+    }
+
+    func draw_rect(x, y, w, h, color) {
+        ffi_invoke(this.ffi, "ffi_draw_rect", x, y, w, h, color);
+    }
+
+    func close() {
+        ffi_invoke(this.ffi, "ffi_window_close");
+        this.is_open = 0;
+    }
+}

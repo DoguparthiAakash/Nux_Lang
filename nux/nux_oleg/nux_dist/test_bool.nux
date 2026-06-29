@@ -1,0 +1,8 @@
+func test() {
+    print(0 < 4);
+    if (0 < 4) {
+        print("Yes");
+    }
+    return 0;
+}
+test();

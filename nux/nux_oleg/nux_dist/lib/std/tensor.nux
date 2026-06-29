@@ -1,0 +1,315 @@
+# tensor.nux - N-Dimensional Tensor Library for Nux
+# Foundation for AI/ML operations using heap arrays and float arithmetic
+# 
+# A Tensor is stored as:
+#   - data: array id (flat 1D array of floats stored as i64 bit patterns)
+#   - shape: array id (dimensions, e.g. [2, 3] for a 2x3 matrix)
+#   - ndim: number of dimensions
+#   - size: total number of elements
+
+@priority(35)
+
+# ============================================================
+# Tensor Creation
+# ============================================================
+
+# Create a new tensor filled with zeros
+# Returns: array id holding [data_arr, shape_arr, ndim, size]
+func tensor_zeros_1d(n) {
+    var data = arr_new(n);
+    var shape = arr_new(1);
+    arr_set(shape, 0, n);
+    # Pack tensor metadata into a small array: [data, shape, ndim, size]
+    var t = arr_new(4);
+    arr_set(t, 0, data);
+    arr_set(t, 1, shape);
+    arr_set(t, 2, 1);
+    arr_set(t, 3, n);
+    return t;
+}
+
+# Create a 2D tensor (matrix) filled with zeros
+func tensor_zeros_2d(rows, cols) {
+    var total = rows * cols;
+    var data = arr_new(total);
+    var shape = arr_new(2);
+    arr_set(shape, 0, rows);
+    arr_set(shape, 1, cols);
+    var t = arr_new(4);
+    arr_set(t, 0, data);
+    arr_set(t, 1, shape);
+    arr_set(t, 2, 2);
+    arr_set(t, 3, total);
+    return t;
+}
+
+# Create a 1D tensor from values (up to 8 elements for now)
+func tensor_from_1d(a, b, c, d, count) {
+    var t = tensor_zeros_1d(count);
+    var data = arr_get(t, 0);
+    if (count > 0) { arr_set(data, 0, a); }
+    if (count > 1) { arr_set(data, 1, b); }
+    if (count > 2) { arr_set(data, 2, c); }
+    if (count > 3) { arr_set(data, 3, d); }
+    return t;
+}
+
+# Create a tensor filled with a single value
+func tensor_fill_1d(n, val) {
+    var t = tensor_zeros_1d(n);
+    var data = arr_get(t, 0);
+    arr_fill(data, val);
+    return t;
+}
+
+func tensor_fill_2d(rows, cols, val) {
+    var t = tensor_zeros_2d(rows, cols);
+    var data = arr_get(t, 0);
+    arr_fill(data, val);
+    return t;
+}
+
+# ============================================================
+# Tensor Accessors
+# ============================================================
+
+# Get element from 1D tensor
+func tensor_get_1d(t, i) {
+    var data = arr_get(t, 0);
+    return arr_get(data, i);
+}
+
+# Set element in 1D tensor
+func tensor_set_1d(t, i, val) {
+    var data = arr_get(t, 0);
+    arr_set(data, i, val);
+    return 0;
+}
+
+# Get element from 2D tensor (row, col)
+func tensor_get_2d(t, row, col) {
+    var data = arr_get(t, 0);
+    var shape = arr_get(t, 1);
+    var cols = arr_get(shape, 1);
+    return arr_get(data, row * cols + col);
+}
+
+# Set element in 2D tensor
+func tensor_set_2d(t, row, col, val) {
+    var data = arr_get(t, 0);
+    var shape = arr_get(t, 1);
+    var cols = arr_get(shape, 1);
+    arr_set(data, row * cols + col, val);
+    return 0;
+}
+
+# Get tensor size (total elements)
+func tensor_size(t) {
+    return arr_get(t, 3);
+}
+
+# Get number of dimensions
+func tensor_ndim(t) {
+    return arr_get(t, 2);
+}
+
+# Get shape dimension at index
+func tensor_shape(t, dim) {
+    var shape = arr_get(t, 1);
+    return arr_get(shape, dim);
+}
+
+# ============================================================
+# Element-wise Operations (Integer)
+# ============================================================
+
+# Add two 1D tensors element-wise: result = a + b
+func tensor_add(a, b) {
+    var size = tensor_size(a);
+    var result = tensor_zeros_1d(size);
+    var data_a = arr_get(a, 0);
+    var data_b = arr_get(b, 0);
+    var data_r = arr_get(result, 0);
+    for (var i = 0; i < size; i = i + 1) {
+        var va = arr_get(data_a, i);
+        var vb = arr_get(data_b, i);
+        arr_set(data_r, i, va + vb);
+    }
+    return result;
+}
+
+# Subtract: result = a - b
+func tensor_sub(a, b) {
+    var size = tensor_size(a);
+    var result = tensor_zeros_1d(size);
+    var data_a = arr_get(a, 0);
+    var data_b = arr_get(b, 0);
+    var data_r = arr_get(result, 0);
+    for (var i = 0; i < size; i = i + 1) {
+        var va = arr_get(data_a, i);
+        var vb = arr_get(data_b, i);
+        arr_set(data_r, i, va - vb);
+    }
+    return result;
+}
+
+# Multiply element-wise: result = a * b
+func tensor_mul(a, b) {
+    var size = tensor_size(a);
+    var result = tensor_zeros_1d(size);
+    var data_a = arr_get(a, 0);
+    var data_b = arr_get(b, 0);
+    var data_r = arr_get(result, 0);
+    for (var i = 0; i < size; i = i + 1) {
+        var va = arr_get(data_a, i);
+        var vb = arr_get(data_b, i);
+        arr_set(data_r, i, va * vb);
+    }
+    return result;
+}
+
+# Scalar multiply: result = tensor * scalar
+func tensor_scale(t, scalar) {
+    var size = tensor_size(t);
+    var result = tensor_zeros_1d(size);
+    var data_t = arr_get(t, 0);
+    var data_r = arr_get(result, 0);
+    for (var i = 0; i < size; i = i + 1) {
+        var v = arr_get(data_t, i);
+        arr_set(data_r, i, v * scalar);
+    }
+    return result;
+}
+
+# ============================================================
+# Reduction Operations
+# ============================================================
+
+# Sum all elements
+func tensor_sum(t) {
+    var size = tensor_size(t);
+    var data = arr_get(t, 0);
+    var total = 0;
+    for (var i = 0; i < size; i = i + 1) {
+        total = total + arr_get(data, i);
+    }
+    return total;
+}
+
+# Max element value
+func tensor_max(t) {
+    var size = tensor_size(t);
+    var data = arr_get(t, 0);
+    var mx = arr_get(data, 0);
+    for (var i = 1; i < size; i = i + 1) {
+        var v = arr_get(data, i);
+        if (v > mx) { mx = v; }
+    }
+    return mx;
+}
+
+# Min element value
+func tensor_min(t) {
+    var size = tensor_size(t);
+    var data = arr_get(t, 0);
+    var mn = arr_get(data, 0);
+    for (var i = 1; i < size; i = i + 1) {
+        var v = arr_get(data, i);
+        if (v < mn) { mn = v; }
+    }
+    return mn;
+}
+
+# Dot product of two 1D tensors
+func tensor_dot(a, b) {
+    var size = tensor_size(a);
+    var data_a = arr_get(a, 0);
+    var data_b = arr_get(b, 0);
+    var total = 0;
+    for (var i = 0; i < size; i = i + 1) {
+        total = total + arr_get(data_a, i) * arr_get(data_b, i);
+    }
+    return total;
+}
+
+# ============================================================
+# Matrix Operations (2D Tensors)
+# ============================================================
+
+# Matrix multiply: C = A @ B
+# A is [M x K], B is [K x N], result is [M x N]
+func tensor_matmul(a, b) {
+    var shape_a = arr_get(a, 1);
+    var shape_b = arr_get(b, 1);
+    var M = arr_get(shape_a, 0);
+    var K = arr_get(shape_a, 1);
+    var N = arr_get(shape_b, 1);
+    
+    var result = tensor_zeros_2d(M, N);
+    var data_a = arr_get(a, 0);
+    var data_b = arr_get(b, 0);
+    var data_r = arr_get(result, 0);
+    
+    for (var i = 0; i < M; i = i + 1) {
+        for (var j = 0; j < N; j = j + 1) {
+            var sum = 0;
+            for (var k = 0; k < K; k = k + 1) {
+                sum = sum + arr_get(data_a, i * K + k) * arr_get(data_b, k * N + j);
+            }
+            arr_set(data_r, i * N + j, sum);
+        }
+    }
+    return result;
+}
+
+# Matrix transpose: B = A^T
+func tensor_transpose(t) {
+    var shape = arr_get(t, 1);
+    var rows = arr_get(shape, 0);
+    var cols = arr_get(shape, 1);
+    
+    var result = tensor_zeros_2d(cols, rows);
+    var data_t = arr_get(t, 0);
+    var data_r = arr_get(result, 0);
+    
+    for (var i = 0; i < rows; i = i + 1) {
+        for (var j = 0; j < cols; j = j + 1) {
+            arr_set(data_r, j * rows + i, arr_get(data_t, i * cols + j));
+        }
+    }
+    return result;
+}
+
+# ============================================================
+# Activation Functions (integer-approximated)
+# ============================================================
+
+# ReLU: max(0, x) applied element-wise
+func tensor_relu(t) {
+    var size = tensor_size(t);
+    var result = tensor_zeros_1d(size);
+    var data_t = arr_get(t, 0);
+    var data_r = arr_get(result, 0);
+    for (var i = 0; i < size; i = i + 1) {
+        var v = arr_get(data_t, i);
+        if (v > 0) {
+            arr_set(data_r, i, v);
+        }
+    }
+    return result;
+}
+
+# Print tensor contents (1D)
+func tensor_print(t) {
+    var size = tensor_size(t);
+    var data = arr_get(t, 0);
+    print("[");
+    for (var i = 0; i < size; i = i + 1) {
+        print(arr_get(data, i));
+        if (i < size - 1) {
+            print(", ");
+        }
+    }
+    print("]\n");
+    return 0;
+}

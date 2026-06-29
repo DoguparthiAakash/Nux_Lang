@@ -1,0 +1,11 @@
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\socket2-6b1ee97a317b2cb4.d: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockaddr.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\socket.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockref.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sys\windows.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\libsocket2-6b1ee97a317b2cb4.rlib: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockaddr.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\socket.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockref.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sys\windows.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\libsocket2-6b1ee97a317b2cb4.rmeta: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockaddr.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\socket.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockref.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sys\windows.rs
+
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\lib.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockaddr.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\socket.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sockref.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.4\src\sys\windows.rs:

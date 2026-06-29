@@ -1,0 +1,13 @@
+func main() {
+    var lib = cux_load("test_ext");
+    if (lib == -1) {
+        print(999);
+        return;
+    }
+    
+    # Call my_gpu_add with (10, 20) -> should return 10 + 20 + 100 = 130
+    var res = cux_call(lib, "my_gpu_add", 10, 20);
+    print(res);
+}
+
+main();

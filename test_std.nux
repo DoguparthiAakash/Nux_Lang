@@ -1,0 +1,9 @@
+import "std.math";
+import "std.fs";
+
+func main() {
+    var x = max(10, 20);
+    print(x);
+}
+
+main();

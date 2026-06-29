@@ -12,6 +12,7 @@ pub mod nvm;
 pub mod jit;
 pub mod polyglot_parser;
 pub mod ffi_manager;
+pub mod cux;
 pub mod type_marshaller;
 pub mod venv_manager;
 pub mod bonfort_config;

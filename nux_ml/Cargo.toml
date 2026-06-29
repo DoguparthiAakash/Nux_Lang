@@ -1,0 +1,20 @@
+[package]
+name = "nux_ml"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Using dummy/optional dependencies for hardware acceleration demonstration
+# In a real build, we'd depend on candle-core = { version = "0.3.3" }
+# We use feature flags to allow the Nux compiler to select backends:
+
+[features]
+default = ["cpu"]
+cpu = []
+cuda = []
+metal = []
+tpu = []
+npu = []

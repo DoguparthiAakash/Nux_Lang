@@ -57,6 +57,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "FLOORDIV" => ops.push(0x16),
             "OP_ADD" => ops.push(0x10), // Alias
             "SWAP" => ops.push(0x17),
+            "DUP" => ops.push(0x27),
             "AND" => ops.push(0x18),
             "OR" => ops.push(0x19),
             "NOT" => ops.push(0x1A), // Logical NOT
@@ -72,10 +73,34 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "XOR" => ops.push(0x22),
             "XAND" => ops.push(0x23),
             "XNOT" => ops.push(0x24),
+            "OP_MATCH" => ops.push(0x3B),
+            
+            "OP_FFI_PYTHON" => ops.push(0xE7),
+            "OP_FFI_C" => ops.push(0xE8),
+            "OP_Q_ALLOC" => ops.push(0xEA),
+            "OP_Q_H" => ops.push(0xEB),
+            "OP_Q_X" => ops.push(0xEC),
+            "OP_Q_Z" => ops.push(0xED),
+            "OP_Q_CX" => ops.push(0xEE),
+            "OP_Q_MEASURE" => ops.push(0xEF),
             
             "DRAW_RECT" => ops.push(0x20),
             
             // Vision
+            "OP_NET_LISTEN" => ops.push(0xB0),
+            "OP_NET_ACCEPT" => ops.push(0xB1),
+            "OP_NET_READ" => ops.push(0xB2),
+            "OP_NET_WRITE" => ops.push(0xB3),
+            "OP_NET_CLOSE" => ops.push(0xB4),
+            "OP_NET_LISTEN_TLS" => ops.push(0xB5),
+            "OP_FS_READ" => ops.push(0xC0),
+            "OP_FS_WRITE" => ops.push(0xC1),
+            "OP_FS_EXISTS" => ops.push(0xC2),
+            "OP_OS_ENV" => ops.push(0xC5),
+            "OP_OS_CWD" => ops.push(0xC6),
+            "OP_OS_EXEC" => ops.push(0xC7),
+            "OP_TIME_NOW" => ops.push(0xCA),
+            "OP_TIME_SLEEP" => ops.push(0xCB),
             "OP_IMG_ALLOC" => ops.push(0x31),
             "OP_IMG_FREE" => ops.push(0x32),
             "OP_IMG_DRAW" => ops.push(0x33),
@@ -104,7 +129,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "FILE_DELETE" => ops.push(0x5C),
             
             "VM_STACK_COPY" => ops.push(0x5B),
-            "DUP" => ops.push(0x5D),
+            
             
             "SYSTEM" => ops.push(0x81),
 
@@ -114,13 +139,24 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "INPUT" => ops.push(0x52),
             "PRINT_VAL" => ops.push(0x53),
             "PRINT_FLOAT" => ops.push(0x54),
-            "FADD" => ops.push(0x1A),
-            "FSUB" => ops.push(0x1B),
-            "FMUL" => ops.push(0x1C),
-            "FDIV" => ops.push(0x1D),
+            "PRINT_STR" => ops.push(0x6B),
+            "FADD" => ops.push(0xD0),
+            "FSUB" => ops.push(0xD1),
+            "FMUL" => ops.push(0xD2),
+            "FDIV" => ops.push(0xD3),
+            "FPOW" => ops.push(0xD4),
+            "FSIN" => ops.push(0xD5),
+            "FCOS" => ops.push(0xD6),
+            "FTAN" => ops.push(0xD7),
+            "FSQRT" => ops.push(0xD8),
+            "FEQ" => ops.push(0xD9),
+            "FNEQ" => ops.push(0xDA),
+            "FLT" => ops.push(0xDB),
+            "FGT" => ops.push(0xDC),
+            "FLTE" => ops.push(0xDD),
+            "FGTE" => ops.push(0xDE),
             "ITOF" => ops.push(0x1E),
             "FTOI" => ops.push(0x1F),
-            "FPOW" => ops.push(0x46),
             "FFLOORDIV" => ops.push(0x47),
             "PEEK" => ops.push(0x40),
             "POKE" => ops.push(0x41),
@@ -130,13 +166,29 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "POKE8" => ops.push(0x43),
             "OP_PEEK32" => ops.push(0x4C),
             "OP_POKE32" => ops.push(0x49),
-            "OP_FSIN" => ops.push(0x2A),
-            "OP_FCOS" => ops.push(0x2B),
-            "OP_FSQRT" => ops.push(0x2C),
-            "OP_FTAN" => ops.push(0x2D),
-            "OP_FPOW" => ops.push(0x46),
+            "OP_FSIN" => ops.push(0xD5),
+            "OP_FCOS" => ops.push(0xD6),
+            "OP_FSQRT" => ops.push(0xD8),
+            "OP_FTAN" => ops.push(0xD7),
+            "OP_FPOW" => ops.push(0xD4),
             "OP_TO_UPPER" => ops.push(0x69),
             "OP_TO_LOWER" => ops.push(0x6A),
+            "OP_STR_LEN" => ops.push(0x6C),
+            "OP_STR_CHAR" => ops.push(0x6D),
+            "OP_STR_SUB" => ops.push(0x6E),
+            
+            "OP_TENSOR_NEW" => ops.push(0x82),
+            "OP_TENSOR_FREE" => ops.push(0x83),
+            "OP_TENSOR_SET" => ops.push(0x84),
+            "OP_TENSOR_GET" => ops.push(0x85),
+            "OP_TENSOR_COPY" => ops.push(0x86),
+            "OP_TENSOR_ADD" => ops.push(0x87),
+            "OP_TENSOR_MATMUL" => ops.push(0x88),
+            "OP_TENSOR_RELU" => ops.push(0x89),
+            "OP_TENSOR_SOFTMAX" => ops.push(0x8A),
+            "OP_TENSOR_RMSNORM" => ops.push(0x8B),
+            "OP_TENSOR_SCALE" => ops.push(0x8C),
+            "OP_TENSOR_EMBEDDING" => ops.push(0x8D),
             
             "OP_GET_LOCAL" => {
                 ops.push(0x44);
@@ -177,9 +229,10 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
                 };
                 ops.extend_from_slice(&num_args.to_le_bytes());
             },
-            "OP_SPAWN" => {
+            "OP_JOIN" => ops.push(0xE1),
+            "SPAWN" => {
                 ops.push(0xE0);
-                if parts.len() < 2 { return Err(format!("OP_SPAWN missing label")); }
+                if parts.len() < 2 { return Err(format!("SPAWN missing label")); }
                 label_refs.push((ops.len(), String::from(parts[1])));
                 ops.extend_from_slice(&[0u8; 8]);
                 
@@ -215,6 +268,9 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_ARRAY_ALLOC" => ops.push(0xA0),
             "OP_ARRAY_GET" => ops.push(0xA1),
             "OP_ARRAY_SET" => ops.push(0xA2),
+            "OP_ARRAY_NEW" => ops.push(0xA6),
+            "OP_ARRAY_LEN" => ops.push(0xA7),
+            "OP_ARRAY_FILL" => ops.push(0xA8),
             "OP_THROW" => ops.push(0xA3),
             "OP_CATCH" => {
                 ops.push(0xA4);
@@ -223,6 +279,11 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
                 ops.extend_from_slice(&[0u8; 8]);
             },
             "OP_END_TRY" => ops.push(0xA5),
+            
+            "OP_FFI_LOAD" => ops.push(0x96),
+            "OP_FFI_CALL" => ops.push(0x97),
+            "OP_CUX_LOAD" => ops.push(0x98),
+            "OP_CUX_CALL" => ops.push(0x99),
 
             // VBE / Graphics handled above
             
@@ -238,13 +299,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
     }
 
     // Pass 2: Patch Labels
-    println!("DEBUG: alloc addr = {:?}", labels.get("alloc"));
-    println!("DEBUG: fib_iter addr = {:?}", labels.get("fib_iter"));
     for (offset, label_name) in label_refs {
         if let Some(&target_addr) = labels.get(&label_name) {
-             if label_name == "alloc" || label_name == "fib_iter" {
-                 println!("DEBUG: Patching {} at offset {} with {}", label_name, offset, target_addr);
-             }
              let bytes = (target_addr as i64).to_le_bytes();
              for i in 0..8 {
                  ops[offset + i] = bytes[i];

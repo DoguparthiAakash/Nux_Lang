@@ -1,0 +1,13 @@
+class MyClass {
+    var x: int;
+
+    func test() {
+        this.x = 10;
+        if (this.x == 10) {
+            this.x = 20;
+        }
+    }
+}
+
+var obj: MyClass = new MyClass();
+obj.test();

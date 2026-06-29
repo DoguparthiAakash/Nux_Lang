@@ -1,0 +1,9 @@
+class Time {
+    func now(self) {
+        return time_now();
+    }
+    
+    func sleep(self, ms) {
+        return time_sleep(ms);
+    }
+}

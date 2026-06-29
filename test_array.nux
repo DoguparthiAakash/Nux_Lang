@@ -1,0 +1,9 @@
+func main() {
+    var arr = [10, 20, 30];
+    print(arr); # prints the tensor pointer
+    print(tensor_get(arr, 0));
+    print(tensor_get(arr, 1));
+    print(tensor_get(arr, 2));
+}
+
+main();

@@ -1,0 +1,4 @@
+export func my_gpu_add(x: int, y: int) -> int {
+    // A simple C implementation since we might not have CUDA nvcc installed
+    return x + y + 100;
+}

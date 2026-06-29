@@ -1,0 +1,47 @@
+# Test native VM tensor operations
+
+print_str("Creating tensors...\n");
+var t1 = tensor_new(4);
+var t2 = tensor_new(4);
+var t3 = tensor_new(4);
+
+print_str("Setting values...\n");
+# t1 = [2.0, 3.0, 4.0, 5.0]
+tensor_set(t1, 0, 2.0); tensor_set(t1, 1, 3.0); tensor_set(t1, 2, 4.0); tensor_set(t1, 3, 5.0);
+
+# t2 = [1.0, 1.0, 1.0, 1.0]
+tensor_set(t2, 0, 1.0); tensor_set(t2, 1, 1.0); tensor_set(t2, 2, 1.0); tensor_set(t2, 3, 1.0);
+
+print_str("Testing tensor_add (t3 = t1 + t2)...\n");
+tensor_add(t1, t2, t3);
+var v1 = tensor_get(t3, 0); # 3.0
+var v2 = tensor_get(t3, 1); # 4.0
+print_str("t3[0]: "); print_val(v1);
+print_str("t3[1]: "); print_val(v2);
+
+print_str("Testing tensor_matmul...\n");
+# 2x2 matmul
+# m1 = [1.0, 2.0, 
+#       3.0, 4.0]
+var m1 = tensor_new(4);
+tensor_set(m1, 0, 1.0); tensor_set(m1, 1, 2.0);
+tensor_set(m1, 2, 3.0); tensor_set(m1, 3, 4.0);
+
+# m2 = [2.0, 0.0,
+#       1.0, 2.0]
+var m2 = tensor_new(4);
+tensor_set(m2, 0, 2.0); tensor_set(m2, 1, 0.0);
+tensor_set(m2, 2, 1.0); tensor_set(m2, 3, 2.0);
+
+var m3 = tensor_new(4);
+tensor_matmul(m1, m2, m3, 1, 2, 2); # batch=1, m=2, n=2, wait, tensor_matmul takes: (in_id, w_id, out_id, batch, in_feat, out_feat)
+# For matmul: A(batch, in_feat), B(in_feat, out_feat), C(batch, out_feat)
+# Wait, A is batch=2, in_feat=2?
+# Let's say batch=2 (rows of A), in_feat=2 (cols of A / rows of B), out_feat=2 (cols of B)
+tensor_matmul(m1, m2, m3, 2, 2, 2);
+
+print_str("Matmul result m3[0]: ");
+print_val(tensor_get(m3, 0)); # 1*2 + 2*1 = 4.0
+
+print_str("Done.\n");
+

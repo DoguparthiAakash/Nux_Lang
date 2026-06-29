@@ -1,0 +1,8 @@
+import std."math";
+import std."*";
+
+fn main() {
+    println(my_sin(0)); # from math.nux
+    println(strlen("hello")); # from string.nux (imported by *)
+}
+main();

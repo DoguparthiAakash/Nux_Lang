@@ -71,8 +71,8 @@ pub enum Opcode {
     FINALLY = 0x83,       // Begin finally block
     
     // Concurrency
-    SPAWN_THREAD = 0x90,  // Spawn new thread
-    JOIN_THREAD = 0x91,   // Join thread
+    SPAWN_THREAD = 0xE0,  // Spawn new thread
+    JOIN_THREAD = 0xE1,   // Join thread
     LOCK = 0x92,          // Acquire lock
     UNLOCK = 0x93,        // Release lock
     
@@ -127,8 +127,8 @@ impl Opcode {
             0x81 => Some(Opcode::CATCH),
             0x82 => Some(Opcode::THROW),
             0x83 => Some(Opcode::FINALLY),
-            0x90 => Some(Opcode::SPAWN_THREAD),
-            0x91 => Some(Opcode::JOIN_THREAD),
+            0xE0 => Some(Opcode::SPAWN_THREAD),
+            0xE1 => Some(Opcode::JOIN_THREAD),
             0x92 => Some(Opcode::LOCK),
             0x93 => Some(Opcode::UNLOCK),
             0xF0 => Some(Opcode::NOP),

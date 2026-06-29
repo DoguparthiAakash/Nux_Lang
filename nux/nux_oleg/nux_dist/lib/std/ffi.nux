@@ -1,0 +1,11 @@
+class FFI {
+    var handle;
+
+    func load(path) {
+        this.handle = ffi_load(path);
+        return this.handle;
+    }
+
+    func invoke(fn_name, args) {
+    }
+}

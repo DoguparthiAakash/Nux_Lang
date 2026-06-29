@@ -1,0 +1,73 @@
+# Core Declarative Engine (Slint-inspired)
+# A retained-mode layout and event engine for Nux.
+
+class UINode {
+    var id: int;
+    var node_type: int; # 0=VBox, 1=HBox, 2=Label, 3=Button
+    
+    # Layout properties
+    var x: int;
+    var y: int;
+    var w: int;
+    var h: int;
+    var padding: int;
+    var spacing: int;
+    
+    # Tree
+    var parent: int;
+    var children: int; # Array of child pointers
+    var num_children: int;
+
+    # Styling and Content
+    var text: string;
+    var bg_color: int;
+    var text_color: int;
+    var state: int; # 0=Normal, 1=Hover, 2=Pressed
+
+    func init(t, w, h) {
+        self.node_type = t;
+        self.x = 0;
+        self.y = 0;
+        self.w = w;
+        self.h = h;
+        self.padding = 0;
+        self.spacing = 0;
+        self.children = arr_new(20); # Max 20 children for now
+        self.num_children = 0;
+        self.text = "";
+        self.bg_color = 0;
+        self.text_color = 16777215;
+        self.state = 0;
+    }
+
+    func add_child(child) {
+        arr_set(self.children, self.num_children, child);
+        self.num_children = self.num_children + 1;
+        # Wait, we need to set the child's parent to self, but Nux doesn't have a way to cast integer back to UINode dynamically yet unless we pass it.
+    }
+
+    # Recursive layout calculation
+    func layout() {
+        if (self.node_type == 0) { # VBox
+            var current_y = self.y + self.padding;
+            for (var i = 0; i < self.num_children; i = i + 1) {
+                var child_ptr: UINode = arr_get(self.children, i);
+                child_ptr.x = self.x + self.padding;
+                child_ptr.y = current_y;
+                child_ptr.w = self.w - (self.padding * 2);
+                child_ptr.layout();
+                current_y = current_y + child_ptr.h + self.spacing;
+            }
+        } else if (self.node_type == 1) { # HBox
+            var current_x = self.x + self.padding;
+            for (var i = 0; i < self.num_children; i = i + 1) {
+                var child_ptr: UINode = arr_get(self.children, i);
+                child_ptr.x = current_x;
+                child_ptr.y = self.y + self.padding;
+                child_ptr.h = self.h - (self.padding * 2);
+                child_ptr.layout();
+                current_x = current_x + child_ptr.w + self.spacing;
+            }
+        }
+    }
+}

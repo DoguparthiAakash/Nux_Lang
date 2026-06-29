@@ -1,0 +1,24 @@
+// Nux Standard Library: Math (math.nux)
+
+func abs(val: int): int {
+    if (val < 0) {
+        return 0 - val;
+    }
+    return val;
+}
+
+func min(a: int, b: int): int {
+    if (a < b) { return a; }
+    return b;
+}
+
+func max(a: int, b: int): int {
+    if (a > b) { return a; }
+    return b;
+}
+
+func clamp(val: int, min_val: int, max_val: int): int {
+    if (val < min_val) { return min_val; }
+    if (val > max_val) { return max_val; }
+    return val;
+}

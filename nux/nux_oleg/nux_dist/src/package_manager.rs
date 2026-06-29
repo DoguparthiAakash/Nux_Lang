@@ -3,8 +3,11 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::io::{self, Cursor};
 use std::env;
+use std::time::Duration;
 use semver::VersionReq;
 use zip::ZipArchive;
+use colored::*;
+use indicatif::{ProgressBar, ProgressStyle};
 use crate::bonfort_config::{BonfortConfig, BonfortLock, LockedPackage, resolve_version};
 
 pub const GLOBAL_NUX_LIB: &str = "/usr/local/lib/nux";
@@ -98,13 +101,20 @@ fn download_and_extract(url: &str, target_dir: &Path) -> Result<(), String> {
 }
 
 pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
-    println!("Installing package: {} (version: {})", package_name, version_req);
+    let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {msg}")
+        .unwrap()
+        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
     
-    // SemVer validation
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(spinner_style);
+    pb.enable_steady_tick(Duration::from_millis(100));
+    pb.set_message(format!("{} Installing {} v{}", "◆".magenta(), package_name.cyan(), version_req.cyan()));
+    
     let _req = match VersionReq::parse(version_req) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("Error: Invalid version requirement '{}': {}", version_req, e);
+            pb.finish_and_clear();
+            eprintln!("{} Invalid version requirement '{}': {}", "╰─► Error:".red(), version_req, e);
             if version_req != "latest" && version_req != "*" {
                 return;
             }
@@ -116,7 +126,8 @@ pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
     let url = match registry.get(package_name) {
         Some(u) => *u,
         None => {
-            eprintln!("Error: Package '{}' not found in registry.", package_name);
+            pb.finish_and_clear();
+            eprintln!("{} Package '{}' not found in registry.", "╰─► Error:".red(), package_name.cyan());
             return;
         }
     };
@@ -126,7 +137,8 @@ pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
 
     if !target_base.exists() {
         if let Err(e) = fs::create_dir_all(&target_base) {
-            eprintln!("Error creating {}: {}", target_base.display(), e);
+            pb.finish_and_clear();
+            eprintln!("{} Error creating {}: {}", "╰─► Error:".red(), target_base.display(), e);
             return;
         }
     }
@@ -138,19 +150,22 @@ pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
     }
     
     if let Err(e) = fs::create_dir_all(&package_dir) {
-        eprintln!("Error creating package directory: {}", e);
+        pb.finish_and_clear();
+        eprintln!("{} Error creating package directory: {}", "╰─► Error:".red(), e);
         return;
     }
     
-    println!("Downloading and extracting from: {}", url);
+    pb.set_message(format!("{} Downloading and extracting...", "◆".magenta()));
     
     if let Err(e) = download_and_extract(url, &package_dir) {
-        eprintln!("Installation failed: {}", e);
+        pb.finish_and_clear();
+        eprintln!("{} Installation failed: {}", "╰─► Error:".red(), e);
         let _ = fs::remove_dir_all(&package_dir);
         return;
     }
     
-    println!("Successfully installed {} v{}", package_name, version_req);
+    pb.finish_and_clear();
+    println!("{} Successfully installed {} v{}", "✓".green(), package_name.cyan(), version_req.cyan());
 }
 
 pub fn install_from_config(target: InstallTarget) {

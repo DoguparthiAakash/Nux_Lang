@@ -1,0 +1,250 @@
+func init_cuda() {
+    var cux_lib = cux_load("target/cux/tensor");
+    if (cux_lib >= 0) {
+        print("CUDA Tensor backend initialized.\n");
+    } else {
+        print("Failed to load CUDA backend, falling back to CPU.\n");
+    }
+    return cux_lib;
+}
+
+class Tensor {
+    var ptr;
+    var size;
+
+    func init(size) {
+        this.size = size;
+        this.ptr = tensor_new(size);
+    }
+
+    func set(index, val) {
+        tensor_set(this.ptr, index, val);
+    }
+
+    func get(index) {
+        return tensor_get(this.ptr, index);
+    }
+
+    func relu() {
+        tensor_relu(this.ptr);
+    }
+
+    func free() {
+        tensor_free(this.ptr);
+    }
+
+    func add(other_tensor, out_tensor) {
+        tensor_add(this.ptr, other_tensor.ptr, out_tensor.ptr);
+    }
+
+    func scale(factor) {
+    }
+
+    func copy(dest_tensor) {
+        tensor_copy(this.ptr, dest_tensor.ptr);
+    }
+}
+
+class Linear {
+    var in_features;
+    var out_features;
+    var weights;
+    var cux_lib;
+
+    func init(in_features, out_features, cux_lib) {
+        this.in_features = in_features;
+        this.out_features = out_features;
+        this.cux_lib = cux_lib;
+        this.weights = new Tensor;
+        this.weights.init(in_features * out_features);
+    }
+
+    func set_weight(index, val) {
+        this.weights.set(index, val);
+    }
+
+    func free_weights() {
+        this.weights.free();
+    }
+
+    func forward(input_tensor, output_tensor) {
+        if (this.cux_lib >= 0) {
+            cux_call(this.cux_lib, "tensor_matmul", input_tensor.ptr, this.weights.ptr, output_tensor.ptr, 1, this.in_features, this.out_features);
+        } else {
+            tensor_matmul(
+                input_tensor.ptr, 
+                this.weights.ptr, 
+                output_tensor.ptr, 
+                1, 
+                this.in_features, 
+                this.out_features
+            );
+        }
+    }
+}
+
+class RMSNorm {
+    var size;
+    var eps;
+
+    func init(size, eps) {
+        this.size = size;
+        this.eps = eps;
+    }
+
+    func forward(tensor) {
+        tensor_rmsnorm(tensor.ptr, this.eps);
+    }
+}
+
+class Embedding {
+    var num_embeddings;
+    var embedding_dim;
+    var weights;
+
+    func init(num_embeddings, embedding_dim) {
+        this.num_embeddings = num_embeddings;
+        this.embedding_dim = embedding_dim;
+        this.weights = new Tensor;
+        this.weights.init(num_embeddings * embedding_dim);
+    }
+
+    func set_weight(index, val) {
+        this.weights.set(index, val);
+    }
+
+    func forward(input_tensor, seq_len, output_tensor) {
+    }
+
+    func free_weights() {
+        this.weights.free();
+    }
+}
+
+class Softmax {
+    func init() {
+    }
+    
+    func forward(tensor) {
+        tensor_softmax(tensor.ptr);
+    }
+}
+
+class FeedForward {
+    var linear1;
+    var linear2;
+    var hidden_dim;
+    var out_dim;
+    var intermediate;
+
+    func init(in_dim, hidden_dim, out_dim) {
+        this.hidden_dim = hidden_dim;
+        this.out_dim = out_dim;
+        this.linear1 = new Linear;
+        this.linear1.init(in_dim, hidden_dim);
+        this.linear2 = new Linear;
+        this.linear2.init(hidden_dim, out_dim);
+        this.intermediate = new Tensor;
+        this.intermediate.init(hidden_dim);
+    }
+
+    func forward(x, out_tensor) {
+        this.linear1.forward(x, this.intermediate);
+        this.intermediate.relu();
+        this.linear2.forward(this.intermediate, out_tensor);
+    }
+}
+
+class MultiHeadAttention {
+    var embed_dim;
+    var heads;
+    var head_dim;
+    
+    var q_proj;
+    var k_proj;
+    var v_proj;
+    var o_proj;
+    
+    var q;
+    var k;
+    var v;
+    var scores;
+
+    func init(embed_dim, heads, seq_len) {
+        this.embed_dim = embed_dim;
+        this.heads = heads;
+        this.head_dim = embed_dim / heads; # Integer division
+
+        this.q_proj = new Linear;
+        this.q_proj.init(embed_dim, embed_dim);
+        this.k_proj = new Linear;
+        this.k_proj.init(embed_dim, embed_dim);
+        this.v_proj = new Linear;
+        this.v_proj.init(embed_dim, embed_dim);
+        this.o_proj = new Linear;
+        this.o_proj.init(embed_dim, embed_dim);
+
+        var full_dim = seq_len * embed_dim;
+        this.q = new Tensor;
+        this.q.init(full_dim);
+        this.k = new Tensor;
+        this.k.init(full_dim);
+        this.v = new Tensor;
+        this.v.init(full_dim);
+        this.scores = new Tensor;
+        this.scores.init(seq_len * seq_len * heads);
+    }
+
+    func forward(x, out_tensor) {
+        this.q_proj.forward(x, this.q);
+        this.k_proj.forward(x, this.k);
+        this.v_proj.forward(x, this.v);
+        
+        this.o_proj.forward(this.v, out_tensor);
+    }
+}
+
+class TransformerBlock {
+    var attention;
+    var feed_forward;
+    var norm1;
+    var norm2;
+    var attn_out;
+    var ff_out;
+    var norm_out;
+
+    func init(embed_dim, heads, seq_len) {
+        this.attention = new MultiHeadAttention;
+        this.attention.init(embed_dim, heads, seq_len);
+        this.feed_forward = new FeedForward;
+        this.feed_forward.init(embed_dim, embed_dim * 4, embed_dim);
+        this.norm1 = new RMSNorm;
+        this.norm1.init(embed_dim, 0.00001);
+        this.norm2 = new RMSNorm;
+        this.norm2.init(embed_dim, 0.00001);
+        
+        var total_size = seq_len * embed_dim;
+        this.attn_out = new Tensor;
+        this.attn_out.init(total_size);
+        this.ff_out = new Tensor;
+        this.ff_out.init(total_size);
+        this.norm_out = new Tensor;
+        this.norm_out.init(total_size);
+    }
+
+    func forward(x, out_tensor) {
+        tensor_copy(x.ptr, this.norm_out.ptr);
+        this.norm1.forward(this.norm_out);
+        
+        this.attention.forward(this.norm_out, this.attn_out);
+        
+        tensor_add(x.ptr, this.attn_out.ptr, x.ptr);
+        
+        tensor_copy(x.ptr, this.norm_out.ptr);
+        this.norm2.forward(this.norm_out);
+        
+        this.feed_forward.forward(this.norm_out, this.ff_out);
+        
+        tensor_add(x.ptr, this.ff_out.ptr, out_tensor.ptr);
+    }
+}

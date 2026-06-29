@@ -35,6 +35,9 @@ pub enum Token {
     Lock,
     Unlock,
     Import,
+    From,
+    Use,
+    InlineLang(String),
     Peek,
     Peek32,
     Poke,
@@ -210,9 +213,27 @@ impl Lexer {
             '/' => {
                 self.advance_pos();
                 if self.pos < self.input.len() && self.input[self.pos] == '/' {
-                    // Floor division //
-                    self.advance_pos();
-                    (Token::SlashSlash, start_span)
+                    self.advance_pos(); // consume second /
+                    // Peek: if next char is whitespace/letter/EOF treat as line comment (C++ style)
+                    let is_comment = self.pos >= self.input.len()
+                        || self.input[self.pos] == ' '
+                        || self.input[self.pos] == '\t'
+                        || self.input[self.pos] == '\r'
+                        || self.input[self.pos] == '\n'
+                        || self.input[self.pos].is_alphabetic()
+                        || self.input[self.pos] == '/'
+                        || self.input[self.pos] == '!'
+                        || self.input[self.pos] == '*';
+                    if is_comment {
+                        // Skip rest of line — C++ / Nux doc comment
+                        while self.pos < self.input.len() && self.input[self.pos] != '\n' {
+                            self.advance_pos();
+                        }
+                        return self.next_token();
+                    } else {
+                        // Floor division: `a // 2`
+                        (Token::SlashSlash, start_span)
+                    }
                 } else {
                     (Token::Slash, start_span)
                 }
@@ -413,6 +434,8 @@ impl Lexer {
             "lock" => Token::Lock,
             "unlock" => Token::Unlock,
             "import" => Token::Import,
+                            "from" => Token::From,
+                            "use" => Token::Use,
             "peek" => Token::Peek,
             "peek32" => Token::Peek32,
             "poke" => Token::Poke,
@@ -422,7 +445,7 @@ impl Lexer {
             "class" => Token::Class,
             "enum" => Token::Enum,
             "trait" => Token::Trait,
-            "this" => Token::This,
+            "this" => Token::Identifier("self".to_string()),
             
             // Types
             "int" => Token::KwInt,
@@ -474,9 +497,25 @@ impl Lexer {
     fn lex_string(&mut self, start_span: Span) -> (Token, Span) {
         self.advance_pos(); // Skip quote
         let mut s = String::new();
-        while self.pos < self.input.len() && self.input[self.pos] != '"' {
-             s.push(self.input[self.pos]);
-             self.advance_pos();
+        while self.pos < self.input.len() {
+            if self.input[self.pos] == '"' {
+                break;
+            }
+            if self.input[self.pos] == '\\' && self.pos + 1 < self.input.len() {
+                self.advance_pos();
+                match self.input[self.pos] {
+                    'n' => s.push('\n'),
+                    'r' => s.push('\r'),
+                    't' => s.push('\t'),
+                    '\\' => s.push('\\'),
+                    '"' => s.push('"'),
+                    '\'' => s.push('\''),
+                    c => { s.push('\\'); s.push(c); }
+                }
+            } else {
+                s.push(self.input[self.pos]);
+            }
+            self.advance_pos();
         }
         self.advance_pos(); // Skip closing quote
         (Token::String(s), start_span)

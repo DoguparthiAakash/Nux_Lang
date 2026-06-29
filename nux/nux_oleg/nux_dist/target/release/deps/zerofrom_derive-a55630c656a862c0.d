@@ -1,0 +1,6 @@
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\zerofrom_derive-a55630c656a862c0.d: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\visitor.rs
+
+E:\nux\Nux_Lang\nux\nux_oleg\nux_dist\target\release\deps\zerofrom_derive-a55630c656a862c0.dll: C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\lib.rs C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\visitor.rs
+
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\lib.rs:
+C:\Users\dogup\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\zerofrom-derive-0.1.7\src\visitor.rs:

@@ -1,0 +1,148 @@
+# pure_nux_donut.nux
+# A 3D rotating donut rendered entirely in pure Nux!
+# Absolutely zero C, C++, Rust, or CUDA dependencies. 
+
+import "math";
+import "alloc";
+import "string";
+
+
+func main() {
+     # Status: Initiating Pure Nux 3D Render
+    
+    var width = 80;
+    var height = 22;
+    var total_size = width * height;
+    
+    # We use arr_new to allocate our z-buffer and frame buffer
+    var zbuffer = arr_new(total_size);
+    var fbuffer = arr_new(total_size);
+    
+    var A = 0.0;
+    var B = 0.0;
+    
+    var shades = arr_new(12);
+    shades[0] = 46;
+    shades[1] = 44;
+    shades[2] = 45;
+    shades[3] = 126;
+    shades[4] = 58;
+    shades[5] = 59;
+    shades[6] = 61;
+    shades[7] = 33;
+    shades[8] = 42;
+    shades[9] = 35;
+    shades[10] = 36;
+    shades[11] = 64;
+    
+    var frame = 0;
+    var max_frames = 50;
+    
+    while (frame < max_frames) {
+        # Clear buffers
+        var i = 0;
+        while (i < total_size) {
+            # 32 is ascii for space ' '
+            fbuffer[i] = 32;
+            # very low z value
+            zbuffer[i] = 0.0;
+            i = i + 1;
+        }
+        
+        var j = 0.0;
+        
+        while (j < 6.28) {
+            var i2 = 0.0;
+            while (i2 < 6.28) {
+                var c = sin(i2);
+                var d = cos(j);
+                var e = sin(A);
+                var f = sin(j);
+                var g = cos(A);
+                var h = d + 2.0;
+                var D = 1.0 / (c * h * e + f * g + 5.0);
+                var l = cos(i2);
+                var m = cos(B);
+                var n = sin(B);
+                var t = c * h * g - f * e;
+                
+                var x = 40.0 + 30.0 * D * (l * h * m - t * n);
+                var y = 12.0 + 15.0 * D * (l * h * n + t * m);
+                var x_int = int(x);
+                var y_int = int(y);
+                
+                var o = x_int + 80 * y_int;
+                var N_float = 8.0 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n);
+                var N = int(N_float);
+                
+                
+                if (22 > y_int) {
+                    if (y_int > 0) {
+                        if (x_int > 0) {
+                            if (80 > x_int) {
+                                # Note: array size is 60x30 = 1800, 80x22 = 1760. 
+                                # Let's use 80 width bounds for o, but our width is 60...
+                                # wait, the original donut assumes 80x22 terminal.
+                                # So width = 80, height = 22, total_size = 1760.
+                                
+                                var curr_z = zbuffer[o];
+                                if (D > curr_z) {
+                                    zbuffer[o] = D;
+                                    var shade_idx = 0;
+                                    if (N > 0) {
+                                        shade_idx = N;
+                                    }
+                                    if (shade_idx > 11) {
+                                        shade_idx = 11;
+                                    }
+                                    
+                                    # shade ascii chars: ".,-~:;=!*#$@"
+                                    var shade_char = 46; # '.'
+                                    if (shade_idx == 1) { shade_char = 44; } # ','
+                                    if (shade_idx == 2) { shade_char = 45; } # '-'
+                                    if (shade_idx == 3) { shade_char = 126; } # '~'
+                                    if (shade_idx == 4) { shade_char = 58; } # ':'
+                                    if (shade_idx == 5) { shade_char = 59; } # ';'
+                                    if (shade_idx == 6) { shade_char = 61; } # '='
+                                    if (shade_idx == 7) { shade_char = 33; } # '!'
+                                    if (shade_idx == 8) { shade_char = 42; } # '*'
+                                    if (shade_idx == 9) { shade_char = 35; } # '#'
+                                    if (shade_idx == 10) { shade_char = 36; } # '$'
+                                    if (shade_idx == 11) { shade_char = 64; } # '@'
+                                    
+                                    fbuffer[o] = shade_char;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                i2 = i2 + 0.02;
+            }
+            j = j + 0.07;
+        }
+        
+        # Render frame
+        # ANSI clear screen and reset cursor:
+        putchar(27); putchar(91); putchar(50); putchar(74); # \x1b[2J
+        putchar(27); putchar(91); putchar(72);              # \x1b[H
+        
+        var k = 0;
+        while (k < total_size) {
+            if (k % 80 == 0) {
+                putchar(10); # newline
+            } else {
+                putchar(fbuffer[k]);
+            }
+            k = k + 1;
+        }
+        
+        A = A + 0.04;
+        B = B + 0.02;
+        frame = frame + 1;
+    }
+    
+     # Render complete
+}
+
+main();

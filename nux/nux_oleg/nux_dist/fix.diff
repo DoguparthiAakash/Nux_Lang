@@ -1,0 +1,130 @@
+--- src/compiler.rs
++++ src/compiler.rs
+@@ -1575,7 +1575,6 @@
+                     out.push_str("OP_VBE_GET_MOUSE_Y\n");
+                     return Ok(Type::Int);
+                 } else if part1 == "vbe_mouse_down" {
+-                    self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+@@ -1583,7 +1582,6 @@
+                     out.push_str("OP_VBE_GET_MOUSE_DOWN\n");
+                     return Ok(Type::Int);
+                 } else if part1 == "dm_set" {
+-                    self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression(out)?;
+@@ -1594,6 +1592,90 @@
+                     self.advance();
+                     out.push_str("OP_DM_SET\n");
+                     return Ok(Type::Int);
++                } else if part1 == "arr_new" {
++                    // arr_new(size) -> allocates a zero-filled array, returns array id
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_ARRAY_NEW\n");
++                    return Ok(Type::Int);
++                } else if part1 == "arr_get" {
++                    // arr_get(arr_id, index) -> value
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_ARRAY_GET\n");
++                    return Ok(Type::Int);
++                } else if part1 == "arr_set" {
++                    // arr_set(arr_id, index, value)
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_ARRAY_SET\n");
++                    return Ok(Type::Int);
++                } else if part1 == "arr_len" {
++                    // arr_len(arr_id) -> length
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_ARRAY_LEN\n");
++                    return Ok(Type::Int);
++                } else if part1 == "arr_fill" {
++                    // arr_fill(arr_id, value) -> fills entire array with value
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_ARRAY_FILL\n");
++                    return Ok(Type::Int);
++                } else if part1 == "ffi_load" {
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?;
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str("OP_FFI_LOAD\n");
++                    return Ok(Type::Int);
++                } else if part1 == "ffi_invoke" {
++                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?; // lib_handle
++                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
++                    self.advance();
++                    self.parse_expression(out)?; // fn_name_id
++                    
++                    let mut arg_count = 0;
++                    while self.current_token == Token::Comma {
++                        self.advance();
++                        self.parse_expression(out)?;
++                        arg_count += 1;
++                    }
++                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
++                    self.advance();
++                    out.push_str(&format!("PUSH {}\n", arg_count));
++                    out.push_str("OP_FFI_CALL\n");
++                    return Ok(Type::Int);
+                 } else if self.current_token == Token::LParen {
+                     self.advance(); let mut arg_count = 0;
+                     if self.current_token != Token::RParen { loop { self.parse_expression(out)?; arg_count += 1; if self.current_token == Token::Comma { self.advance(); } else { break; } } }
+@@ -1624,7 +1706,10 @@
+                              typ = Type::Int;
+                         } else {
+                             let offset = if let Type::Class(cname) = &typ {
+-                                 if let Some(cinfo) = self.classes.get(cname) { 
++                                 if Some(cname) == self.current_class_name.as_ref() {
++                                     if let Some(off) = self.current_class_fields.get(&member) { *off }
++                                     else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
++                                 } else if let Some(cinfo) = self.classes.get(cname) { 
+                                      if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                                  } else { return self.error(format!("Unknown class '{}'", cname)); }
+                             } else {
+@@ -1635,7 +1720,7 @@
+                                      if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
+                                  }
+                             };
+-                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset)); typ = Type::Unknown;
++                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8)); typ = Type::Unknown;
+                         }
+                     }
+                     Ok(typ)

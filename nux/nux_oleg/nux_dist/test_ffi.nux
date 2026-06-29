@@ -1,0 +1,15 @@
+func main() {
+    print("Testing FFI Python...\n");
+    var py_code = "print('Hello from Python FFI!'); x = 5 + 7; print('5 + 7 =', x)";
+    var py_out = ffi_python(py_code);
+    print(py_out);
+
+    print("\nTesting FFI C...\n");
+    var c_code = "int x = 5 + 7; printf(\"Hello from C FFI!\\n\"); printf(\"5 + 7 = %d\\n\", x); return 0;";
+    var c_out = ffi_c(c_code);
+    print(c_out);
+    
+    print("\nDone.\n");
+}
+
+main();

@@ -1,0 +1,50 @@
+    func handle_request(client_id, app_id) {
+        print_str("Handling request in new thread!\n");
+        var client = new TcpClient;
+        client.init(client, client_id);
+        
+        var req = client.read(client);
+        
+        client.write(client, "HTTP/1.1 200 OK\r\nContent-Type/html\r\nConnection\r\n\r\n");
+        client.write(client, "<h1>Welcome to Lumina!</h1><p>Served natively via HTTPS from the Nux VM across multiple threads.</p>");
+        
+        client.close(client);
+    }
+
+class Lumina {
+    var port ;
+    
+    func init(self, p) {
+        self.port = p;
+    }
+    
+    func run(self) {
+        var server = new TcpServer;
+        server.init(server, self.port);
+        print_str("Lumina server running natively on port ");
+        print_val(self.port);
+        print_str("\n");
+        
+        while (1) {
+            var client_id = server.accept(server);
+            if (client_id >= 0) {
+                spawn handle_request(client_id, 0);
+            }
+        }
+    }
+    
+    func run_tls(self, cert_file, key_file) {
+        var server = new TcpTlsServer;
+        server.init(server, self.port, cert_file, key_file);
+        print_str("Lumina server running via HTTPS on port ");
+        print_val(self.port);
+        print_str("\n");
+        
+        while (1) {
+            var client_id = server.accept(server);
+            if (client_id >= 0) {
+                spawn handle_request(client_id, 0);
+            }
+        }
+    }
+}

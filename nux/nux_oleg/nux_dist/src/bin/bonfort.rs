@@ -3,6 +3,7 @@ use std::process;
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use colored::*;
 
 use nux::package_manager::{self, InstallTarget};
 use nux::bonfort_config::{BonfortConfig, PackageMetadata};
@@ -311,31 +312,64 @@ fn cmd_show(package_name: &str) {
 }
 
 fn print_usage() {
-    println!("Bonfort - Nux Package Manager");
-    println!();
-    println!("USAGE:");
-    println!("    bonfort <COMMAND> [OPTIONS]");
-    println!();
-    println!("OPTIONS:");
-    println!("    --global, -g          Process packages system-wide (root)");
-    println!();
-    println!("COMMANDS:");
-    println!("    init [name]           Create a new Nux project");
-    println!("    add <pkg> [version]   Add a dependency to Bonfort.toml");
-    println!("    install <package>     Install a package");
-    println!("    install -r <file>     Install from requirements file");
-    println!("    install               Auto-install from Bonfort.toml");
-    println!("    remove <package>      Remove a package");
-    println!("    update [package]      Update package(s) to latest version");
-    println!("    list                  List installed packages");
-    println!("    search <query>        Search for packages");
-    println!("    show <package>        Show package information");
-    println!("    help [command]        Show help for a command");
-    println!("    version               Show bonfort version");
-    println!();
-    println!("Run 'bonfort help <command>' for more information on a command.");
-}
+    let title_color = (255, 100, 50);
+    let subtitle = (120, 120, 130);
+    let box_color = (80, 80, 95);
+    let category_color = (255, 150, 100);
+    let cmd_color = (50, 200, 255);
+    let desc_color = (180, 180, 180);
+    let accent_color = (150, 80, 255);
 
+    println!();
+    println!("  {}", "╭──────────────────────────────────────────────╮".truecolor(box_color.0, box_color.1, box_color.2));
+    println!("  {} {} {}", 
+        "│".truecolor(box_color.0, box_color.1, box_color.2),
+        format!("{:^44}", "B O N F O R T").truecolor(title_color.0, title_color.1, title_color.2).bold(),
+        "│".truecolor(box_color.0, box_color.1, box_color.2)
+    );
+    println!("  {} {} {}", 
+        "│".truecolor(box_color.0, box_color.1, box_color.2),
+        format!("{:^44}", "The Elegant Package Manager for Nux v0.1.0").truecolor(subtitle.0, subtitle.1, subtitle.2).italic(),
+        "│".truecolor(box_color.0, box_color.1, box_color.2)
+    );
+    println!("  {}", "╰──────────────────────────────────────────────╯".truecolor(box_color.0, box_color.1, box_color.2));
+    println!();
+    
+    println!("  {} {}", "◆".truecolor(accent_color.0, accent_color.1, accent_color.2), "USAGE".truecolor(255, 255, 255).bold());
+    println!("    {} {} {}", "bonfort".truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(), "<command>".truecolor(200, 200, 200), "[options]".truecolor(100, 100, 100));
+    println!();
+    
+    println!("  {} {}", "◆".truecolor(accent_color.0, accent_color.1, accent_color.2), "OPTIONS".truecolor(255, 255, 255).bold());
+    println!("    {:<18} {}", "--global, -g".truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(), "Process packages system-wide (root)".truecolor(desc_color.0, desc_color.1, desc_color.2));
+    println!();
+    
+    println!("  {} {}", "◆".truecolor(accent_color.0, accent_color.1, accent_color.2), "COMMANDS".truecolor(255, 255, 255).bold());
+    
+    let cmds = vec![
+        ("Project", vec![
+            ("init [name]", "Create a new Nux project"),
+            ("add <pkg>", "Add a dependency to Bonfort.toml"),
+        ]),
+        ("Packages", vec![
+            ("install [pkg]", "Install packages"),
+            ("remove <pkg>", "Remove a package"),
+            ("update [pkg]", "Update package(s)"),
+        ]),
+        ("Information", vec![
+            ("list", "List installed packages"),
+            ("search <query>", "Search for packages"),
+            ("show <pkg>", "Show package information"),
+        ]),
+    ];
+    
+    for (category, group) in cmds {
+        println!("    {} {}", "▪".truecolor(category_color.0, category_color.1, category_color.2), category.truecolor(category_color.0, category_color.1, category_color.2).bold());
+        for (cmd, desc) in group {
+            println!("      {:<18} {}", cmd.truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(), desc.truecolor(desc_color.0, desc_color.1, desc_color.2));
+        }
+        println!();
+    }
+}
 fn print_command_help(command: &str) {
     match command {
         "init" => {

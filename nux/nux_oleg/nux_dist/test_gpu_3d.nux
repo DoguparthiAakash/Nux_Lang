@@ -1,0 +1,38 @@
+# test_gpu_3d.nux
+# A test script to demonstrate CUX dynamic loading and GPU 3D rendering
+
+func sleep_ms(ms) {
+    var i = 0;
+    var max = ms * 10000;
+    while (i < max) {
+        i = i + 1;
+    }
+}
+
+func main() {
+    print(11111); # Status: Loading GPU backend
+    
+    var lib = cux_load("gpu_draw");
+    if (lib == -1) {
+        print(9999); # Status: Failed to load GPU draw library
+        return;
+    }
+    
+    print(22222); # Status: Loaded successfully!
+    print(33333); # Status: Initiating NVIDIA GPU CUX Render Kernel
+    
+    var width = 60;
+    var height = 30;
+    var frame = 0;
+    var max_frames = 50; # Number of animation frames
+    
+    while (frame < max_frames) {
+        var dummy = cux_call(lib, "draw_3d_object", width, height, frame);
+        sleep_ms(30);
+        frame = frame + 1;
+    }
+    
+    print(44444); # Status: Rendering complete
+}
+
+main();

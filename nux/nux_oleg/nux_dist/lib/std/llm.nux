@@ -1,0 +1,113 @@
+import "ffi";
+import "nn";
+
+class MultiHeadAttention {
+    var embed_dim;
+    var num_heads;
+    var head_dim;
+    var q_proj;
+    var k_proj;
+    var v_proj;
+    var o_proj;
+    var ffi;
+
+    func init(embed_dim, num_heads, ffi_lib) {
+        this.embed_dim = embed_dim;
+        this.num_heads = num_heads;
+        this.head_dim = embed_dim / num_heads; // Integer division
+        this.ffi = ffi_lib;
+
+        this.q_proj = new Linear(embed_dim, embed_dim, ffi_lib);
+        this.k_proj = new Linear(embed_dim, embed_dim, ffi_lib);
+        this.v_proj = new Linear(embed_dim, embed_dim, ffi_lib);
+        this.o_proj = new Linear(embed_dim, embed_dim, ffi_lib);
+    }
+
+    func forward(input_tensor, seq_len, output_tensor) {
+        // A full attention implementation would require more complex tensor views (Q, K, V splitting by head)
+        // For now, we simulate the forward pass logic by chaining Linear projections.
+        // In a real LLM, we'd FFI into an optimized FlashAttention backend here.
+        
+        var q = new Tensor(seq_len * this.embed_dim, this.ffi);
+        var k = new Tensor(seq_len * this.embed_dim, this.ffi);
+        var v = new Tensor(seq_len * this.embed_dim, this.ffi);
+        
+        this.q_proj.forward(input_tensor, q);
+        this.k_proj.forward(input_tensor, k);
+        this.v_proj.forward(input_tensor, v);
+        
+        // Simulating the output directly mapped from V for the mockup
+        this.o_proj.forward(v, output_tensor);
+        
+        q.free();
+        k.free();
+        v.free();
+    }
+
+    func free_weights() {
+        this.q_proj.free_weights();
+        this.k_proj.free_weights();
+        this.v_proj.free_weights();
+        this.o_proj.free_weights();
+    }
+}
+
+class TransformerBlock {
+    var embed_dim;
+    var ffi;
+    
+    var attention;
+    var norm1;
+    var norm2;
+    var ffn_up;
+    var ffn_down;
+
+    func init(embed_dim, num_heads, ffi_lib) {
+        this.embed_dim = embed_dim;
+        this.ffi = ffi_lib;
+        
+        this.attention = new MultiHeadAttention(embed_dim, num_heads, ffi_lib);
+        this.norm1 = new RMSNorm(embed_dim, 0, ffi_lib); // eps approximated as 0 for integer test
+        this.norm2 = new RMSNorm(embed_dim, 0, ffi_lib);
+        
+        // Feed forward network (typical GLU expansion is 4x or 8/3x)
+        var ffn_hidden = embed_dim * 4;
+        this.ffn_up = new Linear(embed_dim, ffn_hidden, ffi_lib);
+        this.ffn_down = new Linear(ffn_hidden, embed_dim, ffi_lib);
+    }
+
+    func forward(input_tensor, seq_len, output_tensor) {
+        // norm1
+        this.norm1.forward(input_tensor);
+        
+        // attention
+        var attn_out = new Tensor(seq_len * this.embed_dim, this.ffi);
+        this.attention.forward(input_tensor, seq_len, attn_out);
+        
+        // Add residual (simulated by just using attn_out for now as we don't have OP_ADD_TENSOR exposed)
+        // In real backend: ffi_invoke("tensor_add", input_tensor.ptr, attn_out.ptr);
+        
+        // norm2
+        this.norm2.forward(attn_out);
+        
+        // FFN
+        var ffn_hidden = new Tensor(seq_len * this.embed_dim * 4, this.ffi);
+        this.ffn_up.forward(attn_out, ffn_hidden);
+        
+        // activation
+        ffn_hidden.relu();
+        
+        // ffn down
+        this.ffn_down.forward(ffn_hidden, output_tensor);
+        
+        // free intermediates
+        attn_out.free();
+        ffn_hidden.free();
+    }
+
+    func free_weights() {
+        this.attention.free_weights();
+        this.ffn_up.free_weights();
+        this.ffn_down.free_weights();
+    }
+}

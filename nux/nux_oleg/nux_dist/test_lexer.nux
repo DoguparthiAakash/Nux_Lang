@@ -1,0 +1,21 @@
+# Test script for Nux Lexer
+import "lib/core";
+import "compiler/lexer";
+
+# A simple program to lex
+var source = "var x = 42; # comment
+if (x) { print_val(x); }";
+
+var lexer = Lexer_new(source);
+
+var t = Lexer_next_token(lexer);
+while (t.type != 0) {
+    print_str("Token Type: ");
+    print_val(t.type);
+    print_str(" Value: '");
+    print_str(t.value);
+    print_str("'\n");
+
+    t = Lexer_next_token(lexer);
+}
+print_str("Done lexing!\n");

@@ -1,0 +1,11 @@
+import "std";
+import "net";
+import "lumina";
+
+func main() {
+    var app = new Lumina;
+    app.init(app, 8443);
+    app.run_tls(app, "E:/nux/Nux_Lang/nux/nux_oleg/nux_dist/cert.pem", "E:/nux/Nux_Lang/nux/nux_oleg/nux_dist/key.pem");
+}
+
+main();
