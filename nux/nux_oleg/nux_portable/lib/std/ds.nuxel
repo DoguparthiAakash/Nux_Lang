@@ -1,0 +1,284 @@
+#* ─────────────────────────────────────────────────────
+   Nux Data Structures Library  (std/ds.nuxel)
+   
+   Provides:
+     - Stack  (LIFO)
+     - Queue  (FIFO, ring buffer)
+     - Linked List
+     - Hash Map (open addressing, integer keys)
+     - Bitset
+   ───────────────────────────────────────────────────── *#
+
+# ── STACK (LIFO) ─────────────────────────────────────────────
+# Layout: [capacity | top | data...]
+
+pub func stack_new(capacity) {
+    *int s = alloc(capacity + 2);
+    poke(s,     capacity);
+    poke(s + 1, 0);        # top = 0
+    return s;
+}
+
+pub func stack_push(s, val) {
+    var cap = peek(s);
+    var top = peek(s + 1);
+    if (top >= cap) { return 0; }  # overflow
+    poke(s + 2 + top, val);
+    poke(s + 1, top + 1);
+    return 1;
+}
+
+pub func stack_pop(s) {
+    var top = peek(s + 1);
+    if (top == 0) { return 0; }  # underflow
+    top = top - 1;
+    poke(s + 1, top);
+    return peek(s + 2 + top);
+}
+
+pub func stack_peek_top(s) {
+    var top = peek(s + 1);
+    if (top == 0) { return 0; }
+    return peek(s + 2 + top - 1);
+}
+
+pub func stack_size(s) {
+    return peek(s + 1);
+}
+
+pub func stack_is_empty(s) {
+    if (peek(s + 1) == 0) { return 1; }
+    return 0;
+}
+
+pub func stack_free(s) {
+    free(s);
+}
+
+# ── QUEUE (FIFO ring buffer) ─────────────────────────────────
+# Layout: [capacity | head | tail | count | data...]
+
+pub func queue_new(capacity) {
+    *int q = alloc(capacity + 4);
+    poke(q,     capacity);
+    poke(q + 1, 0);  # head
+    poke(q + 2, 0);  # tail
+    poke(q + 3, 0);  # count
+    return q;
+}
+
+pub func queue_enqueue(q, val) {
+    var cap   = peek(q);
+    var tail  = peek(q + 2);
+    var count = peek(q + 3);
+    if (count >= cap) { return 0; }  # full
+    poke(q + 4 + tail, val);
+    poke(q + 2, (tail + 1) - ((tail + 1) // cap) * cap);  # mod cap
+    poke(q + 3, count + 1);
+    return 1;
+}
+
+pub func queue_dequeue(q) {
+    var cap   = peek(q);
+    var head  = peek(q + 1);
+    var count = peek(q + 3);
+    if (count == 0) { return 0; }   # empty
+    var val = peek(q + 4 + head);
+    poke(q + 1, (head + 1) - ((head + 1) // cap) * cap);  # mod cap
+    poke(q + 3, count - 1);
+    return val;
+}
+
+pub func queue_size(q) {
+    return peek(q + 3);
+}
+
+pub func queue_is_empty(q) {
+    if (peek(q + 3) == 0) { return 1; }
+    return 0;
+}
+
+pub func queue_free(q) {
+    free(q);
+}
+
+# ── LINKED LIST (singly linked) ──────────────────────────────
+# Each node: [value | next_ptr]
+# Returns a new node pointer
+
+pub func list_node(val) {
+    *int n = alloc(2);
+    poke(n,     val);
+    poke(n + 1, 0);   # next = null
+    return n;
+}
+
+pub func list_prepend(head, val) {
+    *int n = list_node(val);
+    poke(n + 1, head);
+    return n;   # new head
+}
+
+pub func list_append(head, val) {
+    *int n = list_node(val);
+    if (head == 0) { return n; }
+    var cur = head;
+    while (peek(cur + 1) != 0) {
+        cur = peek(cur + 1);
+    }
+    poke(cur + 1, n);
+    return head;
+}
+
+pub func list_len(head) {
+    var c = 0;
+    var cur = head;
+    while (cur != 0) {
+        c = c + 1;
+        cur = peek(cur + 1);
+    }
+    return c;
+}
+
+pub func list_get(head, idx) {
+    var cur = head;
+    var i = 0;
+    while (cur != 0) {
+        if (i == idx) { return peek(cur); }
+        cur = peek(cur + 1);
+        i = i + 1;
+    }
+    return 0;
+}
+
+pub func list_free(head) {
+    while (head != 0) {
+        var next = peek(head + 1);
+        free(head);
+        head = next;
+    }
+}
+
+# ── HASH MAP (open addressing, integer keys) ─────────────────
+# Layout: [capacity | count | key0 | val0 | key1 | val1 ...]
+# Uses 0 as empty sentinel — keys must be != 0
+
+pub func map_new(capacity) {
+    *int m = alloc(2 + capacity * 2);
+    poke(m,     capacity);
+    poke(m + 1, 0);   # count
+    var i = 0;
+    while (i < capacity * 2) {
+        poke(m + 2 + i, 0);
+        i = i + 1;
+    }
+    return m;
+}
+
+func _map_hash(cap, key) {
+    var h = key - (key // cap) * cap;   # key mod cap
+    if (h < 0) { h = 0 - h; }
+    return h;
+}
+
+pub func map_set(m, key, val) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == 0) {           # empty slot
+            poke(m + 2 + idx * 2,     key);
+            poke(m + 2 + idx * 2 + 1, val);
+            poke(m + 1, peek(m + 1) + 1);
+            return 1;
+        }
+        if (slot_key == key) {         # update
+            poke(m + 2 + idx * 2 + 1, val);
+            return 1;
+        }
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }   # wrap
+        probe = probe + 1;
+    }
+    return 0;  # full
+}
+
+pub func map_get(m, key) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == key) {
+            return peek(m + 2 + idx * 2 + 1);
+        }
+        if (slot_key == 0) { return 0; }  # empty — not found
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }
+        probe = probe + 1;
+    }
+    return 0;
+}
+
+pub func map_has(m, key) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == key) { return 1; }
+        if (slot_key == 0) { return 0; }
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }
+        probe = probe + 1;
+    }
+    return 0;
+}
+
+pub func map_count(m) {
+    return peek(m + 1);
+}
+
+pub func map_free(m) {
+    free(m);
+}
+
+# ── BITSET ───────────────────────────────────────────────────
+# n-bit set stored as an array of words (each word = 64 bits)
+
+pub func bitset_new(n_bits) {
+    var words = (n_bits + 63) // 64;
+    *int b = alloc(words + 1);
+    poke(b, words);  # store word count
+    var i = 1;
+    while (i <= words) {
+        poke(b + i, 0);
+        i = i + 1;
+    }
+    return b;
+}
+
+pub func bitset_set(b, bit) {
+    var word = bit // 64;
+    var off  = bit - word * 64;
+    var mask = 1;
+    var i = 0;
+    while (i < off) { mask = mask * 2; i = i + 1; }
+    poke(b + 1 + word, peek(b + 1 + word) + mask);
+}
+
+pub func bitset_get(b, bit) {
+    var word = bit // 64;
+    var off  = bit - word * 64;
+    var v = peek(b + 1 + word);
+    var mask = 1;
+    var i = 0;
+    while (i < off) { mask = mask * 2; i = i + 1; }
+    if (v - (v // (mask * 2)) * (mask * 2) >= mask) { return 1; }
+    return 0;
+}
+
+pub func bitset_free(b) {
+    free(b);
+}

@@ -1,0 +1,235 @@
+#* ─────────────────────────────────────────────────────
+   Nux Array & Sorting Algorithms  (std/algo.nuxel)
+   
+   Provides:
+     - Sorting: bubble_sort, insertion_sort, selection_sort,
+                quick_sort_arr, merge_sort (manual)
+     - Searching: linear_search, binary_search
+     - Array utils: fill, reverse_arr, array_min, array_max,
+                    array_sum, array_contains
+   ───────────────────────────────────────────────────── *#
+
+# ── Array Utilities ──────────────────────────────────────────
+
+# Fill array of length n with a constant value
+pub func fill(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        poke(arr + i, val);
+        i = i + 1;
+    }
+}
+
+# Sum all elements of an integer array
+pub func array_sum(arr, n) {
+    var sum = 0;
+    var i = 0;
+    while (i < n) {
+        sum = sum + peek(arr + i);
+        i = i + 1;
+    }
+    return sum;
+}
+
+# Minimum value in array
+pub func array_min(arr, n) {
+    var m = peek(arr);
+    var i = 1;
+    while (i < n) {
+        var v = peek(arr + i);
+        if (v < m) { m = v; }
+        i = i + 1;
+    }
+    return m;
+}
+
+# Maximum value in array
+pub func array_max(arr, n) {
+    var m = peek(arr);
+    var i = 1;
+    while (i < n) {
+        var v = peek(arr + i);
+        if (v > m) { m = v; }
+        i = i + 1;
+    }
+    return m;
+}
+
+# Reverse an array in-place
+pub func reverse_arr(arr, n) {
+    var lo = 0;
+    var hi = n - 1;
+    while (lo < hi) {
+        var tmp = peek(arr + lo);
+        poke(arr + lo, peek(arr + hi));
+        poke(arr + hi, tmp);
+        lo = lo + 1;
+        hi = hi - 1;
+    }
+}
+
+# Returns 1 if val is in arr, 0 otherwise
+pub func array_contains(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { return 1; }
+        i = i + 1;
+    }
+    return 0;
+}
+
+# Count occurrences of val in array
+pub func array_count(arr, n, val) {
+    var c = 0;
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { c = c + 1; }
+        i = i + 1;
+    }
+    return c;
+}
+
+# ── Searching ────────────────────────────────────────────────
+
+# Linear search — returns index of val if found, -1 otherwise
+pub func linear_search(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { return i; }
+        i = i + 1;
+    }
+    return -1;
+}
+
+# Binary search — array MUST be sorted ascending
+# Returns index of val or -1 if not found
+pub func binary_search(arr, n, val) {
+    var lo = 0;
+    var hi = n - 1;
+    while (lo <= hi) {
+        var mid = (lo + hi) // 2;
+        var mv = peek(arr + mid);
+        if (mv == val) { return mid; }
+        if (mv < val) {
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return -1;
+}
+
+# ── Sorting Algorithms ───────────────────────────────────────
+
+# Bubble sort (ascending) — stable, O(n²)
+pub func bubble_sort(arr, n) {
+    var i = 0;
+    while (i < n - 1) {
+        var j = 0;
+        while (j < n - i - 1) {
+            var a = peek(arr + j);
+            var b = peek(arr + j + 1);
+            if (a > b) {
+                poke(arr + j,     b);
+                poke(arr + j + 1, a);
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+# Insertion sort (ascending) — stable, O(n²), fast for small n
+pub func insertion_sort(arr, n) {
+    var i = 1;
+    while (i < n) {
+        var key = peek(arr + i);
+        var j = i - 1;
+        while (j >= 0) {
+            var v = peek(arr + j);
+            if (v > key) {
+                poke(arr + j + 1, v);
+                j = j - 1;
+            } else {
+                j = -1;  # break
+            }
+        }
+        poke(arr + j + 1, key);
+        i = i + 1;
+    }
+}
+
+# Selection sort (ascending) — O(n²), minimal swaps
+pub func selection_sort(arr, n) {
+    var i = 0;
+    while (i < n - 1) {
+        var min_idx = i;
+        var j = i + 1;
+        while (j < n) {
+            if (peek(arr + j) < peek(arr + min_idx)) {
+                min_idx = j;
+            }
+            j = j + 1;
+        }
+        if (min_idx != i) {
+            var tmp = peek(arr + i);
+            poke(arr + i, peek(arr + min_idx));
+            poke(arr + min_idx, tmp);
+        }
+        i = i + 1;
+    }
+}
+
+# Shell sort (ascending) — O(n log² n) average, good for embedded
+pub func shell_sort(arr, n) {
+    var gap = n // 2;
+    while (gap > 0) {
+        var i = gap;
+        while (i < n) {
+            var tmp = peek(arr + i);
+            var j = i;
+            while (j >= gap) {
+                var v = peek(arr + j - gap);
+                if (v > tmp) {
+                    poke(arr + j, v);
+                    j = j - gap;
+                } else {
+                    j = 0;  # break
+                }
+            }
+            poke(arr + j, tmp);
+            i = i + 1;
+        }
+        gap = gap // 2;
+    }
+}
+
+# Counting sort — O(n + k), integers in range [0, max_val]
+pub func counting_sort(arr, n, max_val) {
+    *int cnt = alloc(max_val + 1);
+    fill(cnt, max_val + 1, 0);
+
+    # Count
+    var i = 0;
+    while (i < n) {
+        var v = peek(arr + i);
+        poke(cnt + v, peek(cnt + v) + 1);
+        i = i + 1;
+    }
+
+    # Write back
+    var pos = 0;
+    var v = 0;
+    while (v <= max_val) {
+        var c = peek(cnt + v);
+        var j = 0;
+        while (j < c) {
+            poke(arr + pos, v);
+            pos = pos + 1;
+            j = j + 1;
+        }
+        v = v + 1;
+    }
+
+    free(cnt);
+}

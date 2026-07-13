@@ -1,0 +1,22 @@
+#* ─────────────────────────────────────────────────────
+   Nux Standard Library — Master Import  (std.nuxel)
+
+   Import everything at once:
+     import "std.nuxel";
+
+   Or import individual modules:
+     import "std/math.nuxel";
+     import "std/algo.nuxel";
+     import "std/ds.nuxel";
+     import "std/mem.nuxel";
+     import "std/io.nuxel";
+     import "std/hw.nuxel";
+     import "std/crypto.nuxel";
+   ───────────────────────────────────────────────────── *#
+
+import "std/math.nuxel";
+import "std/algo.nuxel";
+import "std/ds.nuxel";
+import "std/mem.nuxel";
+import "std/io.nuxel";
+import "std/crypto.nuxel";

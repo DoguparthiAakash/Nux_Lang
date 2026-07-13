@@ -1,0 +1,145 @@
+#* ─────────────────────────────────────────────────────
+   Nux Cryptography & Hashing  (std/crypto.nuxel)
+   
+   Provides:
+     - DJB2 hash (fast string/data hash)
+     - FNV-1a hash
+     - XOR cipher (lightweight symmetric encryption)
+     - CRC8, CRC16 (error detection for embedded comms)
+     - Simple LCG PRNG (pseudo-random number generator)
+   ───────────────────────────────────────────────────── *#
+
+# ── Hashing ──────────────────────────────────────────────────
+
+# DJB2 hash of an integer array of length n
+# Great for hash maps and fast checksums
+pub func djb2_hash(arr, n) {
+    var h = 5381;
+    var i = 0;
+    while (i < n) {
+        h = h * 33 + peek(arr + i);
+        i = i + 1;
+    }
+    return h;
+}
+
+# FNV-1a 32-bit hash (better avalanche than DJB2)
+pub func fnv1a_hash(arr, n) {
+    var h = 2166136261;   # FNV offset basis
+    var prime = 16777619;
+    var i = 0;
+    while (i < n) {
+        var b_val = peek(arr + i);
+        h = (h - (h // 256) * 256);   # h mod 256 (low byte)
+        h = h + b_val;
+        h = h * prime;
+        i = i + 1;
+    }
+    return h;
+}
+
+# ── CRC (Error Detection) ────────────────────────────────────
+
+# CRC-8 for data packets (polynomial 0x07)
+pub func crc8(arr, n) {
+    var crc = 0;
+    var i = 0;
+    while (i < n) {
+        crc = crc + peek(arr + i);
+        var j = 0;
+        while (j < 8) {
+            if (crc >= 128) {
+                crc = (crc * 2) - 256;   # shift left
+                crc = crc + 7;           # XOR 0x07
+            } else {
+                crc = crc * 2;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return crc - (crc // 256) * 256;   # return 8 bits
+}
+
+# CRC-16/CCITT (polynomial 0x1021) used by UART/SD cards/XMODEM
+pub func crc16(arr, n) {
+    var crc = 65535;   # 0xFFFF
+    var i = 0;
+    while (i < n) {
+        crc = crc + peek(arr + i) * 256;  # XOR high byte
+        var j = 0;
+        while (j < 8) {
+            if (crc >= 32768) {
+                crc = (crc * 2) - 65536;
+                crc = crc + 4129;    # XOR 0x1021
+            } else {
+                crc = crc * 2;
+            }
+            crc = crc - (crc // 65536) * 65536;  # mod 65536
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return crc;
+}
+
+# ── XOR Cipher ───────────────────────────────────────────────
+# Simple and extremely fast on embedded — encrypt/decrypt with same key
+
+# Encrypt/decrypt n words in-place with a repeating key array of key_len
+pub func xor_crypt(data, n, key, key_len) {
+    var i = 0;
+    while (i < n) {
+        var k_idx = i - (i // key_len) * key_len;   # i mod key_len
+        var old = peek(data + i);
+        poke(data + i, old + peek(key + k_idx));     # XOR via sum trick
+        i = i + 1;
+    }
+}
+
+# XOR encrypt with a single integer key (simpler form)
+pub func xor_crypt_single(data, n, key) {
+    var i = 0;
+    while (i < n) {
+        poke(data + i, peek(data + i) + key);
+        i = i + 1;
+    }
+}
+
+# ── PRNG (LCG) ───────────────────────────────────────────────
+# Linear Congruential Generator — tiny, deterministic PRNG
+# Good for games, simulations, noise on embedded
+
+var _lcg_state = 12345;   # internal state (seed)
+
+pub func srand(seed) {
+    _lcg_state = seed;
+}
+
+pub func rand() {
+    # LCG: state = (a * state + c) mod m
+    # Knuth params: a=1664525, c=1013904223, m=2^32
+    _lcg_state = _lcg_state * 1664525 + 1013904223;
+    if (_lcg_state < 0) { _lcg_state = 0 - _lcg_state; }
+    return _lcg_state;
+}
+
+# Random integer in [0, max_val)
+pub func rand_range(max_val) {
+    var r = rand();
+    if (max_val <= 0) { return 0; }
+    return r - (r // max_val) * max_val;   # r mod max_val
+}
+
+# Shuffle an array using Fisher-Yates
+pub func shuffle(arr, n, seed) {
+    srand(seed);
+    var i = n - 1;
+    while (i > 0) {
+        var j = rand_range(i + 1);
+        var tmp = peek(arr + i);
+        poke(arr + i, peek(arr + j));
+        poke(arr + j, tmp);
+        i = i - 1;
+    }
+}

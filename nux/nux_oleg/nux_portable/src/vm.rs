@@ -506,7 +506,7 @@ impl NuxVm {
                         // Stack: [..., Arg0, Arg1] < Top
                         // FP = Len - 2
                         if (self.stack.len() as i64) < num_args {
-                             println!("Runtime Error: Stack Underflow on Call");
+                             println!("Runtime Error: Stack Underflow on Call. Stack len: {}, num_args: {}, ip: {}, t: {}", self.stack.len(), num_args, self.ip, t);
                              self.running = false;
                         } else {
                              self.fp = self.stack.len() - (num_args as usize);

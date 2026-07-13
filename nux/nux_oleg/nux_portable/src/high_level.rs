@@ -939,7 +939,18 @@ impl Parser {
                       let mut arg_count = 0;
                       if self.current_token != Token::RParen {
                            loop {
-                               self.parse_expression(out)?;
+                               let mut sub_out = String::new();
+                               let (_, constant) = self.parse_expression(&mut sub_out)?;
+                               if let Some(val) = constant {
+                                   match val {
+                                       ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                       ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                                       ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                       _ => {}
+                                   }
+                               } else {
+                                   out.push_str(&sub_out);
+                               }
                                arg_count += 1;
                                if self.current_token == Token::Comma { self.advance(); } else { break; }
                            }
@@ -1049,8 +1060,19 @@ impl Parser {
                           let mut arg_count = 1; // 'this' counts as 1 argument
                           if self.current_token != Token::RParen {
                                loop {
-                                   self.parse_expression(out)?;
-                                   arg_count += 1; 
+                                   let mut sub_out = String::new();
+                                   let (_, constant) = self.parse_expression(&mut sub_out)?;
+                                   if let Some(val) = constant {
+                                       match val {
+                                           ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                                           ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                                           ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                                           _ => {}
+                                       }
+                                   } else {
+                                       out.push_str(&sub_out);
+                                   }
+                                   arg_count += 1;
                                    if self.current_token == Token::Comma { self.advance(); } else { break; }
                                }
                           }

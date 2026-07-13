@@ -1,0 +1,124 @@
+#* ─────────────────────────────────────────────────────
+   Nux Memory & Pointer Utilities  (std/mem.nuxel)
+
+   Provides:
+     - memcpy, memset, memcmp, memmove
+     - Safe pointer arithmetic helpers
+     - Stack-based arena allocator
+     - Bounds-checked read/write wrappers
+   ───────────────────────────────────────────────────── *#
+
+# Copy n words from src to dst (non-overlapping)
+pub func memcpy(dst, src, n) {
+    var i = 0;
+    while (i < n) {
+        poke(dst + i, peek(src + i));
+        i = i + 1;
+    }
+}
+
+# Copy n words handling overlapping regions (memmove)
+pub func memmove(dst, src, n) {
+    if (dst <= src) {
+        memcpy(dst, src, n);
+    } else {
+        var i = n - 1;
+        while (i >= 0) {
+            poke(dst + i, peek(src + i));
+            i = i - 1;
+        }
+    }
+}
+
+# Fill n words at dst with value val
+pub func memset(dst, n, val) {
+    var i = 0;
+    while (i < n) {
+        poke(dst + i, val);
+        i = i + 1;
+    }
+}
+
+# Compare n words at a and b — returns 0 if equal, 1 if different
+pub func memcmp(a, b, n) {
+    var i = 0;
+    while (i < n) {
+        if (peek(a + i) != peek(b + i)) { return 1; }
+        i = i + 1;
+    }
+    return 0;
+}
+
+# Zero out n words at dst
+pub func memzero(dst, n) {
+    memset(dst, n, 0);
+}
+
+# Swap two memory regions of size words (must not overlap)
+pub func memswap(a, b, size) {
+    var i = 0;
+    while (i < size) {
+        var tmp = peek(a + i);
+        poke(a + i, peek(b + i));
+        poke(b + i, tmp);
+        i = i + 1;
+    }
+}
+
+# ── Arena Allocator ──────────────────────────────────────────
+# A fast bump-pointer allocator for temporary allocations.
+# Usage:
+#   var arena = arena_new(1024);   # 1024-word arena
+#   var ptr   = arena_alloc(arena, 10);  # allocate 10 words
+#   arena_reset(arena);            # free all at once
+#   arena_free(arena);             # release arena memory
+
+# Arena layout: [capacity | used | data...]
+pub func arena_new(capacity) {
+    *int a = alloc(capacity + 2);
+    poke(a,     capacity);  # [0] = capacity
+    poke(a + 1, 0);         # [1] = used
+    return a;
+}
+
+pub func arena_alloc(arena, size) {
+    var capacity = peek(arena);
+    var used     = peek(arena + 1);
+    if (used + size > capacity) {
+        return 0;  # out of arena memory
+    }
+    var ptr = arena + 2 + used;
+    poke(arena + 1, used + size);
+    return ptr;
+}
+
+pub func arena_reset(arena) {
+    poke(arena + 1, 0);
+}
+
+pub func arena_free(arena) {
+    free(arena);
+}
+
+pub func arena_used(arena) {
+    return peek(arena + 1);
+}
+
+pub func arena_remaining(arena) {
+    return peek(arena) - peek(arena + 1);
+}
+
+# ── Safe Access Wrappers ─────────────────────────────────────
+# Bounds-checked array read — returns default_val if out of range
+pub func safe_peek(arr, n, idx, default_val) {
+    if (idx < 0) { return default_val; }
+    if (idx >= n) { return default_val; }
+    return peek(arr + idx);
+}
+
+# Bounds-checked array write — does nothing if out of range
+pub func safe_poke(arr, n, idx, val) {
+    if (idx < 0) { return; }
+    if (idx >= n) { return; }
+    poke(arr + idx, val);
+}

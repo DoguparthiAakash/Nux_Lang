@@ -1,0 +1,9 @@
+func my_func(a) {
+    print(a);
+}
+
+func main() {
+    my_func(1);
+}
+
+main();

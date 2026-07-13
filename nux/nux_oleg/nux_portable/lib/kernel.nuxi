@@ -1,5 +1,5 @@
-// Kernel Core Library (kernel.nuxi)
-// Implements 20 Sections of Critical Initialization
+# Kernel Core Library (kernel.nuxi)
+# Implements 20 Sections of Critical Initialization
 
 fn verify_invariants() {
     kernel_op(0);
