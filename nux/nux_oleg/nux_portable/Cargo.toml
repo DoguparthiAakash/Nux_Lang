@@ -1,17 +1,59 @@
 [package]
 name = "nux"
-version = "0.1.0"
-edition = "2024"
+version = "0.4.0"
+edition = "2021"
+authors = ["Nux Team <nux@nuxlang.dev>"]
+description = "Universal, cross-hardware systems programming language"
+homepage = "https://github.com/DoguparthiAakash/Nux_Lang"
+repository = "https://github.com/DoguparthiAakash/Nux_Lang"
+license = "MIT"
+readme = "README.md"
+keywords = ["language", "compiler", "embedded", "cross-platform", "nux"]
+categories = ["compilers", "command-line-utilities", "embedded"]
+
+[[bin]]
+name = "nux"
+path = "src/main.rs"
 
 [dependencies]
 minifb = { version = "0.27", optional = true }
+serialport = "4.3"
 
 [features]
 default = ["gui"]
 gui = ["minifb"]
 
 [profile.release]
-lto = "off"
+lto = "thin"
 codegen-units = 1
-opt-level = 2 # Good balance
+opt-level = 2
 panic = "abort"
+strip = true
+
+# ── Debian Package Metadata (.deb) ─────────────────────────────
+# Build with: cargo deb
+[package.metadata.deb]
+maintainer = "Nux Team <nux@nuxlang.dev>"
+copyright = "2024, Nux Team"
+license-file = ["../../LICENSE", "0"]
+extended-description = """\
+Nux is a universal systems programming language designed to run on any hardware —
+from ancient 8-bit microcontrollers to modern 64-bit servers — without modification.
+It features JIT compilation, a hardware abstraction layer (.nuxg), virtual environments,
+and the CUG (Create and Use as Go) rapid hardware support concept."""
+depends = "$auto"
+section = "devel"
+priority = "optional"
+assets = [
+    ["target/release/nux", "usr/bin/", "755"],
+    ["../../README.md", "usr/share/doc/nux/README.md", "644"],
+    ["../../install.sh", "usr/share/doc/nux/install.sh", "755"],
+]
+
+# ── RPM Package Metadata (.rpm) ────────────────────────────────
+# Build with: cargo build --release && cargo generate-rpm
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/nux", dest = "/usr/bin/nux", mode = "755" },
+    { source = "../../README.md", dest = "/usr/share/doc/nux/README.md", mode = "644" },
+]

@@ -106,6 +106,10 @@ const OP_LOCK: u8 = 0x73;  // NEW: Acquire Lock (Simple Global Lock or ID?)
 const OP_UNLOCK: u8 = 0x74; // NEW: Release Lock
 
 const OP_KERNEL_OP: u8 = 0x80;
+const OP_VERIFY: u8 = 0x81;
+const OP_ALLOC: u8 = 0x82;
+const OP_FREE: u8 = 0x83;
+const OP_LIMIT_MEM: u8 = 0x84;
 const OP_VISION_DETECT: u8 = 0xB0;
 const OP_EXIT: u8 = 0xFF;
 
@@ -175,10 +179,11 @@ struct SharedState {
     // Actually simpler: One Big Lock for critical sections if requested?
     // Or users provide lock ID.
     
-    // Vision System State
     // Handle ID -> (Width, Height, Data[ARGB])
     images: std::collections::HashMap<i64, (i64, i64, Vec<u32>)>,
     next_handle: i64,
+    heap_ptr: usize,
+    mem_limit: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -200,19 +205,43 @@ pub struct NuxVm {
 // fork() constructs new Self, doesn't use clone().
 
 impl NuxVm {
-    pub fn new(code: Vec<u8>) -> Self {
+    pub fn new(mut code: Vec<u8>) -> Self {
+        // Pass 3: Checksum and Decryption
+        if code.len() > 64 && &code[0..4] == b"ANUX" {
+            let key = b"NUX_SECURE_KEY_123";
+            for i in 64..code.len() {
+                code[i] ^= key[(i - 64) % key.len()];
+            }
+            
+            let mut a: u32 = 1;
+            let mut b: u32 = 0;
+            for &byte in &code[64..] {
+                a = (a + byte as u32) % 65521;
+                b = (b + a) % 65521;
+            }
+            let checksum = (b << 16) | a;
+            let expected_checksum = u32::from_le_bytes([code[4], code[5], code[6], code[7]]);
+            
+            if expected_checksum != 0 && checksum != expected_checksum {
+                println!("Security/Integrity Check Failed! Bytecode has been tampered with or corrupted.");
+                std::process::exit(1);
+            }
+        }
+
         Self {
             stack: Vec::with_capacity(256),
-            ip: 0,
+            ip: 64, // Start after 64-byte header
             fp: 0,
             call_stack: Vec::with_capacity(32),
             running: false,
             code: Arc::new(code),
             shared: Arc::new(SpinLock::new(SharedState {
-                memory: vec![0u8; 1024 * 1024], 
+                memory: vec![0u8; 1024 * 1024], // 1MB Memory
                 locks: std::collections::HashMap::new(),
                 images: std::collections::HashMap::new(),
                 next_handle: 1,
+                heap_ptr: 1024, // Reserve 1024 bytes for null and globals
+                mem_limit: None,
             })),
         }
     }
@@ -255,6 +284,29 @@ impl NuxVm {
          self.ip += 8;
          val
     }
+    
+    fn read_i8_code(&mut self) -> i8 {
+         if self.ip + 1 > self.code.len() { return 0; }
+         let b = self.code[self.ip];
+         self.ip += 1;
+         b as i8
+    }
+    
+    fn read_i16_code(&mut self) -> i16 {
+         if self.ip + 2 > self.code.len() { return 0; }
+         let bytes = &self.code[self.ip..self.ip+2];
+         let val = i16::from_le_bytes(bytes.try_into().unwrap());
+         self.ip += 2;
+         val
+    }
+    
+    fn read_i32_code(&mut self) -> i32 {
+         if self.ip + 4 > self.code.len() { return 0; }
+         let bytes = &self.code[self.ip..self.ip+4];
+         let val = i32::from_le_bytes(bytes.try_into().unwrap());
+         self.ip += 4;
+         val
+    }
 
     pub fn run(&mut self, mut platform: Option<&mut dyn Platform>) {
         // Sub-threads start at specific function.
@@ -276,6 +328,21 @@ impl NuxVm {
                 OP_PUSH => {
                     let val = self.read_i64_code();
                     self.push(val);
+                },
+                0xA0..=0xAF => { // 1-byte PUSH (values 0-15)
+                    self.push((op - 0xA0) as i64);
+                },
+                0xB0 => { // 2-byte PUSH
+                    let val = self.read_i8_code();
+                    self.push(val as i64);
+                },
+                0xB1 => { // 3-byte PUSH
+                    let val = self.read_i16_code();
+                    self.push(val as i64);
+                },
+                0xB2 => { // 5-byte PUSH
+                    let val = self.read_i32_code();
+                    self.push(val as i64);
                 },
                 OP_POP => { self.pop(); },
                 OP_SWAP => {
@@ -816,6 +883,50 @@ impl NuxVm {
                     };
                     self.push(new_handle);
                 },
+                OP_VERIFY => {
+                    let val = self.pop();
+                    if val == 0 {
+                        println!("Verification Failed! (Assertion Error)");
+                        self.running = false;
+                    }
+                },
+                OP_ALLOC => {
+                     let size = self.pop() as usize;
+                     let shared_arc = self.shared.clone();
+                     let mut shared = shared_arc.lock();
+                     let ptr = shared.heap_ptr;
+                     
+                     // Check limits
+                     if let Some(limit) = shared.mem_limit {
+                         if ptr + size > limit {
+                             println!("Runtime Error: Out of Memory (Hit defined limit)");
+                             self.running = false;
+                             break;
+                         }
+                     }
+                     
+                     if ptr + size > shared.memory.len() {
+                         shared.memory.resize(ptr + size + 1024, 0);
+                     }
+                     shared.heap_ptr += size;
+                     
+                     // Drop the lock before pushing to avoid borrow checker errors if any
+                     drop(shared);
+                     
+                     self.push(ptr as i64);
+                 },
+                OP_FREE => {
+                     let _ptr = self.pop();
+                     // In bump allocator, free is a no-op unless it's the last allocation
+                 },
+                 OP_LIMIT_MEM => { // OP_LIMIT_MEM
+                     let percentage = self.pop();
+                     if percentage > 0 && percentage <= 100 {
+                         let total_system_memory = 1024 * 1024 * 1024; // Dummy 1GB limit for simulation
+                         let limit = (total_system_memory as f64 * (percentage as f64 / 100.0)) as usize;
+                         self.shared.lock().mem_limit = Some(limit);
+                     }
+                 },
                 OP_IMG_GRAYSCALE => {
                     let handle = self.pop();
                     

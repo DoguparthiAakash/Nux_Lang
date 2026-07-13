@@ -87,6 +87,11 @@ impl Platform for DesktopPlatform {
         #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         return 0;
     }
+
+    fn is_key_down(&self, _key: usize) -> bool {
+        // Basic mapping or just return false for now
+        false
+    }
 }
 
 

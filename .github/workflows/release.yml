@@ -1,0 +1,213 @@
+name: Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 0.4.0)'
+        required: true
+        default: '0.4.0'
+
+env:
+  NUX_VERSION: ${{ github.event.inputs.version || github.ref_name }}
+  NUX_SRC: nux/nux_oleg/nux_portable
+  BINARY_NAME: nux
+  DESCRIPTION: "Nux — a universal, cross-hardware systems programming language"
+  MAINTAINER: "Nux Team <nux@nuxlang.dev>"
+  HOMEPAGE: "https://github.com/DoguparthiAakash/Nux_Lang"
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # BUILD: Linux x86_64 → .deb + .rpm + .tar.gz
+  # ─────────────────────────────────────────────────
+  build-linux-x86_64:
+    name: Build Linux x86_64
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libudev-dev pkg-config rpm ruby-dev rubygems build-essential
+          sudo gem install --no-document fpm
+
+      - name: Install cargo-deb & cargo-generate-rpm
+        run: cargo install cargo-deb cargo-generate-rpm --locked
+
+      - name: Build Nux (release)
+        run: |
+          cd ${{ env.NUX_SRC }}
+          cargo build --release
+
+      - name: Build .deb package
+        run: |
+          cd ${{ env.NUX_SRC }}
+          cargo deb --no-build --output ../../nux_${{ env.NUX_VERSION }}_amd64.deb
+
+      - name: Build .rpm package
+        run: |
+          cd ${{ env.NUX_SRC }}
+          cargo generate-rpm --output ../../nux-${{ env.NUX_VERSION }}-1.x86_64.rpm
+
+      - name: Build .tar.gz (generic)
+        run: |
+          STAGING=$(mktemp -d)
+          mkdir -p "$STAGING/usr/bin"
+          cp ${{ env.NUX_SRC }}/target/release/nux "$STAGING/usr/bin/nux"
+          cp install.sh uninstall.sh "$STAGING/" 2>/dev/null || true
+          tar czf nux-${{ env.NUX_VERSION }}-linux-x86_64.tar.gz -C "$STAGING" .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: |
+            nux_${{ env.NUX_VERSION }}_amd64.deb
+            nux-${{ env.NUX_VERSION }}-1.x86_64.rpm
+            nux-${{ env.NUX_VERSION }}-linux-x86_64.tar.gz
+
+  # ─────────────────────────────────────────────────
+  # BUILD: Linux ARM64 (aarch64) → .deb + .tar.gz
+  # ─────────────────────────────────────────────────
+  build-linux-arm64:
+    name: Build Linux ARM64
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust + cross-compile target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gcc-aarch64-linux-gnu libudev-dev
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
+
+      - name: Cross-compile Nux for ARM64
+        run: |
+          cd ${{ env.NUX_SRC }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+          cargo build --release --target aarch64-unknown-linux-gnu
+
+      - name: Build .tar.gz (ARM64 generic)
+        run: |
+          STAGING=$(mktemp -d)
+          mkdir -p "$STAGING/usr/bin"
+          cp ${{ env.NUX_SRC }}/target/aarch64-unknown-linux-gnu/release/nux "$STAGING/usr/bin/nux"
+          tar czf nux-${{ env.NUX_VERSION }}-linux-aarch64.tar.gz -C "$STAGING" .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-arm64
+          path: nux-${{ env.NUX_VERSION }}-linux-aarch64.tar.gz
+
+  # ─────────────────────────────────────────────────
+  # BUILD: macOS Intel + Apple Silicon
+  # ─────────────────────────────────────────────────
+  build-macos:
+    name: Build macOS (Universal)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (both targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - name: Build for Intel
+        run: |
+          cd ${{ env.NUX_SRC }}
+          cargo build --release --target x86_64-apple-darwin
+
+      - name: Build for Apple Silicon
+        run: |
+          cd ${{ env.NUX_SRC }}
+          cargo build --release --target aarch64-apple-darwin
+
+      - name: Create Universal Binary (lipo)
+        run: |
+          lipo -create \
+            ${{ env.NUX_SRC }}/target/x86_64-apple-darwin/release/nux \
+            ${{ env.NUX_SRC }}/target/aarch64-apple-darwin/release/nux \
+            -output nux-universal
+
+      - name: Package .tar.gz (macOS universal)
+        run: |
+          STAGING=$(mktemp -d)
+          mkdir -p "$STAGING/usr/local/bin"
+          cp nux-universal "$STAGING/usr/local/bin/nux"
+          cp install.sh uninstall.sh "$STAGING/" 2>/dev/null || true
+          tar czf nux-${{ env.NUX_VERSION }}-macos-universal.tar.gz -C "$STAGING" .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: nux-${{ env.NUX_VERSION }}-macos-universal.tar.gz
+
+  # ─────────────────────────────────────────────────
+  # RELEASE: Attach all packages to GitHub Release
+  # ─────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [build-linux-x86_64, build-linux-arm64, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NUX_VERSION }}
+          name: "Nux ${{ env.NUX_VERSION }}"
+          body: |
+            ## Nux ${{ env.NUX_VERSION }}
+
+            ### Linux
+            | File | Architecture | Package Manager |
+            |------|-------------|-----------------|
+            | `nux_*.deb` | x86_64 | Debian / Ubuntu / Mint (`apt`) |
+            | `nux-*.rpm` | x86_64 | Fedora / RHEL / CentOS (`dnf`/`yum`) |
+            | `nux-*-linux-x86_64.tar.gz` | x86_64 | Manual / Arch / Gentoo / Alpine / BSD |
+            | `nux-*-linux-aarch64.tar.gz` | ARM64 | Raspberry Pi / ARM servers |
+
+            ### macOS
+            | File | Architecture |
+            |------|-------------|
+            | `nux-*-macos-universal.tar.gz` | Universal (Intel + Apple Silicon) |
+
+            ### Install from script
+            ```sh
+            curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/install.sh | sh
+            ```
+
+            ### Homebrew (macOS)
+            ```sh
+            brew install --formula https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/nux.rb
+            ```
+          files: dist/**/*
+          draft: false
+          prerelease: false

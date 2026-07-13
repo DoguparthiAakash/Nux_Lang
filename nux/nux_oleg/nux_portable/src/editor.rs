@@ -350,7 +350,28 @@ impl MiniEditor {
     }
     
     fn highlight_line(&self, line: &str) -> String {
-        let keywords = ["func", "var", "if", "else", "while", "for", "class", "return", "import", "new"];
+        let keywords = [
+            // Function declarations
+            "func", "fun", "fn", "def",
+            // Control flow
+            "if", "else", "while", "for", "do", "loop", "return", "break", "continue",
+            // Variables
+            "var", "const", "mut", "let",
+            // Types
+            "int", "float", "byte", "short", "long", "char", "string",
+            // OOP
+            "class", "struct", "impl", "new",
+            // Access modifiers
+            "pub", "public", "private", "protected",
+            // Safety & Concurrency
+            "safe", "verify", "spawn", "lock", "unlock",
+            // Memory
+            "alloc", "free", "peek", "poke", "limit_mem",
+            // Other
+            "import", "use", "mod", "asm",
+            // Booleans
+            "true", "false", "not", "and", "or",
+        ];
         let mut result = String::new();
         let mut chars = line.chars().peekable();
         

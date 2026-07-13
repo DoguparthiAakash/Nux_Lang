@@ -1,0 +1,47 @@
+# Rust build artifacts
+nux/nux_oleg/nux_portable/target/
+nux/nux_oleg/nux_portable/target2/
+nux/nux_oleg/nux_portable/target3/
+nux/nux_oleg/nux_portable/target_micro/
+nux/nux_oleg/nux_portable/target_tmp/
+
+# Windows build outputs (large/generated)
+*.exe
+*.pdb
+*.zip
+*.msi
+NuxSetup*.exe
+NuxUninstall.exe
+Nux_Source.zip
+NuxSetup_Full.zip
+
+# Compiled Nux outputs
+*.nuxi
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Generated C files from transpiler
+*.nux.c
+*.nux.micro.c
+*.micro.c
+*.generated.c
+
+# Debug artifacts
+debug.asm
+*.asm
+*.nux.nux.asm
+
+# Large binary tools
+arduino-cli/
+arduino-cli.zip
+
+# Media/images (optional — remove if you want to track docs)
+*.jpeg
+*.jpg
+*.png
+
+# IDE
+.vscode/
+.idea/

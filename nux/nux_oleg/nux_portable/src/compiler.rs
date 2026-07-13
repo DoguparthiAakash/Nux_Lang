@@ -42,10 +42,24 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
 
         match mnemonic.as_str() {
             "PUSH" => {
-                ops.push(0x01); // OP_PUSH
                 if parts.len() < 2 { return Err(format!("PUSH missing operand in line {:?}", line)); }
                 let val = parts[1].parse::<i64>().map_err(|_| format!("Invalid number for PUSH: '{}' in line {:?}", parts[1], line))?;
-                ops.extend_from_slice(&val.to_le_bytes());
+                
+                if val >= 0 && val <= 15 {
+                    ops.push(0xA0 + val as u8); // 1-byte
+                } else if val >= -128 && val <= 127 {
+                    ops.push(0xB0); // 2-byte
+                    ops.push(val as i8 as u8);
+                } else if val >= -32768 && val <= 32767 {
+                    ops.push(0xB1); // 3-byte
+                    ops.extend_from_slice(&(val as i16).to_le_bytes());
+                } else if val >= -2147483648 && val <= 2147483647 {
+                    ops.push(0xB2); // 5-byte
+                    ops.extend_from_slice(&(val as i32).to_le_bytes());
+                } else {
+                    ops.push(0x01); // OP_PUSH (9-byte)
+                    ops.extend_from_slice(&val.to_le_bytes());
+                }
             },
             "POP" => ops.push(0x02),
             "SWAP" => ops.push(0x03),
@@ -100,6 +114,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_DRAW_PIXEL" => ops.push(0x95),
             "OP_DRAW_LINE" => ops.push(0x93),
             "OP_DRAW_CIRCLE" => ops.push(0x94),
+            
+            "OP_VERIFY" => ops.push(0x81),
             
             "OP_VISION_DETECT" => ops.push(0xB0),
             
@@ -191,6 +207,9 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_FSQRT" => ops.push(0x4A),
             "PEEK8" => ops.push(0x42),
             "POKE8" => ops.push(0x43),
+            "OP_ALLOC" => ops.push(0x82),
+            "OP_FREE" => ops.push(0x83),
+            "OP_LIMIT_MEM" => ops.push(0x84),
 
             "DEBUG" => ops.push(0x50), // DEBUG_PRINT
             "JMP" => {
@@ -237,5 +256,33 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
         }
     }
 
+    // Pass 3: Checksum and Encryption
+    if ops.len() > 64 {
+        let checksum = adler32(&ops[64..]);
+        let checksum_bytes = checksum.to_le_bytes();
+        for i in 0..4 {
+            ops[4 + i] = checksum_bytes[i];
+        }
+        
+        let key = b"NUX_SECURE_KEY_123";
+        xor_cipher(&mut ops[64..], key);
+    }
+
     Ok(ops)
+}
+
+pub fn adler32(data: &[u8]) -> u32 {
+    let mut a: u32 = 1;
+    let mut b: u32 = 0;
+    for &byte in data {
+        a = (a + byte as u32) % 65521;
+        b = (b + a) % 65521;
+    }
+    (b << 16) | a
+}
+
+pub fn xor_cipher(data: &mut [u8], key: &[u8]) {
+    for (i, byte) in data.iter_mut().enumerate() {
+        *byte ^= key[i % key.len()];
+    }
 }

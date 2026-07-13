@@ -1,0 +1,31 @@
+# Alpine Linux APKBUILD for Nux Language
+# Used for Alpine, musl-based distros, and very lightweight containers
+# Place in: ~/packages/nux/APKBUILD
+# Build with: abuild -r
+
+pkgname=nux
+pkgver=0.4.0
+pkgrel=0
+pkgdesc="Universal, cross-hardware systems programming language"
+url="https://github.com/DoguparthiAakash/Nux_Lang"
+arch="x86_64 aarch64"
+license="MIT"
+makedepends="rust cargo"
+source="$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+builddir="$srcdir/Nux_Lang-$pkgver"
+
+build() {
+    cd "$builddir/nux/nux_oleg/nux_portable"
+    cargo build --release --locked
+}
+
+check() {
+    "$builddir/nux/nux_oleg/nux_portable/target/release/nux" version
+}
+
+package() {
+    install -Dm755 "$builddir/nux/nux_oleg/nux_portable/target/release/nux" \
+        "$pkgdir/usr/bin/nux"
+    install -Dm644 "$builddir/README.md" \
+        "$pkgdir/usr/share/doc/nux/README.md"
+}

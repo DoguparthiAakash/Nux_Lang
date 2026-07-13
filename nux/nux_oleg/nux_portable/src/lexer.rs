@@ -24,6 +24,8 @@ pub enum Token {
     While,
     For,
     Do,
+    Safe,   // NEW: Safety function modifier
+    Verify, // NEW: Compile-time assertions
     Asm,
     Spawn, // NEW: Multi-threading
     Lock,  // NEW: Synchronization
@@ -31,6 +33,8 @@ pub enum Token {
     Import, // NEW: Standard Library Includes
     Peek,   // NEW: Memory Access
     Poke,   // NEW: Memory Access
+    Alloc,  // NEW: Manual Allocation
+    Free,   // NEW: Manual Free
     Break,  // NEW: Loop Control
     Continue, // NEW: Loop Control
     Identifier(String),
@@ -51,8 +55,8 @@ pub enum Token {
     // Math Intrinsics
     Sin, Cos, Sqrt,
     
-    // Introspection
-    SysPlatform, CamCount, IsKeyDown,
+    // Introspection and System
+    SysPlatform, CamCount, IsKeyDown, KwLimitMem,
     
     UpperCase, LowerCase,
     
@@ -286,7 +290,9 @@ impl Lexer {
             "println" => Token::Println,
             "input" => Token::Input,
             "func" => Token::Func,
-            "fn" => Token::Identifier(text), // Disable fn
+            "fun"  => Token::Func,      // Alias: fun main() { }
+            "fn"   => Token::Func,      // Alias: fn main() { }
+            "def"  => Token::Func,      // Alias: def main() { }
             "var" => Token::Var,
             "let" => Token::Identifier(text), // Disable let
             
@@ -322,6 +328,8 @@ impl Lexer {
             "do" => Token::Do,
             "loop" => Token::While, // Valid alias for now
             "match" => Token::Identifier(String::from("match")), // TODO: Implement Match later
+            "safe" => Token::Safe,
+            "verify" => Token::Verify,
             
             "asm" => Token::Asm,
             "spawn" => Token::Spawn,
@@ -330,6 +338,8 @@ impl Lexer {
             "import" => Token::Import, // Keep for now or map to Mod?
             "peek" => Token::Peek,
             "poke" => Token::Poke,
+            "alloc" => Token::Alloc,
+            "free" => Token::Free,
             "break" => Token::Break,
             "continue" => Token::Continue,
             // "class" => Token::Class, // Already matched above
@@ -365,6 +375,7 @@ impl Lexer {
             "LowerCase" => Token::LowerCase,
             
             "sys_platform" => Token::SysPlatform,
+            "limit_mem" => Token::KwLimitMem,
             "cam_count" => Token::CamCount,
             "is_key_down" => Token::IsKeyDown,
             "system" => Token::Identifier(String::from("system")), // Intrinsic handled by parser check? 
