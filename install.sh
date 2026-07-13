@@ -156,27 +156,37 @@ install_via_package_manager() {
       DEB_URL="$NUX_RELEASE/nux_${NUX_VERSION}_amd64.deb"
       TMP_DEB=$(mktemp /tmp/nux.XXXXXX.deb)
       info "Downloading .deb package..."
-      download "$DEB_URL" "$TMP_DEB"
-      info "Installing .deb (requires sudo)..."
-      sudo dpkg -i "$TMP_DEB" || sudo apt-get install -f -y
-      rm -f "$TMP_DEB"
-      ok "Nux installed via dpkg"
-      return 0
+      if download "$DEB_URL" "$TMP_DEB" && [ -s "$TMP_DEB" ]; then
+        info "Installing .deb (requires sudo)..."
+        sudo dpkg -i "$TMP_DEB" || sudo apt-get install -f -y
+        rm -f "$TMP_DEB"
+        ok "Nux installed via dpkg"
+        return 0
+      else
+        rm -f "$TMP_DEB"
+        warn ".deb not available yet — falling back to build from source..."
+        return 1
+      fi
       ;;
     dnf | yum)
       RPM_URL="$NUX_RELEASE/nux-${NUX_VERSION}-1.x86_64.rpm"
       TMP_RPM=$(mktemp /tmp/nux.XXXXXX.rpm)
       info "Downloading .rpm package..."
-      download "$RPM_URL" "$TMP_RPM"
-      info "Installing .rpm (requires sudo)..."
-      if command -v dnf > /dev/null 2>&1; then
-        sudo dnf install -y "$TMP_RPM"
+      if download "$RPM_URL" "$TMP_RPM" && [ -s "$TMP_RPM" ]; then
+        info "Installing .rpm (requires sudo)..."
+        if command -v dnf > /dev/null 2>&1; then
+          sudo dnf install -y "$TMP_RPM"
+        else
+          sudo yum install -y "$TMP_RPM"
+        fi
+        rm -f "$TMP_RPM"
+        ok "Nux installed via rpm"
+        return 0
       else
-        sudo yum install -y "$TMP_RPM"
+        rm -f "$TMP_RPM"
+        warn ".rpm not available yet — falling back to build from source..."
+        return 1
       fi
-      rm -f "$TMP_RPM"
-      ok "Nux installed via rpm"
-      return 0
       ;;
     pacman)
       # Arch doesn't use .deb/.rpm; fall through to tarball install
