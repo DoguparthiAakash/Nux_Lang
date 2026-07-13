@@ -17,11 +17,12 @@ path = "src/main.rs"
 
 [dependencies]
 minifb = { version = "0.27", optional = true }
-serialport = "4.3"
+serialport = { version = "4.3", optional = true }
 
 [features]
 default = ["gui"]
 gui = ["minifb"]
+serial = ["serialport"]  # Enable for nux deploy (requires libudev on Linux)
 
 [profile.release]
 lto = "thin"

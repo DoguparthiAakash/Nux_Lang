@@ -267,6 +267,22 @@ install_from_tarball() {
 build_from_source() {
   info "Building Nux from source..."
 
+  # Install system build dependencies first
+  info "Installing system build dependencies..."
+  if command -v apt-get > /dev/null 2>&1; then
+    sudo apt-get install -y -qq pkg-config libudev-dev gcc 2>/dev/null || true
+  elif command -v dnf > /dev/null 2>&1; then
+    sudo dnf install -y -q pkgconf-pkg-config systemd-devel gcc 2>/dev/null || true
+  elif command -v yum > /dev/null 2>&1; then
+    sudo yum install -y -q pkgconfig libudev-devel gcc 2>/dev/null || true
+  elif command -v pacman > /dev/null 2>&1; then
+    sudo pacman -S --noconfirm --needed pkgconf systemd gcc 2>/dev/null || true
+  elif command -v apk > /dev/null 2>&1; then
+    sudo apk add -q pkgconf eudev-dev gcc musl-dev 2>/dev/null || true
+  elif command -v pkg > /dev/null 2>&1; then
+    sudo pkg install -y pkgconf 2>/dev/null || true
+  fi
+
   if ! command -v cargo > /dev/null 2>&1; then
     warn "Cargo (Rust) not found. Installing Rust via rustup..."
     TMPRUST=$(mktemp /tmp/rustup.XXXXXX.sh)
@@ -293,9 +309,15 @@ build_from_source() {
 
   info "Compiling (this may take 1-2 minutes)..."
   cd "$BUILD_DIR"
-  cargo build --release --locked 2>&1 || cargo build --release
+  # Build without GUI and without serial to maximise portability
+  # Users wanting serial deploy can rebuild with: cargo build --release --features serial
+  cargo build --release --no-default-features 2>&1 || \
+  cargo build --release 2>&1
 
-  cp "target/release/nux" "$INSTALL_DIR/nux"
+  BINARY=$(find target/release -maxdepth 1 -name "nux" -type f 2>/dev/null | head -1)
+  [ -z "$BINARY" ] && die "Build failed — nux binary not found after compilation."
+
+  cp "$BINARY" "$INSTALL_DIR/nux"
   chmod +x "$INSTALL_DIR/nux"
   ok "Built and installed Nux from source"
 }
