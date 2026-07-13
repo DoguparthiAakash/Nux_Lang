@@ -1,0 +1,9 @@
+func main() {
+    print(1111);
+    *int p = alloc(8);
+    poke(p, 42);
+    int val = peek(p);
+    print(val);
+    free(p);
+    print(9999);
+}

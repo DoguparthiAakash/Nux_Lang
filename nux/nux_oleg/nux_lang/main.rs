@@ -223,6 +223,7 @@ fn main() {
              
              let profile = match profile_str {
                  "embedded" => transpiler::TranspileProfile::Embedded,
+                 "extreme" => transpiler::TranspileProfile::Extreme,
                  _ => transpiler::TranspileProfile::Standard,
              };
              
@@ -276,8 +277,12 @@ fn main() {
              
              if args.contains(&"--profile".to_string()) {
                  let idx = args.iter().position(|r| r == "--profile").unwrap();
-                 if idx + 1 < args.len() && args[idx+1] == "embedded" {
-                     profile = transpiler::TranspileProfile::Embedded;
+                 if idx + 1 < args.len() {
+                     match args[idx+1].as_str() {
+                         "embedded" => profile = transpiler::TranspileProfile::Embedded,
+                         "extreme" => profile = transpiler::TranspileProfile::Extreme,
+                         _ => {}
+                     }
                  }
              }
 

@@ -1,0 +1,17 @@
+func test_verify() {
+    print(1);
+    verify(1 == 1); # Should pass
+    print(2);
+    verify(1 == 0); # Should fail
+    print(3); # Should not reach here
+}
+
+func test_safe() {
+    safe {
+        print(100);
+        print(200);
+    }
+}
+
+test_verify();
+test_safe();

@@ -1,0 +1,6 @@
+[project]
+name = "my_project"
+version = "0.1.0"
+target_hardware = "board.nuxg"
+
+[dependencies]

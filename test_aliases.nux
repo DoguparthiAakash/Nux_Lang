@@ -1,0 +1,4 @@
+﻿fn greet() {
+    print("Hello from fn!");
+}
+greet();
