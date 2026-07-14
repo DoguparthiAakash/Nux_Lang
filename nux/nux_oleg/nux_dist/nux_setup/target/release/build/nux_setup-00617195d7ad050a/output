@@ -1,3 +1,0 @@
-cargo:rerun-if-changed=../target/release/nux.exe
-cargo:rerun-if-changed=../logo.png
-cargo:rerun-if-changed=../lib

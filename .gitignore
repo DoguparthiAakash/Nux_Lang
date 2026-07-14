@@ -1,4 +1,8 @@
 # Rust build artifacts
+target/
+*/target/
+*/*/target/
+nux_ui/target/
 nux/nux_oleg/nux_portable/target/
 nux/nux_oleg/nux_portable/target2/
 nux/nux_oleg/nux_portable/target3/
@@ -8,6 +12,9 @@ nux/nux_oleg/nux_portable/target_tmp/
 # Windows build outputs (large/generated)
 *.exe
 *.pdb
+*.dll
+*.lib
+*.exp
 *.zip
 *.msi
 NuxSetup*.exe
