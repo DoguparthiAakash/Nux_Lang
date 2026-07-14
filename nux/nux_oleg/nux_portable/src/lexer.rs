@@ -37,6 +37,11 @@ pub enum Token {
     Free,   // NEW: Manual Free
     Break,  // NEW: Loop Control
     Continue, // NEW: Loop Control
+    At,
+    Hardware,
+    Link,
+    Register,
+    As,
     Identifier(String),
     String(String),
     Float(f64), // NEW: Float Literal
@@ -226,6 +231,10 @@ impl Lexer {
                  }
             },
             '"' => self.lex_string(start_span),
+            '@' => {
+                self.advance_pos();
+                (Token::At, start_span)
+            },
             _ if c.is_digit(10) => self.lex_number(start_span),
             _ if c.is_alphabetic() || c == '_' => self.lex_identifier(start_span),
             _ => {
@@ -348,6 +357,10 @@ impl Lexer {
             // Types
             "int" => Token::KwInt,
             "float" => Token::KwFloat,
+            "hardware" => Token::Hardware,
+            "link" => Token::Link,
+            "register" => Token::Register,
+            "as" => Token::As,
             "byte" => Token::KwByte,
             "short" => Token::KwShort,
             "long" => Token::KwLong,

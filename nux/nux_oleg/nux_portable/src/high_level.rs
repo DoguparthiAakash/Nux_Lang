@@ -361,6 +361,14 @@ impl Parser {
                     }
                     
                     if content_opt.is_none() {
+                        // Check virtual environment lib directory first
+                        if let Some(venv_lib) = crate::project::get_venv_lib_path() {
+                            let full_path = venv_lib.join(&filename);
+                            content_opt = std::fs::read_to_string(&full_path).ok();
+                        }
+                    }
+
+                    if content_opt.is_none() {
                         // Check NUX_LIB_PATH
                         if let Ok(path) = std::env::var("NUX_LIB_PATH") {
                              let full_path = format!("{}/{}", path, filename);
@@ -750,6 +758,101 @@ impl Parser {
 
     fn parse_statement_impl(&mut self, out: &mut String, expect_semi: bool) -> Result<(), CompileError> {
         match &self.current_token {
+             Token::At => {
+                 self.advance();
+                 if self.current_token != Token::Hardware { return self.error("Expected 'hardware' after '@'".to_string()); }
+                 self.advance(); // Skip hardware
+                 if self.current_token != Token::LParen { return self.error("Expected '('".to_string()); }
+                 self.advance();
+                 if let Token::String(name) = &self.current_token {
+                     // We just ignore the name for now, or print it
+                     println!("Target Hardware: {}", name);
+                     self.advance();
+                 } else { return self.error("Expected hardware name string".to_string()); }
+                 if self.current_token != Token::RParen { return self.error("Expected ')'".to_string()); }
+                 self.advance();
+                 // No semicolon required for @hardware() but let's allow it
+                 if expect_semi && self.current_token == Token::SemiColon {
+                     self.advance();
+                 }
+                 Ok(())
+             },
+             Token::Link => {
+                 self.advance();
+                 if let Token::String(filename) = self.current_token.clone() {
+                     self.advance();
+                     if expect_semi {
+                         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                         self.advance();
+                     }
+                     
+                     // Use the exact same import logic
+                     let mut content_opt = std::fs::read_to_string(&filename).ok();
+                     if content_opt.is_none() {
+                         let fallback = filename.replace(".nuxel", ".nux");
+                         content_opt = std::fs::read_to_string(&fallback).ok();
+                     }
+                     if content_opt.is_none() {
+                         if let Some(venv_lib) = crate::project::get_venv_lib_path() {
+                             content_opt = std::fs::read_to_string(&venv_lib.join(&filename)).ok();
+                         }
+                     }
+                     if content_opt.is_none() {
+                         if let Ok(path) = std::env::var("NUX_LIB_PATH") {
+                             content_opt = std::fs::read_to_string(&format!("{}/{}", path, filename)).ok();
+                         }
+                     }
+                     if let Some(c) = content_opt {
+                         let mut sub_lexer = crate::lexer::Lexer::new(&c);
+                         let mut sub_parser = Parser::new(sub_lexer);
+                         let mut sub_out = String::new();
+                         sub_parser.parse(&mut sub_out);
+                         out.push_str(&sub_out);
+                         self.classes.extend(sub_parser.classes);
+                         self.functions.extend(sub_parser.functions);
+                     } else {
+                         return self.error(format!("Could not resolve link file: {}", filename));
+                     }
+                 } else { return self.error("Expected link path string".to_string()); }
+                 Ok(())
+             },
+             Token::Register => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected '('".to_string()); }
+                 self.advance();
+                 
+                 let mut sub_out = String::new();
+                 let (val_type, val) = self.parse_expression(&mut sub_out)?;
+                 
+                 if self.current_token != Token::RParen { return self.error("Expected ')'".to_string()); }
+                 self.advance();
+                 
+                 if self.current_token != Token::As { return self.error("Expected 'as'".to_string()); }
+                 self.advance();
+                 
+                 if let Token::Identifier(name) = self.current_token.clone() {
+                     self.advance();
+                     
+                     let addr = self.global_env.len();
+                     self.global_env.insert(name.clone(), addr);
+                     
+                     if let Some(val) = val {
+                         match val {
+                             ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                             _ => out.push_str("PUSH 0\n"),
+                         }
+                     } else {
+                         out.push_str(&sub_out);
+                     }
+                     out.push_str(&format!("STORE_GLOBAL {}\n", addr));
+                     
+                     if expect_semi {
+                         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                         self.advance();
+                     }
+                 } else { return self.error("Expected identifier after 'as'".to_string()); }
+                 Ok(())
+             },
              Token::Asm => {
                  self.advance();
                  if self.current_token != Token::LBrace { return self.error("Expected {".to_string()); }

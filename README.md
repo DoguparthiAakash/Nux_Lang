@@ -4,38 +4,86 @@
 
 # Nux Language
 
-Nux is a high-performance, memory-safe systems programming language designed for AI, ML, quantum computing, and OS development. It features a tier-based JIT compiler ensuring assembly-level runtime speeds, automatic garbage collection, and seamless interoperability.
+Nux is a universal, highly portable systems programming language designed to run anywhere — from ancient 8-bit microcontrollers to modern 64-bit multi-core processors — without modification. Built with a focus on speed, cross-hardware compatibility, and modern developer ergonomics, Nux bridges the gap between high-level ease of use and low-level hardware control.
 
 ## Features
 
-- **Memory Safe & Lightning Fast**: Competes with Rust and C/C++ in performance securely.
-- **LAG (Language Agnostic Gateway)**: Native execution and frictionless importing of Python, Rust, C++, Java, Zig, Go, and more using `@imports` and standard variable mapping without FFI overhead.
-- **Micro-Binary Format (.nxb)**: Compiles down to highly compressed natively interpretable bytecode saving storage space and deployment times.
-- **Universal Isolated Environments**: `bonfort venv` brings Python-like isolated virtual environments to Nux, allowing project-specific dependencies and lag-runtimes.
-- **Bonfort Package Manager**: Simple dependency scaffolding and execution with `bonfort init`, `build`, `run`, and declarative `Bonfort.toml` & `imports.xml`.
-- **Hybrid Runtime System**: Powered by the Overall Virtual Machine (OVM), transitioning dynamically from Interpreter → Baseline JIT → Optimized RISC-V Native Code.
+- **Universal Portability**: Write once, run anywhere. The Nux MicroVM allows code to execute natively on almost any architecture.
+- **CUG Concept (Create and Use as Go)**: Nux makes it trivial to write drivers and libraries for unknown or legacy hardware in hours instead of months.
+- **Hardware Glue (`.nuxg`)**: Abstract away hardware specifics using `.nuxg` files. Define custom registers, link hardware-specific libraries, and map physical memory dynamically using `@hardware("Name")`.
+- **Nux Environments (`.nuxenv`)**: Python-style virtual environments for Nux. Isolate your project dependencies, libraries, and compilation caches automatically.
+- **JIT & AOT Compilation**: Compile directly to optimized MicroVM bytecode (`.nuxi`) or leverage the tier-based execution model.
+- **Standard Library**: Includes built-in `std` libraries (`math`, `io`, `crypto`, `ds`, `algo`, `ui`) optimized for safety and performance.
+
+## Installation
+
+### Quick Install (Linux & macOS)
+
+The easiest way to install Nux is via the official installation script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/install.sh | sh
+```
+*(Note: Ensure this GitHub repository is public for the script to execute successfully.)*
+
+### Package Managers (Linux)
+Pre-compiled packages for Debian/Ubuntu (`.deb`) and Fedora/RHEL (`.rpm`) are available.
+```bash
+# Debian/Ubuntu
+sudo dpkg -i nux_<version>_amd64.deb
+
+# Fedora/RHEL
+sudo rpm -i nux-<version>.x86_64.rpm
+```
+
+### Build from Source
+Ensure you have the Rust toolchain installed:
+```bash
+git clone https://github.com/DoguparthiAakash/Nux_Lang.git
+cd Nux_Lang/nux/nux_oleg/nux_portable
+cargo build --release
+sudo cp target/release/nux /usr/bin/nux
+```
 
 ## Quick Start
 
-Initialize a project:
-
+### 1. Initialize a Project
+Create a new Nux project and its isolated environment:
 ```bash
-bonfort init my-project
+nux init my-project
 cd my-project
+nux venv
+```
+This creates a `nux.toml` configuration, a basic `main.nux` file, and a `board.nuxg` hardware file.
+
+### 2. Configure Hardware (`board.nuxg`)
+Hardware bindings are defined in `.nuxg` files:
+```nux
+@hardware("CustomBoard_v1")
+
+# Map a hardware register easily
+register(0x40020000) as GPIO_PORTA
+
+# Link hardware libraries
+link "lib/gpio.nuxel"
 ```
 
-Compile and run:
+### 3. Write Code (`main.nux`)
+```nux
+import "board.nuxg";
+import "std/io";
 
+func main() {
+    print("Hello from Nux on CustomBoard_v1!");
+}
+
+main();
+```
+
+### 4. Run
 ```bash
-bonfort build main.nux
-nux main.nux
+nux run main.nux
 ```
 
-Create an isolated virtual environment:
-
-```bash
-bonfort venv create env
-source $(bonfort venv activate env)
-bonfort lang add python@3.13  # installs isolated runtime into env
-deactivate
-```
+## License
+MIT License

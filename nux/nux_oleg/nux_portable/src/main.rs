@@ -283,15 +283,21 @@ fn main() {
             if save_bin {
                 let path_obj = std::path::Path::new(path);
                 let stem = path_obj.file_stem().unwrap().to_str().unwrap();
-                let dir_name = format!("{}_nux", stem);
-
-                if let Err(e) = fs::create_dir_all(&dir_name) {
-                    eprintln!("{}  ✗ could not create directory: {}{}", red, e, reset);
-                    return;
-                }
-
                 let binary_name = format!("{}.nuxi", stem);
-                let binary_path = std::path::Path::new(&dir_name).join(&binary_name);
+                
+                let dir_path = if let Some(cache_path) = project::get_venv_cache_path() {
+                    cache_path
+                } else {
+                    let dir_name = format!("{}_nux", stem);
+                    let dp = std::path::PathBuf::from(&dir_name);
+                    if let Err(e) = fs::create_dir_all(&dp) {
+                        eprintln!("{}  ✗ could not create directory: {}{}", red, e, reset);
+                        return;
+                    }
+                    dp
+                };
+
+                let binary_path = dir_path.join(&binary_name);
 
                 if use_fis {
                     let versioning = versioning::BinaryVersioning::new(path_obj, 5);
