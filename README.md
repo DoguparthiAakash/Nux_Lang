@@ -17,14 +17,14 @@ Nux is a universal, highly portable systems programming language designed to run
 
 ## Installation
 
-### Quick Install (Linux & macOS)
+### Quick Install (Linux, macOS, BSD)
 
 The easiest way to install Nux is via the official installation script:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/install.sh | sh
 ```
-*(Note: Ensure this GitHub repository is public for the script to execute successfully.)*
+*(Note: If Nux is already installed, this script will pause and interactively ask if you want to Update, Repair, or perform a Fresh Install.)*
 
 ### Package Managers (Linux)
 Pre-compiled packages for Debian/Ubuntu (`.deb`) and Fedora/RHEL (`.rpm`) are available.
@@ -44,11 +44,18 @@ cd Nux_Lang
 ./install.sh
 ```
 
-### Uninstallation
-You can cleanly remove Nux and all its environments using the built-in command:
+### Updating Nux
+You can update your Nux installation instantly to the latest version by running:
 ```bash
-nux uninstall
+nux update
 ```
+
+### Uninstallation
+You can cleanly remove Nux and all its environments using the uninstallation script:
+```bash
+curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/uninstall.sh | sh
+```
+*(Alternatively, you can run `nux uninstall` if Nux is already in your PATH.)*
 
 ## Quick Start
 
