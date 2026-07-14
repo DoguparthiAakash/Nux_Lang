@@ -13,7 +13,7 @@ Nux is a universal, highly portable systems programming language designed to run
 - **Hardware Glue (`.nuxg`)**: Abstract away hardware specifics using `.nuxg` files. Define custom registers, link hardware-specific libraries, and map physical memory dynamically using `@hardware("Name")`.
 - **Nux Environments (`.nuxenv`)**: Python-style virtual environments for Nux. Isolate your project dependencies, libraries, and compilation caches automatically.
 - **JIT & AOT Compilation**: Compile directly to optimized MicroVM bytecode (`.nuxi`) or leverage the tier-based execution model.
-- **Standard Library**: Includes built-in `std` libraries (`math`, `io`, `crypto`, `ds`, `algo`, `ui`) optimized for safety and performance.
+- **Pure Nux Standard Library**: Includes built-in `std` libraries (`math`, `memory`, `io`) written entirely in pure Nux, zero external dependencies required. Optimized for safety and portability.
 
 ## Installation
 
@@ -40,9 +40,14 @@ sudo rpm -i nux-<version>.x86_64.rpm
 Ensure you have the Rust toolchain installed:
 ```bash
 git clone https://github.com/DoguparthiAakash/Nux_Lang.git
-cd Nux_Lang/nux/nux_oleg/nux_portable
-cargo build --release
-sudo cp target/release/nux /usr/bin/nux
+cd Nux_Lang
+./install.sh
+```
+
+### Uninstallation
+You can cleanly remove Nux and all its environments using the built-in command:
+```bash
+nux uninstall
 ```
 
 ## Quick Start

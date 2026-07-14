@@ -1,0 +1,6 @@
+import "math";
+import "io";
+
+func main() {
+    print_int(factorial(5));
+}

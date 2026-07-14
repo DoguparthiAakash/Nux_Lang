@@ -311,14 +311,23 @@ build_from_source() {
   cd "$BUILD_DIR"
   # Build without GUI and without serial to maximise portability
   # Users wanting serial deploy can rebuild with: cargo build --release --features serial
-  cargo build --release --no-default-features 2>&1 || \
-  cargo build --release 2>&1
+  cargo build --release --no-default-features > /tmp/nux_build.log 2>&1 || \
+  cargo build --release > /tmp/nux_build.log 2>&1 || {
+      cat /tmp/nux_build.log
+      die "Build failed."
+  }
 
   BINARY=$(find target/release -maxdepth 1 -name "nux" -type f 2>/dev/null | head -1)
   [ -z "$BINARY" ] && die "Build failed — nux binary not found after compilation."
 
   cp "$BINARY" "$INSTALL_DIR/nux"
   chmod +x "$INSTALL_DIR/nux"
+  
+  # Copy standard library
+  mkdir -p "$HOME/.nux/lib"
+  if [ -d "$BUILD_DIR/lib" ]; then
+      cp -r "$BUILD_DIR/lib/"* "$HOME/.nux/lib/" 2>/dev/null || true
+  fi
   ok "Built and installed Nux from source"
 }
 

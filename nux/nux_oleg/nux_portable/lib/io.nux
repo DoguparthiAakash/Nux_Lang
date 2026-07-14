@@ -1,0 +1,24 @@
+// Nux Standard Library: IO
+// Standard input and output utilities for Nux
+
+func print_bool(val) {
+    if (val == 0) {
+        print(0); // False
+    } else {
+        print(1); // True
+    }
+}
+
+func print_int(val) {
+    print(val);
+}
+
+// Print an array of integers sequentially
+func print_array(start_addr, length) {
+    let current = start_addr;
+    let end = start_addr + length;
+    while (current < end) {
+        print([current]);
+        current = current + 1;
+    }
+}

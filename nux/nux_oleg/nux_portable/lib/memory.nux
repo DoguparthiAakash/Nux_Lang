@@ -1,0 +1,40 @@
+// Nux Standard Library: Memory
+// Core utilities for raw memory access and manipulation
+
+func memset(start_addr, val, length) {
+    let current = start_addr;
+    let end = start_addr + length;
+    while (current < end) {
+        [current] = val;
+        current = current + 1;
+    }
+}
+
+func memcpy(dest, src, length) {
+    let current_dest = dest;
+    let current_src = src;
+    let end_dest = dest + length;
+    
+    // Check if we need to copy backwards to prevent overlapping corruption
+    if (dest > src) {
+        if (dest < (src + length)) {
+            current_dest = dest + length - 1;
+            current_src = src + length - 1;
+            let start_dest = dest - 1;
+            while (current_dest > start_dest) {
+                [current_dest] = [current_src];
+                current_dest = current_dest - 1;
+                current_src = current_src - 1;
+            }
+            return 0;
+        }
+    }
+    
+    // Copy forwards normally
+    while (current_dest < end_dest) {
+        [current_dest] = [current_src];
+        current_dest = current_dest + 1;
+        current_src = current_src + 1;
+    }
+    return 0;
+}

@@ -624,6 +624,44 @@ fn main() {
                 println!("Deploy Failed: {}", e);
             }
         },
+        "uninstall" => {
+            println!("Uninstalling Nux...");
+            
+            // Remove ~/.nuxenv and ~/.nux
+            let home_opt = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).map(std::path::PathBuf::from).ok();
+            if let Some(home) = home_opt {
+                let nuxenv = home.join(".nuxenv");
+                if nuxenv.exists() {
+                    if let Err(e) = fs::remove_dir_all(&nuxenv) {
+                        println!("Warning: Could not remove ~/.nuxenv: {}", e);
+                    } else {
+                        println!("Removed ~/.nuxenv");
+                    }
+                }
+                
+                let nuxdir = home.join(".nux");
+                if nuxdir.exists() {
+                    if let Err(e) = fs::remove_dir_all(&nuxdir) {
+                        println!("Warning: Could not remove ~/.nux: {}", e);
+                    } else {
+                        println!("Removed ~/.nux");
+                    }
+                }
+            }
+
+            // Self-delete
+            if let Ok(exe_path) = std::env::current_exe() {
+                match fs::remove_file(&exe_path) {
+                    Ok(_) => println!("✅ Successfully uninstalled Nux from your system."),
+                    Err(e) => {
+                        println!("Could not delete the executable directly (you might need sudo/admin): {}", e);
+                        println!("Please run: rm {}", exe_path.display());
+                    }
+                }
+            } else {
+                println!("✅ Nux uninstalled, but could not determine executable path to delete it.");
+            }
+        },
         _ => {
             println!("Unknown command: {}", command);
             print_usage();
@@ -643,6 +681,7 @@ fn print_usage() {
     println!("  nux run   <binary.nuxi>               - Run a pre-compiled binary");
     println!("  nux edit  <file>                      - Open IDE/Editor");
     println!("  nux update                            - Update Nux from GitHub");
+    println!("  nux uninstall                         - Uninstall Nux from your system");
     println!("  nux version                           - Show version");
     println!("");
     println!("Flags:");
@@ -759,6 +798,13 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
                     // 3c. Nux Source Tree Dev Fallback (nux_portable/lib)
                     let p3c = cwd.join("nux_portable").join("lib").join(ext);
                     if p3c.exists() { resolved_path = Some(p3c); break; }
+                    
+                    // 3d. User Home Standard Library Fallback (~/.nux/lib)
+                    let home_opt = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).map(std::path::PathBuf::from).ok();
+                    if let Some(home) = home_opt {
+                        let p3d = home.join(".nux").join("lib").join(ext);
+                        if p3d.exists() { resolved_path = Some(p3d); break; }
+                    }
                 }
                 
                 // 4. System/Executable Libs
