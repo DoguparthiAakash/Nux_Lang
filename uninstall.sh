@@ -1,48 +1,59 @@
 #!/usr/bin/env sh
 # ─────────────────────────────────────────────────────────────
 #  Nux Language — Universal Uninstaller
-#  Supports: Linux, macOS, FreeBSD, OpenBSD, NetBSD
 # ─────────────────────────────────────────────────────────────
 set -e
 
+# ── Colours ──────────────────────────────────────────────────
 if [ -t 1 ]; then
-  GREEN='\033[1;32m'; RED='\033[1;31m'; CYAN='\033[1;36m'; RESET='\033[0m'
+  CYAN='\033[1;36m'; GREEN='\033[1;32m'; RED='\033[1;31m'
+  YELLOW='\033[1;33m'; BOLD='\033[1m'; RESET='\033[0m'
 else
-  GREEN=''; RED=''; CYAN=''; RESET=''
+  CYAN=''; GREEN=''; RED=''; YELLOW=''; BOLD=''; RESET=''
 fi
 
 ok()   { printf "  ${GREEN}✓${RESET}  %s\n" "$*"; }
 info() { printf "  ${CYAN}→${RESET}  %s\n" "$*"; }
+warn() { printf "  ${YELLOW}⚠${RESET}  %s\n" "$*"; }
 die()  { printf "  ${RED}✗${RESET}  %s\n" "$*" >&2; exit 1; }
 
-printf "\n${CYAN}  Nux Language Uninstaller${RESET}\n\n"
+printf "\n${CYAN}  ╔══════════════════════════════════╗${RESET}\n"
+printf "${CYAN}  ║  Nux Language Uninstaller        ║${RESET}\n"
+printf "${CYAN}  ╚══════════════════════════════════╝${RESET}\n\n"
 
-# Find and remove binary
-FOUND=0
-for BIN_DIR in /usr/local/bin /usr/bin "$HOME/.local/bin" "$HOME/bin"; do
-  if [ -f "$BIN_DIR/nux" ]; then
-    info "Removing $BIN_DIR/nux ..."
-    rm -f "$BIN_DIR/nux"
-    ok "Removed $BIN_DIR/nux"
-    FOUND=1
-  fi
-done
-
-if [ "$FOUND" -eq 0 ]; then
-  info "Nux binary not found in standard locations."
+# Remove ~/.nuxenv
+if [ -d "$HOME/.nuxenv" ]; then
+  info "Removing virtual environments directory (~/.nuxenv)..."
+  rm -rf "$HOME/.nuxenv"
+  ok "Removed ~/.nuxenv"
 fi
 
-# Remove PATH export lines added by installer
-for PROFILE in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile" "$HOME/.config/fish/config.fish"; do
-  if [ -f "$PROFILE" ]; then
-    if grep -q "# Nux Language" "$PROFILE" 2>/dev/null; then
-      # Use portable sed (works on BSD and GNU)
-      sed -i.bak '/# Nux Language/,+1d' "$PROFILE" 2>/dev/null || \
-      sed -i '' '/# Nux Language/,+1d' "$PROFILE" 2>/dev/null || true
-      rm -f "${PROFILE}.bak"
-      ok "Cleaned PATH entry from $PROFILE"
+# Remove ~/.nux
+if [ -d "$HOME/.nux" ]; then
+  info "Removing standard libraries and configurations (~/.nux)..."
+  rm -rf "$HOME/.nux"
+  ok "Removed ~/.nux"
+fi
+
+# Find and remove nux executable
+NUX_PATH=$(command -v nux || true)
+if [ -n "$NUX_PATH" ]; then
+  info "Found nux binary at $NUX_PATH. Removing..."
+  if [ -w "$NUX_PATH" ]; then
+    rm -f "$NUX_PATH"
+    ok "Removed $NUX_PATH"
+  else
+    warn "Need elevated permissions to remove $NUX_PATH"
+    if command -v sudo > /dev/null 2>&1; then
+      sudo rm -f "$NUX_PATH"
+      ok "Removed $NUX_PATH via sudo"
+    else
+      warn "Please manually delete $NUX_PATH"
     fi
   fi
-done
+else
+  info "Nux binary not found in PATH."
+fi
 
-printf "\n  ${GREEN}Nux has been uninstalled.${RESET}\n\n"
+echo ""
+printf "  ${GREEN}${BOLD}Nux has been successfully uninstalled from your system!${RESET}\n\n"

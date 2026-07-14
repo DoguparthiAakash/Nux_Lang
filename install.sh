@@ -12,6 +12,16 @@ NUX_VERSION="0.4.0"
 NUX_REPO="https://github.com/DoguparthiAakash/Nux_Lang"
 NUX_RELEASE="$NUX_REPO/releases/download/v$NUX_VERSION"
 INSTALL_DIR=""
+IS_UPDATE=0
+
+for arg in "$@"; do
+  case $arg in
+    --update)
+      IS_UPDATE=1
+      shift
+      ;;
+  esac
+done
 
 # ── Colours (safe fallback if term doesn't support) ──────────
 if [ -t 1 ]; then
@@ -335,6 +345,32 @@ build_from_source() {
 #  MAIN
 # ─────────────────────────────────────────────────────────────
 banner
+
+# ── Check if already installed ───────────────────────────────
+if command -v nux > /dev/null 2>&1; then
+  if [ "$IS_UPDATE" -eq 1 ]; then
+    info "Running in update mode. Updating existing installation..."
+  elif [ -t 0 ]; then
+    printf "  ${YELLOW}Nux is already installed on this system.${RESET}\n"
+    printf "  Do you want to [U]pdate/Repair, [F]resh Install, or [C]ancel? [U/f/c]: "
+    read -r choice < /dev/tty || choice="c"
+    case "$choice" in
+      [Ff]*)
+        info "Performing fresh install. Removing old files..."
+        rm -rf "$HOME/.nux" "$HOME/.nuxenv" 2>/dev/null || true
+        ;;
+      [Cc]*)
+        info "Installation cancelled."
+        exit 0
+        ;;
+      *)
+        info "Updating/Repairing existing installation..."
+        ;;
+    esac
+  else
+    info "Nux is already installed. Overwriting..."
+  fi
+fi
 
 detect_os
 info "OS: $OS  |  Architecture: $ARCH"

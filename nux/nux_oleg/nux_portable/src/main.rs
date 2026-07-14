@@ -505,55 +505,17 @@ fn main() {
         },
         "update" => {
             println!("Checking for updates...");
-            // 1. Git Pull
-            let output = std::process::Command::new("git")
-                .arg("pull")
-                .output();
+            // Execute the universal installer script with --update flag
+            let output = std::process::Command::new("sh")
+                .arg("-c")
+                .arg("curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/install.sh | sh -s -- --update")
+                .spawn();
                 
             match output {
-                Ok(o) => {
-                    if o.status.success() {
-                        println!("Git Pull Successful.");
-                        println!("{}", String::from_utf8_lossy(&o.stdout));
-                        
-                        // 2. Rebuild
-                        println!("Rebuilding Nux...");
-                        let build = std::process::Command::new("cargo")
-                            .arg("build")
-                            .arg("--release")
-                            .output();
-                            
-                        match build {
-                            Ok(b) => {
-                                if b.status.success() {
-                                    println!("Build Successful.");
-                                    
-                                    // 3. Install
-                                    let src = "target/release/nux";
-                                    let dest = "/home/aakash/.local/bin/nux"; // Hardcoded for this env or use current_exe?
-                                    // Better: use std::env::current_exe();
-                                    
-                                    if let Ok(exe) = std::env::current_exe() {
-                                        // We are running 'nux'. If we overwrite ourselves while running, Linux allows it (usually unlinks).
-                                        // But safer to copy to `dest` if known.
-                                        match fs::copy(src, dest) {
-                                            Ok(_) => println!("✅ Updated nux binary at {}", dest),
-                                            Err(e) => println!("Failed to install binary: {}", e),
-                                        }
-                                    } else {
-                                        println!("Could not determine current executable path.");
-                                    }
-                                } else {
-                                    println!("❌ Build Failed:\n{}", String::from_utf8_lossy(&b.stderr));
-                                }
-                            },
-                            Err(e) => println!("Failed to run cargo: {}", e),
-                        }
-                    } else {
-                        println!("❌ Git Pull Failed:\n{}", String::from_utf8_lossy(&o.stderr));
-                    }
+                Ok(mut child) => {
+                    let _ = child.wait();
                 },
-                Err(e) => println!("Failed to execute git: {}", e),
+                Err(e) => println!("Failed to execute updater: {}", e),
             }
         },
         "build-micro" => {
@@ -626,40 +588,16 @@ fn main() {
         },
         "uninstall" => {
             println!("Uninstalling Nux...");
-            
-            // Remove ~/.nuxenv and ~/.nux
-            let home_opt = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).map(std::path::PathBuf::from).ok();
-            if let Some(home) = home_opt {
-                let nuxenv = home.join(".nuxenv");
-                if nuxenv.exists() {
-                    if let Err(e) = fs::remove_dir_all(&nuxenv) {
-                        println!("Warning: Could not remove ~/.nuxenv: {}", e);
-                    } else {
-                        println!("Removed ~/.nuxenv");
-                    }
-                }
+            let output = std::process::Command::new("sh")
+                .arg("-c")
+                .arg("curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/uninstall.sh | sh")
+                .spawn();
                 
-                let nuxdir = home.join(".nux");
-                if nuxdir.exists() {
-                    if let Err(e) = fs::remove_dir_all(&nuxdir) {
-                        println!("Warning: Could not remove ~/.nux: {}", e);
-                    } else {
-                        println!("Removed ~/.nux");
-                    }
-                }
-            }
-
-            // Self-delete
-            if let Ok(exe_path) = std::env::current_exe() {
-                match fs::remove_file(&exe_path) {
-                    Ok(_) => println!("✅ Successfully uninstalled Nux from your system."),
-                    Err(e) => {
-                        println!("Could not delete the executable directly (you might need sudo/admin): {}", e);
-                        println!("Please run: rm {}", exe_path.display());
-                    }
-                }
-            } else {
-                println!("✅ Nux uninstalled, but could not determine executable path to delete it.");
+            match output {
+                Ok(mut child) => {
+                    let _ = child.wait();
+                },
+                Err(e) => println!("Failed to execute uninstaller: {}", e),
             }
         },
         _ => {
