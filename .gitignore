@@ -22,8 +22,10 @@ NuxUninstall.exe
 Nux_Source.zip
 NuxSetup_Full.zip
 
-# Compiled Nux outputs
+# Compiled Nux outputs and binaries
 *.nuxi
+nux/nux
+nux/nuxc
 
 # Python cache
 __pycache__/
@@ -49,6 +51,9 @@ arduino-cli.zip
 *.jpg
 *.png
 
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
