@@ -350,7 +350,7 @@ banner
 if command -v nux > /dev/null 2>&1; then
   if [ "$IS_UPDATE" -eq 1 ]; then
     info "Running in update mode. Updating existing installation..."
-  elif [ -t 0 ]; then
+  elif [ -c /dev/tty ] && [ -t 1 ]; then
     printf "  ${YELLOW}Nux is already installed on this system.${RESET}\n"
     printf "  Do you want to [U]pdate/Repair, [F]resh Install, or [C]ancel? [U/f/c]: "
     read -r choice < /dev/tty || choice="c"
