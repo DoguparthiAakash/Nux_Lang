@@ -352,7 +352,6 @@ impl Lexer {
             "break" => Token::Break,
             "continue" => Token::Continue,
             // "class" => Token::Class, // Already matched above
-            "new" => Token::New,
             
             // Types
             "int" => Token::KwInt,

@@ -775,7 +775,7 @@ impl Parser {
                  if expect_semi && self.current_token == Token::SemiColon {
                      self.advance();
                  }
-                 Ok(())
+                 return Ok(());
              },
              Token::Link => {
                  self.advance();
@@ -803,18 +803,41 @@ impl Parser {
                          }
                      }
                      if let Some(c) = content_opt {
-                         let mut sub_lexer = crate::lexer::Lexer::new(&c);
-                         let mut sub_parser = Parser::new(sub_lexer);
-                         let mut sub_out = String::new();
-                         sub_parser.parse(&mut sub_out);
-                         out.push_str(&sub_out);
-                         self.classes.extend(sub_parser.classes);
-                         self.functions.extend(sub_parser.functions);
+                         let mut sub_parser = Parser::new(&c);
+                         if let Ok(asm) = sub_parser.parse_to_asm() {
+                             // Extract only the definitions, skipping headers/footers
+                             let lines: Vec<&str> = asm.lines().collect();
+                             let mut capture = false;
+                             let mut definitions = String::new();
+                             for line in lines {
+                                 if line.trim().starts_with("JMP __start_execution") {
+                                     capture = true;
+                                     continue;
+                                 }
+                                 if line.trim().starts_with("; Implicit main") || line.trim().starts_with("__start_execution:") {
+                                     capture = false;
+                                     continue;
+                                 }
+                                 if capture {
+                                     definitions.push_str(line);
+                                     definitions.push('\n');
+                                 }
+                             }
+                             out.push_str(&definitions);
+                             
+                             // Also extend classes and functions
+                             for (k, v) in sub_parser.classes {
+                                 self.classes.insert(k, v);
+                             }
+                             for (k, v) in sub_parser.functions {
+                                 self.functions.insert(k, v);
+                             }
+                         }
                      } else {
                          return self.error(format!("Could not resolve link file: {}", filename));
                      }
                  } else { return self.error("Expected link path string".to_string()); }
-                 Ok(())
+                 return Ok(());
              },
              Token::Register => {
                  self.advance();
@@ -822,7 +845,7 @@ impl Parser {
                  self.advance();
                  
                  let mut sub_out = String::new();
-                 let (val_type, val) = self.parse_expression(&mut sub_out)?;
+                 let (_val_type, val) = self.parse_expression(&mut sub_out)?;
                  
                  if self.current_token != Token::RParen { return self.error("Expected ')'".to_string()); }
                  self.advance();
@@ -833,8 +856,12 @@ impl Parser {
                  if let Token::Identifier(name) = self.current_token.clone() {
                      self.advance();
                      
-                     let addr = self.global_env.len();
-                     self.global_env.insert(name.clone(), addr);
+                     let addr = self.var_addr_counter;
+                     self.var_addr_counter += 8;
+                     let loc = VarLocation::Global(addr);
+                     if let Some(scope) = self.scopes.first_mut() {
+                         scope.insert(name.clone(), (loc, Type::Int));
+                     }
                      
                      if let Some(val) = val {
                          match val {
@@ -851,7 +878,7 @@ impl Parser {
                          self.advance();
                      }
                  } else { return self.error("Expected identifier after 'as'".to_string()); }
-                 Ok(())
+                 return Ok(());
              },
              Token::Asm => {
                  self.advance();
