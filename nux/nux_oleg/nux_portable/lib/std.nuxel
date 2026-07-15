@@ -2,16 +2,16 @@
    Nux Standard Library — Master Import  (std.nuxel)
 
    Import everything at once:
-     import "std.nuxel";
+     - std.nuxel
 
    Or import individual modules:
-     import "std/math.nuxel";
-     import "std/algo.nuxel";
-     import "std/ds.nuxel";
-     import "std/mem.nuxel";
-     import "std/io.nuxel";
-     import "std/hw.nuxel";
-     import "std/crypto.nuxel";
+     - std/math.nuxel
+     - std/algo.nuxel
+     - std/ds.nuxel
+     - std/mem.nuxel
+     - std/io.nuxel
+     - std/hw.nuxel
+     - std/crypto.nuxel
    ───────────────────────────────────────────────────── *#
 
 import "std/math.nuxel";

@@ -77,6 +77,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             
             "OP_FFI_PYTHON" => ops.push(0xE7),
             "OP_FFI_C" => ops.push(0xE8),
+            "OP_EVAL_NUX" => ops.push(0xE9),
             "OP_Q_ALLOC" => ops.push(0xEA),
             "OP_Q_H" => ops.push(0xEB),
             "OP_Q_X" => ops.push(0xEC),

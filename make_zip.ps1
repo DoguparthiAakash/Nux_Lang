@@ -38,6 +38,14 @@ foreach ($rel in $includePaths) {
     }
 }
 
+# Copy the standard library directly to the root 'lib' folder so nux.exe can find it globally
+$libSrc = Join-Path $rootDir "nux\nux_oleg\nux_portable\lib"
+$libDst = Join-Path $tempDir "lib"
+if (Test-Path $libSrc) {
+    Copy-Item -Path $libSrc -Destination $libDst -Recurse -Force
+    Write-Host "Included standard library to /lib."
+}
+
 # Copy the pre-built binary to a top-level bin folder for easy PATH use
 $binDst = Join-Path $tempDir "bin\nux.exe"
 $binSrcFull = Join-Path $rootDir $binSrc

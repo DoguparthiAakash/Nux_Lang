@@ -737,6 +737,9 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
                     let p3c = cwd.join("nux_portable").join("lib").join(ext);
                     if p3c.exists() { resolved_path = Some(p3c); break; }
                     
+                    let p3c2 = cwd.join("nux").join("nux_oleg").join("nux_portable").join("lib").join(ext);
+                    if p3c2.exists() { resolved_path = Some(p3c2); break; }
+                    
                     // 3d. User Home Standard Library Fallback (~/.nux/lib)
                     let home_opt = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).map(std::path::PathBuf::from).ok();
                     if let Some(home) = home_opt {
@@ -753,6 +756,14 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
                         
                         let p5 = exe_dir.join("lib").join(ext);
                         if p5.exists() { resolved_path = Some(p5); break; }
+                        
+                        // 4b. target/debug or target/release dev environments
+                        if let Some(target_dir) = exe_dir.parent() {
+                            if let Some(workspace_dir) = target_dir.parent() {
+                                let p6 = workspace_dir.join("lib").join(ext);
+                                if p6.exists() { resolved_path = Some(p6); break; }
+                            }
+                        }
                     }
                 }
             }

@@ -1548,6 +1548,14 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_SEC_LOGIN\n");
                     return Ok(Type::Int);
+                } else if part1 == "eval" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_EVAL_NUX\n");
+                    return Ok(Type::Int);
                 } else if part1 == "syscall" {
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();

@@ -773,6 +773,24 @@ impl NuxVm {
                     heap_strings_mut.push(res);
                     self.stack.push((heap_strings_mut.len() - 1) as i64);
                 },
+                0xE9 => { // OP_EVAL_NUX
+                    let code_ptr = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    let code_str = if code_ptr < heap_strings.len() { heap_strings[code_ptr].clone() } else { String::new() };
+                    drop(heap_strings);
+                    
+                    match crate::compile(&code_str) {
+                        Ok(bytecode) => {
+                            let mut child_vm = NuxVm::new(bytecode);
+                            child_vm.shared = std::sync::Arc::clone(&self.shared);
+                            child_vm.run();
+                            self.stack.push(child_vm.stack.pop().unwrap_or(0));
+                        }
+                        Err(_) => {
+                            self.stack.push(0); // Error, perhaps we should push an error code
+                        }
+                    }
+                },
                 0xE8 => { // OP_FFI_C
                     let code_ptr = self.stack.pop().unwrap() as usize;
                     let heap_strings = self.shared.heap_strings.read().unwrap();

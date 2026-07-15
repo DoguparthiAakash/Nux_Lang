@@ -1,43 +1,10 @@
-fn main() {
-    let s: float = Math::sin(1.0);
-    print(s);
-    let c: float = Math::cos(1.0);
-    print(c);
-    let t: float = Math::tan(1.0);
-    print(t);
-    let p: float = Math::pow(2.0, 3.0);
-    print(p);
+import "std/math.nuxel";
+
+func main() {
+    print("Start\n");
+    var sq = sqrt_int(16);
+    print(sq);
+    print("\nEnd\n");
 }
 
-fn Math_sin(x: float) -> float {
-    asm {
-        x
-        OP_FSIN
-        return
-    }
-}
-
-fn Math_cos(x: float) -> float {
-    asm {
-        x
-        OP_FCOS
-        return
-    }
-}
-
-fn Math_tan(x: float) -> float {
-    asm {
-        x
-        OP_FTAN
-        return
-    }
-}
-
-fn Math_pow(base: float, exponent: float) -> float {
-    asm {
-        base
-        exponent
-        OP_FPOW
-        return
-    }
-}
+main();

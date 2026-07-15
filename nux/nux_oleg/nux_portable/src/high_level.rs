@@ -968,7 +968,7 @@ impl Parser {
                      self.advance(); // skip name
                      if self.current_token != Token::LParen { return self.error("Expected ( for sleep".to_string()); }
                      self.advance();
-                     self.parse_expression(out)?;
+                     self.parse_expression_and_push(out)?;
                      if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                      self.advance();
                      if expect_semi {
@@ -1242,7 +1242,7 @@ impl Parser {
                   self.advance();
                   if self.current_token != Token::LParen { return self.error("Expected ( for free".to_string()); }
                   self.advance();
-                  self.parse_expression(out)?;
+                  self.parse_expression_and_push(out)?;
                   if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                   self.advance();
                   if expect_semi {
@@ -1534,7 +1534,7 @@ impl Parser {
                  
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
@@ -1554,7 +1554,7 @@ impl Parser {
                  self.parse_block(out)?;
              },
              Token::Peek => {
-                 self.parse_expression(out)?; 
+                 self.parse_expression_and_push(out)?; 
                  if self.current_token == Token::SemiColon { self.advance(); }
              },
              Token::Poke => {
@@ -1571,7 +1571,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; 
+                 self.parse_expression_and_push(out)?; 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  if expect_semi {
@@ -1586,7 +1586,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?; 
+                 self.parse_expression_and_push(out)?; 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  if expect_semi {
@@ -1616,7 +1616,7 @@ impl Parser {
              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale => {
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  // Expression leaves result on stack, discard it for statement
                  out.push_str("POP\n");
                  if self.current_token == Token::SemiColon { self.advance(); }
@@ -1679,13 +1679,13 @@ impl Parser {
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_draw".to_string()); }
                  self.advance();
                  
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
                  
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
                  
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
@@ -1698,7 +1698,7 @@ impl Parser {
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_free".to_string()); }
                  self.advance();
                  
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
                  
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
@@ -1710,12 +1710,12 @@ impl Parser {
                  if self.current_token != Token::LParen { return self.error("Expected ( for img_filter".to_string()); }
                  self.advance();
                  
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
 
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
                  self.advance();
                  
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
@@ -1728,13 +1728,13 @@ impl Parser {
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
                  
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
@@ -1746,9 +1746,9 @@ impl Parser {
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
                  
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); } self.advance();
-                 let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                 self.parse_expression_and_push(out)?;
 
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
@@ -1761,11 +1761,11 @@ impl Parser {
                   if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                   self.advance();
                  
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
                   self.advance(); // ,
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
                   self.advance(); // ,
-                  let mut sub_out = String::new(); let (_, c) = self.parse_expression(&mut sub_out)?; if let Some(val) = c { match val { ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)), _ => {} } } else { out.push_str(&sub_out); }
+                  self.parse_expression_and_push(out)?;
 
                   self.advance(); // )
                   out.push_str("OP_IMG_GET\nPOP\n"); // Discard result
@@ -1968,6 +1968,24 @@ impl Parser {
     }
 
     
+
+    fn parse_expression_and_push(&mut self, out: &mut String) -> Result<Type, CompileError> {
+        let mut sub_out = String::new();
+        let (typ, const_opt) = self.parse_expression(&mut sub_out)?;
+        if let Some(val) = const_opt {
+             match val {
+                  ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
+                  ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
+                  ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
+                  ConstantValue::String(_) => out.push_str("PUSH 0 ; String Literal Placeholder\n"),
+                  ConstantValue::None => {},
+             }
+        } else {
+             out.push_str(&sub_out);
+        }
+        Ok(typ)
+    }
+
     fn parse_expression(&mut self, out: &mut String) -> Result<(Type, Option<ConstantValue>), CompileError> {
         self.parse_logical_or(out)
     }
@@ -2495,7 +2513,7 @@ impl Parser {
                     let mut arg_count = 0;
                     if self.current_token != Token::RParen {
                            loop {
-                               self.parse_expression(out)?;
+                               self.parse_expression_and_push(out)?;
                                arg_count += 1;
                                if self.current_token == Token::Comma { self.advance(); } else { break; }
                            }
@@ -2579,7 +2597,7 @@ impl Parser {
                 self.advance();
                 if self.current_token != Token::LParen { return self.error("Expected ( for peek".to_string()); }
                 self.advance();
-                self.parse_expression(out)?;
+                self.parse_expression_and_push(out)?;
                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                 self.advance();
                 out.push_str("PEEK\n");
@@ -2687,7 +2705,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_IS_KEY_DOWN\n");
@@ -2697,7 +2715,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_FSIN\n");
@@ -2707,7 +2725,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_ALLOC\n");
@@ -2717,7 +2735,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_FREE\n");
@@ -2727,7 +2745,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_FCOS\n");
@@ -2737,7 +2755,7 @@ impl Parser {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
-                 self.parse_expression(out)?;
+                 self.parse_expression_and_push(out)?;
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("OP_FSQRT\n");

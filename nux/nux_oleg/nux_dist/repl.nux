@@ -1,0 +1,47 @@
+// Nux Advanced REPL
+// This REPL is built entirely in Nux. It accumulates lines, handles basic blocks,
+// and evaluates expressions dynamically.
+
+fn main() {
+    print("Nux Advanced Interactive REPL\n");
+    print("Type your Nux code and press Enter. Type 'exit' to quit.\n");
+    
+    let buffer = "";
+    
+    while 1 {
+        if str_len(buffer) == 0 {
+            print("nux> ");
+        } else {
+            print("...> ");
+        }
+        
+        // Use standard input to get a line
+        let line = input();
+        
+        if line == "exit" {
+            print("Exiting REPL.\n");
+            return 0;
+        }
+        
+        if line == "clear" {
+            // Very naive clear buffer
+            buffer = "";
+            continue;
+        }
+        
+        // In a real implementation we might check if brackets are balanced,
+        // but for now we'll just try to evaluate what we have.
+        buffer = buffer + line + "\n";
+        
+        // The eval intrinsic will compile and run the buffer.
+        // It shares the global heap with the current VM!
+        let result = eval(buffer);
+        
+        // To be safe, we could clear the buffer after evaluation,
+        // or keep it to persist local variable definitions?
+        // Wait, local variables don't persist across eval calls in our current VM implementation,
+        // but functions and global classes/variables might, depending on how `compile` works.
+        // For now, we'll clear the buffer after each evaluation so we can type fresh statements.
+        buffer = "";
+    }
+}

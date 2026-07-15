@@ -518,6 +518,21 @@ fn cmd_pkg(args: &[String]) {
 }
 
 fn cmd_repl(_args: &[String]) {
+    let repl_path = "repl.nux";
+    if std::path::Path::new(repl_path).exists() {
+        let code = std::fs::read_to_string(repl_path).unwrap();
+        match compile(&code) {
+            Ok(bytecode) => {
+                let mut vm = NuxVm::new(bytecode);
+                vm.run();
+            }
+            Err(errors) => {
+                print_errors(&code, errors, repl_path);
+            }
+        }
+        return;
+    }
+
     println!("Nux REPL v{} - Stateless Interactive Shell", env!("CARGO_PKG_VERSION"));
     println!("Type 'exit' or 'quit' to close.");
     
