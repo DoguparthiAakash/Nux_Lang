@@ -24,10 +24,13 @@ The easiest way to install Nux is via the official installation script:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/install.sh | sh
 ```
+
 *(Note: If Nux is already installed, this script will pause and interactively ask if you want to Update, Repair, or perform a Fresh Install.)*
 
 ### Package Managers (Linux)
+
 Pre-compiled packages for Debian/Ubuntu (`.deb`) and Fedora/RHEL (`.rpm`) are available.
+
 ```bash
 # Debian/Ubuntu
 sudo dpkg -i nux_<version>_amd64.deb
@@ -37,7 +40,9 @@ sudo rpm -i nux-<version>.x86_64.rpm
 ```
 
 ### Build from Source
+
 Ensure you have the Rust toolchain installed:
+
 ```bash
 git clone https://github.com/DoguparthiAakash/Nux_Lang.git
 cd Nux_Lang
@@ -45,31 +50,41 @@ cd Nux_Lang
 ```
 
 ### Updating Nux
+
 You can update your Nux installation instantly to the latest version by running:
+
 ```bash
 nux update
 ```
 
 ### Uninstallation
+
 You can cleanly remove Nux and all its environments using the uninstallation script:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DoguparthiAakash/Nux_Lang/main/uninstall.sh | sh
 ```
+
 *(Alternatively, you can run `nux uninstall` if Nux is already in your PATH.)*
 
 ## Quick Start
 
 ### 1. Initialize a Project
+
 Create a new Nux project and its isolated environment:
+
 ```bash
 nux init my-project
 cd my-project
 nux venv
 ```
+
 This creates a `nux.toml` configuration, a basic `main.nux` file, and a `board.nuxg` hardware file.
 
 ### 2. Configure Hardware (`board.nuxg`)
+
 Hardware bindings are defined in `.nuxg` files:
+
 ```nux
 @hardware("CustomBoard_v1")
 
@@ -81,6 +96,7 @@ link "lib/gpio.nuxel"
 ```
 
 ### 3. Write Code (`main.nux`)
+
 ```nux
 import "board.nuxg";
 import "std/io";
@@ -93,9 +109,11 @@ main();
 ```
 
 ### 4. Run
+
 ```bash
 nux run main.nux
 ```
 
 ## License
+
 MIT License
