@@ -46,10 +46,14 @@ debug.asm
 arduino-cli/
 arduino-cli.zip
 
-# Media/images (optional — remove if you want to track docs)
-*.jpeg
-*.jpg
-*.png
+# Gradle build & cache artifacts
+.gradle/
+**/.gradle/
+build/
+**/build/
+
+# Media/images (allow tracking project logos and icons)
+# Unignored so logo and assets are tracked in Git
 
 # IDE & Editors
 .vscode/
@@ -57,3 +61,4 @@ arduino-cli.zip
 *.swp
 *.swo
 *~
+
