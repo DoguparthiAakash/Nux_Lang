@@ -55,6 +55,9 @@ build/
 # Media/images (allow tracking project logos and icons)
 # Unignored so logo and assets are tracked in Git
 
+# Sub-repositories & nested projects
+nux-spyder-ide/
+
 # IDE & Editors
 .vscode/
 .idea/
