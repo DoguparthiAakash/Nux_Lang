@@ -23,7 +23,7 @@
 ; --------------- Installer Settings ---------------
 Name "${PRODUCT_FULL_NAME} ${PRODUCT_VERSION}"
 OutFile "nux-${PRODUCT_VERSION}-setup.exe"
-InstallDir "$LOCALAPPDATA\${PRODUCT_NAME}"
+InstallDir "$LOCALAPPDATA\${PRODUCT_NAME}\${PRODUCT_VERSION}"
 InstallDirRegKey HKCU "${PRODUCT_DIR_REGKEY}" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -45,7 +45,7 @@ Var ActionRepairBtn
 Var ActionUninstallBtn
 Var ActionCustomizeBtn
 Var ActionLabel
-Var ActionSubLabel
+Var ActionAddPathCb
 Var IsRepair
 Var IsCustom
 
@@ -75,96 +75,7 @@ Page custom ActionPageCreate ActionPageLeave
 ; Language
 !insertmacro MUI_LANGUAGE "English"
 
-; ============================================================================
-; ACTION PAGE (Python-style: Install Now / Customize / Repair / Uninstall)
-; ============================================================================
-Function ActionPageCreate
-    StrCpy $IsRepair "0"
-    StrCpy $IsCustom "0"
-
-    nsDialogs::Create 1018
-    Pop $ActionDialog
-    ${If} $ActionDialog == error
-        Abort
-    ${EndIf}
-
-    ; --- Title ---
-    ${NSD_CreateLabel} 0 10u 100% 20u "${PRODUCT_FULL_NAME} ${PRODUCT_VERSION}"
-    Pop $ActionLabel
-    CreateFont $0 "Segoe UI" 16 700
-    SendMessage $ActionLabel ${WM_SETFONT} $0 1
-
-    ; --- Subtitle ---
-    ${NSD_CreateLabel} 0 35u 100% 12u "Select an action below to get started."
-    Pop $ActionSubLabel
-
-    ; --- Install Now Button ---
-    ${NSD_CreateButton} 30u 65u 230u 28u "   Install Now  (Recommended)"
-    Pop $ActionInstallBtn
-    ${NSD_OnClick} $ActionInstallBtn ActionInstallNow
-
-    ${NSD_CreateLabel} 30u 95u 230u 16u "Installs Nux with default settings to $LOCALAPPDATA\Nux"
-    Pop $0
-
-    ; --- Customize Button ---
-    ${NSD_CreateButton} 30u 120u 230u 28u "   Customize Installation"
-    Pop $ActionCustomizeBtn
-    ${NSD_OnClick} $ActionCustomizeBtn ActionCustomize
-
-    ${NSD_CreateLabel} 30u 150u 230u 16u "Choose installation location and features."
-    Pop $0
-
-    ; --- Check if already installed for Repair/Uninstall ---
-    ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "UninstallString"
-    ${If} $0 != ""
-        ; --- Repair Button ---
-        ${NSD_CreateButton} 30u 180u 110u 24u "   Repair"
-        Pop $ActionRepairBtn
-        ${NSD_OnClick} $ActionRepairBtn ActionRepair
-
-        ; --- Uninstall Button ---
-        ${NSD_CreateButton} 150u 180u 110u 24u "   Uninstall"
-        Pop $ActionUninstallBtn
-        ${NSD_OnClick} $ActionUninstallBtn ActionUninstallNow
-    ${EndIf}
-
-    nsDialogs::Show
-FunctionEnd
-
-Function ActionInstallNow
-    ; Skip straight to install with defaults (all sections selected by default)
-    StrCpy $IsCustom "0"
-    ; Jump past components and directory pages directly to instfiles
-    Abort
-FunctionEnd
-
-Function ActionCustomize
-    StrCpy $IsCustom "1"
-    ; Continue to next pages (Components, Directory)
-FunctionEnd
-
-Function ActionRepair
-    StrCpy $IsRepair "1"
-    StrCpy $IsCustom "0"
-    ; Repair reinstalls everything (all sections selected by default)
-    ; Skip to instfiles
-    Abort
-FunctionEnd
-
-Function ActionUninstallNow
-    ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "UninstallString"
-    ${If} $0 != ""
-        ExecWait '$0'
-    ${EndIf}
-    Quit
-FunctionEnd
-
-Function ActionPageLeave
-    ; If Install Now was clicked, skip Components + Directory pages
-    ${If} $IsCustom == "0"
-        ; Skip the next two pages to jump to instfiles
-    ${EndIf}
-FunctionEnd
+; ActionPage functions moved to the bottom so they can reference Section indices.
 
 ; ============================================================================
 ; SECTIONS (Feature Selection)
@@ -203,9 +114,11 @@ Section "Nux Core (Required)" SecCore
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKCU "${PRODUCT_UNINST_KEY}" "EstimatedSize" $0
 
-    ; Start Menu shortcuts
-    CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall Nux.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\nux_file_icon.ico"
+    ; Create junction for 'current'
+    ; Remove old junction if it exists
+    nsExec::Exec 'cmd /c rmdir "$LOCALAPPDATA\${PRODUCT_NAME}\current"'
+    ; Create new junction
+    nsExec::Exec 'cmd /c mklink /J "$LOCALAPPDATA\${PRODUCT_NAME}\current" "$INSTDIR"'
 SectionEnd
 
 Section "Standard Library" SecStdLib
@@ -216,33 +129,31 @@ SectionEnd
 Section "Add to PATH" SecPATH
     ; Read current user PATH
     ReadRegStr $0 HKCU "Environment" "PATH"
+    
+    StrCpy $1 "$LOCALAPPDATA\${PRODUCT_NAME}\current"
 
     ; Check if already in PATH
     ${If} $0 != ""
-        StrCpy $1 "$0"
+        StrCpy $2 "$0"
         ; Simple check - search for our install dir in PATH
+        Push "$2"
         Push "$1"
-        Push "$INSTDIR"
         Call StrContains
-        Pop $2
-        ${If} $2 == ""
+        Pop $3
+        ${If} $3 == ""
             ; Not found, append
-            ${If} $0 != ""
-                StrCpy $0 "$0;$INSTDIR"
-            ${Else}
-                StrCpy $0 "$INSTDIR"
-            ${EndIf}
+            StrCpy $0 "$0;$1"
             WriteRegExpandStr HKCU "Environment" "PATH" "$0"
         ${EndIf}
     ${Else}
-        WriteRegExpandStr HKCU "Environment" "PATH" "$INSTDIR"
+        WriteRegExpandStr HKCU "Environment" "PATH" "$1"
     ${EndIf}
 
     ; Set NUX_HOME
-    WriteRegExpandStr HKCU "Environment" "NUX_HOME" "$INSTDIR"
+    WriteRegExpandStr HKCU "Environment" "NUX_HOME" "$1"
 
     ; Set NUX_LIB_PATH for library resolution
-    WriteRegExpandStr HKCU "Environment" "NUX_LIB_PATH" "$INSTDIR\lib"
+    WriteRegExpandStr HKCU "Environment" "NUX_LIB_PATH" "$1\lib"
 
     ; Broadcast environment change
     SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
@@ -253,14 +164,14 @@ Section "File Associations (.nux, .nuxc)" SecFileAssoc
     WriteRegStr HKCU "Software\Classes\.nux" "" "Nux.SourceFile"
     WriteRegStr HKCU "Software\Classes\Nux.SourceFile" "" "Nux Source File"
     WriteRegStr HKCU "Software\Classes\Nux.SourceFile\DefaultIcon" "" "$INSTDIR\nux_file_icon.ico"
-    WriteRegStr HKCU "Software\Classes\Nux.SourceFile\shell\open\command" "" '"$INSTDIR\nux.exe" run "%1"'
+    WriteRegStr HKCU "Software\Classes\Nux.SourceFile\shell\open\command" "" '"$LOCALAPPDATA\${PRODUCT_NAME}\current\nux.exe" run "%1"'
     WriteRegStr HKCU "Software\Classes\Nux.SourceFile\shell\edit\command" "" 'notepad.exe "%1"'
 
     ; .nuxc association
     WriteRegStr HKCU "Software\Classes\.nuxc" "" "Nux.CompiledFile"
     WriteRegStr HKCU "Software\Classes\Nux.CompiledFile" "" "Nux Compiled Binary"
     WriteRegStr HKCU "Software\Classes\Nux.CompiledFile\DefaultIcon" "" "$INSTDIR\nuxc_file_icon.ico"
-    WriteRegStr HKCU "Software\Classes\Nux.CompiledFile\shell\open\command" "" '"$INSTDIR\nux.exe" run "%1"'
+    WriteRegStr HKCU "Software\Classes\Nux.CompiledFile\shell\open\command" "" '"$LOCALAPPDATA\${PRODUCT_NAME}\current\nux.exe" run "%1"'
 
     ; Notify shell
     SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
@@ -275,6 +186,112 @@ SectionEnd
     !insertmacro MUI_DESCRIPTION_TEXT ${SecPATH} "Adds Nux to your system PATH so you can run 'nux' from any terminal."
     !insertmacro MUI_DESCRIPTION_TEXT ${SecFileAssoc} "Associates .nux and .nuxc files with the Nux runtime."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+; ============================================================================
+; ACTION PAGE (Python-style: Install Now / Customize / Repair / Uninstall)
+; ============================================================================
+Function ActionPageCreate
+    StrCpy $IsRepair "0"
+    StrCpy $IsCustom "0"
+
+    nsDialogs::Create 1018
+    Pop $ActionDialog
+    ${If} $ActionDialog == error
+        Abort
+    ${EndIf}
+
+    ; --- Title ---
+    ${NSD_CreateLabel} 0 0 100% 24u "${PRODUCT_FULL_NAME} ${PRODUCT_VERSION}"
+    Pop $ActionLabel
+    CreateFont $0 "Segoe UI" 14 700
+    SendMessage $ActionLabel ${WM_SETFONT} $0 1
+
+    ; --- Check if already installed ---
+    ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "UninstallString"
+    ${If} $0 == ""
+        ; --- Install Now Button ---
+        ${NSD_CreateButton} 15u 35u 270u 32u "Install Now"
+        Pop $ActionInstallBtn
+        ${NSD_OnClick} $ActionInstallBtn ActionInstallNow
+        CreateFont $1 "Segoe UI" 11 700
+        SendMessage $ActionInstallBtn ${WM_SETFONT} $1 1
+
+        ${NSD_CreateLabel} 25u 70u 260u 16u "Installs to: $LOCALAPPDATA\${PRODUCT_NAME}\${PRODUCT_VERSION}$\r$\nIncludes Core Compiler, StdLib, and File Associations."
+        Pop $0
+
+        ; --- Customize Button ---
+        ${NSD_CreateButton} 15u 95u 270u 24u "Customize installation"
+        Pop $ActionCustomizeBtn
+        ${NSD_OnClick} $ActionCustomizeBtn ActionCustomize
+        CreateFont $2 "Segoe UI" 10 400
+        SendMessage $ActionCustomizeBtn ${WM_SETFONT} $2 1
+
+        ; --- PATH Checkbox ---
+        ${NSD_CreateCheckbox} 15u 125u 270u 12u "Add Nux to PATH"
+        Pop $ActionAddPathCb
+        ${NSD_Check} $ActionAddPathCb ; checked by default
+    ${Else}
+        ; --- Repair Button ---
+        ${NSD_CreateButton} 15u 35u 270u 32u "Repair Nux"
+        Pop $ActionRepairBtn
+        ${NSD_OnClick} $ActionRepairBtn ActionRepair
+        CreateFont $1 "Segoe UI" 11 700
+        SendMessage $ActionRepairBtn ${WM_SETFONT} $1 1
+
+        ; --- Uninstall Button ---
+        ${NSD_CreateButton} 15u 75u 270u 32u "Uninstall Nux"
+        Pop $ActionUninstallBtn
+        ${NSD_OnClick} $ActionUninstallBtn ActionUninstallNow
+        CreateFont $2 "Segoe UI" 11 700
+        SendMessage $ActionUninstallBtn ${WM_SETFONT} $2 1
+    ${EndIf}
+
+    nsDialogs::Show
+FunctionEnd
+
+Function ActionInstallNow
+    ${NSD_GetState} $ActionAddPathCb $0
+    ${If} $0 == 1
+        !insertmacro SelectSection ${SecPATH}
+    ${Else}
+        !insertmacro UnselectSection ${SecPATH}
+    ${EndIf}
+    
+    StrCpy $IsCustom "0"
+    Abort
+FunctionEnd
+
+Function ActionCustomize
+    ${NSD_GetState} $ActionAddPathCb $0
+    ${If} $0 == 1
+        !insertmacro SelectSection ${SecPATH}
+    ${Else}
+        !insertmacro UnselectSection ${SecPATH}
+    ${EndIf}
+
+    StrCpy $IsCustom "1"
+FunctionEnd
+
+Function ActionRepair
+    StrCpy $IsRepair "1"
+    StrCpy $IsCustom "0"
+    Abort
+FunctionEnd
+
+Function ActionUninstallNow
+    ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "UninstallString"
+    ${If} $0 != ""
+        ExecWait '$0'
+    ${EndIf}
+    Quit
+FunctionEnd
+
+Function ActionPageLeave
+    ${If} $IsCustom == "0"
+        ; Skip the next two pages to jump to instfiles
+    ${EndIf}
+FunctionEnd
+
 
 ; ============================================================================
 ; UTILITY FUNCTIONS
@@ -322,7 +339,7 @@ FunctionEnd
 ; UNINSTALLER
 ; ============================================================================
 Section "Uninstall"
-    ; Remove files
+    ; Remove files for this version
     Delete "$INSTDIR\nux.exe"
     Delete "$INSTDIR\nux_file_icon.ico"
     Delete "$INSTDIR\nuxc_file_icon.ico"
@@ -331,10 +348,9 @@ Section "Uninstall"
     Delete "$INSTDIR\uninstall.exe"
     RMDir /r "$INSTDIR\lib"
     RMDir "$INSTDIR"
-
-    ; Remove Start Menu items
-    Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall Nux.lnk"
-    RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
+    
+    ; If 'current' junction points to us, remove it
+    nsExec::Exec 'cmd /c rmdir "$LOCALAPPDATA\${PRODUCT_NAME}\current"'
 
     ; Remove registry keys
     DeleteRegKey HKCU "${PRODUCT_UNINST_KEY}"
@@ -349,9 +365,9 @@ Section "Uninstall"
     ; Remove from PATH
     ReadRegStr $0 HKCU "Environment" "PATH"
     ${If} $0 != ""
-        ; Remove our install directory from PATH
+        ; Remove current dir from PATH
         Push "$0"
-        Push "$INSTDIR"
+        Push "$LOCALAPPDATA\${PRODUCT_NAME}\current"
         Call un.StrRemoveFromPath
         Pop $0
         WriteRegExpandStr HKCU "Environment" "PATH" "$0"

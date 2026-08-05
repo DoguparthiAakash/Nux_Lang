@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  Nux Programming Language — Linux Installer
+#  Nux Programming Language â€” Linux Installer
 #  Security-hardened with checksum verification, safe temp files,
 #  symlink protection, and Rust/Nux-inspired TUI art
 # ============================================================================
@@ -8,7 +8,9 @@ set -euo pipefail
 
 VERSION="1.0.0"
 PRODUCT="Nux Programming Language"
-INSTALL_DIR="/usr/local/lib/nux"
+INSTALL_DIR_BASE="/usr/local/lib/nux"
+INSTALL_DIR="$INSTALL_DIR_BASE/v$VERSION"
+CURRENT_LINK="$INSTALL_DIR_BASE/current"
 BIN_LINK="/usr/local/bin/nux"
 DOWNLOAD_URL="https://github.com/DoguparthiAakash/Nux_Installers/releases/latest/download/nux-linux.tar.gz"
 CHECKSUM_URL="https://github.com/DoguparthiAakash/Nux_Installers/releases/latest/download/nux-linux.sha256"
@@ -38,27 +40,27 @@ DARKGRAY='\033[38;5;8m'
 nux_header() {
     local title="$1" subtitle="$2"
     echo ""
-    printf "%b╭─ %b◆ %b%s %b─────────────────────────────────\n" "$DARKGRAY" "$CYAN" "${WHITE}${BOLD}" "$title" "$DARKGRAY"
-    printf "%b│  %bNux v%s  %b·  %b%s\n" "$DARKGRAY" "${WHITE}${BOLD}" "$VERSION" "$DARKGRAY" "$DARKGRAY" "$subtitle"
-    printf "%b╰────────────────────────────────────────%b\n" "$DARKGRAY" "$NC"
+    printf "%bâ•­â”€ %bâ—† %b%s %bâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n" "$DARKGRAY" "$CYAN" "${WHITE}${BOLD}" "$title" "$DARKGRAY"
+    printf "%bâ”‚  %bNux v%s  %bÂ·  %b%s\n" "$DARKGRAY" "${WHITE}${BOLD}" "$VERSION" "$DARKGRAY" "$DARKGRAY" "$subtitle"
+    printf "%bâ•°â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€%b\n" "$DARKGRAY" "$NC"
 }
 
 nux_print() {
     local tag="$1" color="$2" msg="$3"
-    printf "%b├─ %b✦ %b%s  %b%s%b\n" "$DARKGRAY" "$GREEN" "$color" "$tag" "$DARKGRAY" "$msg" "$NC"
+    printf "%bâ”œâ”€ %bâœ¦ %b%s  %b%s%b\n" "$DARKGRAY" "$GREEN" "$color" "$tag" "$DARKGRAY" "$msg" "$NC"
 }
 
 nux_error() {
-    printf "%b╰─ %b✕ %berror  %b%s%b\n" "$DARKGRAY" "$RED" "$RED" "$WHITE" "$1" "$NC"
+    printf "%bâ•°â”€ %bâœ• %berror  %b%s%b\n" "$DARKGRAY" "$RED" "$RED" "$WHITE" "$1" "$NC"
 }
 
 nux_warn() {
-    printf "%b├─ %b⚠ %bwarning  %b%s%b\n" "$DARKGRAY" "$YELLOW" "$YELLOW" "$DARKGRAY" "$1" "$NC"
+    printf "%bâ”œâ”€ %bâš  %bwarning  %b%s%b\n" "$DARKGRAY" "$YELLOW" "$YELLOW" "$DARKGRAY" "$1" "$NC"
 }
 
 nux_finish() {
     local tag="$1" msg="$2"
-    printf "%b╰─ %b▶ %b%s  %b%s%b\n" "$DARKGRAY" "$CYAN" "$CYAN" "$tag" "$WHITE" "$msg" "$NC"
+    printf "%bâ•°â”€ %bâ–¶ %b%s  %b%s%b\n" "$DARKGRAY" "$CYAN" "$CYAN" "$tag" "$WHITE" "$msg" "$NC"
 }
 
 banner() {
@@ -74,7 +76,7 @@ check_root() {
 }
 
 is_installed() {
-    [ -f "$MARKER_FILE" ] && return 0 || return 1
+    [ -d "$INSTALL_DIR_BASE" ] || command -v nux >/dev/null 2>&1
 }
 
 detect_distro() {
@@ -179,13 +181,12 @@ do_install() {
         # Verify checksum before extraction
         if ! verify_checksum "$TEMP_TAR"; then
             rm -f "$TEMP_TAR"
-            nux_error "Installation aborted due to integrity failure."
+            nux_error "Installation aborted."
             exit 1
         fi
-
         nux_print "Extracting" "$CYAN" "files..."
-        # Extract safely - no following symlinks
-        tar --no-same-owner --no-same-permissions -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
+        rm -f "$target_dir/nux" 2>/dev/null || true
+        tar --no-same-owner -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
     else
         nux_warn "Download unavailable. Using local payload if present."
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -207,14 +208,18 @@ do_install() {
 
     if [ "$install_path" = "yes" ]; then
         nux_print "Linking" "$CYAN" "/usr/local/bin/nux"
+        ln -snf "$target_dir" "$CURRENT_LINK"
+
+        nux_print "Linking" "$CYAN" "/usr/local/bin/nux"
         mkdir -p "$(dirname "$BIN_LINK")"
-        ln -sf "$target_dir/nux" "$BIN_LINK"
+        ln -snf "$CURRENT_LINK/nux" "$BIN_LINK"
 
         # Environment profile (system-wide, restricted permissions)
         cat > /etc/profile.d/nux.sh <<ENVEOF
 # Nux Programming Language
-export NUX_HOME="$target_dir"
-export NUX_LIB_PATH="$target_dir/lib"
+export NUX_HOME="$CURRENT_LINK"
+export NUX_LIB_PATH="$CURRENT_LINK/lib"
+export PATH="$PATH:$NUX_HOME"
 ENVEOF
         chmod 644 /etc/profile.d/nux.sh
     fi
@@ -287,8 +292,7 @@ do_update() {
 
     if curl -fSL --connect-timeout 30 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null; then
         if verify_checksum "$TEMP_TAR"; then
-            tar --no-same-owner -xzf "$TEMP_TAR" -C "$INSTALL_DIR"
-            echo "$VERSION" > "$MARKER_FILE"
+            do_install "$INSTALL_DIR" "yes" "yes" "yes"
             nux_finish "updated" "successfully!"
         else
             nux_error "Update aborted due to checksum failure."
@@ -302,27 +306,106 @@ do_update() {
 
 do_uninstall() {
     echo ""
-    printf "  %bWARNING: This will completely remove Nux from your system.%b\n" "$RED" "$NC"
-    read -rp "  Are you sure? [y/N]: " confirm
-    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        nux_print "Removing" "$RED" "Nux files..."
-
-        # Safety: verify install dir is what we expect before rm -rf
-        if [ "$INSTALL_DIR" = "/" ] || [ "$INSTALL_DIR" = "/usr" ] || [ "$INSTALL_DIR" = "/usr/local" ] || [ -z "$INSTALL_DIR" ]; then
-            nux_error "Refusing to remove system directory: $INSTALL_DIR"
-            exit 1
-        fi
-
-        rm -rf "$INSTALL_DIR"
-        rm -f "$BIN_LINK"
-        rm -f /etc/profile.d/nux.sh
-        rm -f "$DESKTOP_FILE"
-        update-desktop-database /usr/share/applications 2>/dev/null || true
-
-        nux_finish "uninstalled" "completely."
-    else
-        echo "  Uninstall cancelled."
+    if [ ! -d "$INSTALL_DIR_BASE" ]; then
+        nux_error "Nux is not installed."
+        exit 1
     fi
+
+    local versions=()
+    for d in "$INSTALL_DIR_BASE"/*; do
+        if [ -d "$d" ] && [ "$(basename "$d")" != "current" ]; then
+            versions+=("$(basename "$d")")
+        fi
+    done
+
+    if [ ${#versions[@]} -eq 0 ]; then
+        nux_error "No Nux versions found."
+        exit 1
+    fi
+
+    printf "  %bInstalled Versions:%b
+" "$BOLD" "$NC"
+    
+    local active_target=""
+    if [ -L "$CURRENT_LINK" ]; then
+        active_target=$(readlink "$CURRENT_LINK")
+    fi
+
+    local i=1
+    for v in "${versions[@]}"; do
+        local marker=""
+        if [[ "$active_target" == *"$v" ]]; then
+            marker=" (active)"
+        fi
+        printf "    %b%d)%b  %s%s
+" "$YELLOW" "$i" "$NC" "$v" "$marker"
+        ((i++))
+    done
+    printf "    %b0)%b  Uninstall ALL versions
+" "$RED" "$NC"
+    echo ""
+    read -rp "  Select versions to uninstall (comma-separated, e.g. 1,3 or 0 for all): " choices
+    
+    if [ -z "$choices" ]; then
+        echo "  Uninstall cancelled."
+        return
+    fi
+    
+    if [ "$choices" = "0" ]; then
+        printf "  %bWARNING: This will completely remove all Nux versions.%b
+" "$RED" "$NC"
+        read -rp "  Are you sure? [y/N]: " confirm
+        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+            nux_print "Removing" "$RED" "all Nux files..."
+            rm -rf "$INSTALL_DIR_BASE"
+            rm -f "$BIN_LINK"
+            rm -f /etc/profile.d/nux.sh
+            rm -f "$DESKTOP_FILE" 2>/dev/null || true
+            if command -v update-desktop-database &>/dev/null; then update-desktop-database /usr/share/applications 2>/dev/null || true; fi
+            nux_finish "uninstalled" "completely."
+        else
+            echo "  Uninstall cancelled."
+        fi
+        return
+    fi
+    
+    IFS=',' read -ra choice_array <<< "$choices"
+    for c in "${choice_array[@]}"; do
+        c=$(echo "$c" | tr -d ' ')
+        if [[ "$c" =~ ^[0-9]+$ ]]; then
+            local idx=$((c-1))
+            if [ $idx -ge 0 ] && [ $idx -lt ${#versions[@]} ]; then
+                local v="${versions[$idx]}"
+                nux_print "Removing" "$RED" "$v..."
+                rm -rf "$INSTALL_DIR_BASE/$v"
+                if [[ "$active_target" == *"$v" ]]; then
+                    rm -f "$CURRENT_LINK"
+                fi
+            fi
+        fi
+    done
+    
+    if [ ! -L "$CURRENT_LINK" ]; then
+        local remaining=()
+        for d in "$INSTALL_DIR_BASE"/*; do
+            if [ -d "$d" ] && [ "$(basename "$d")" != "current" ]; then
+                remaining+=("$(basename "$d")")
+            fi
+        done
+        
+        if [ ${#remaining[@]} -gt 0 ]; then
+            local latest="${remaining[-1]}"
+            ln -snf "$INSTALL_DIR_BASE/$latest" "$CURRENT_LINK"
+            nux_print "Switched" "$GREEN" "active version to $latest"
+            ln -snf "$CURRENT_LINK/nux" "$BIN_LINK"
+        else
+            rm -f "$BIN_LINK"
+            rm -f /etc/profile.d/nux.sh
+            rm -f "$DESKTOP_FILE" 2>/dev/null || true
+            rm -rf "$INSTALL_DIR_BASE"
+        fi
+    fi
+    nux_finish "uninstalled" "Selected versions removed."
 }
 
 do_build_deb() {
@@ -369,7 +452,7 @@ PRERM
 
     if command -v dpkg-deb &>/dev/null; then
         dpkg-deb --build "$PKG_DIR"
-        printf "       %b✔%b  Built %b${PKG_DIR}.deb%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+        printf "       %bâœ”%b  Built %b${PKG_DIR}.deb%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
         echo "         Install with: sudo dpkg -i ${PKG_DIR}.deb"
     else
         nux_error "dpkg-deb not found. Run this on a Debian/Ubuntu system."
@@ -411,7 +494,7 @@ EOF
 
     if command -v rpmbuild &>/dev/null; then
         rpmbuild -ba rpmbuild/SPECS/nux.spec --define "_topdir $(pwd)/rpmbuild"
-        printf "       %b✔%b  RPM built in %brpmbuild/RPMS/%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+        printf "       %bâœ”%b  RPM built in %brpmbuild/RPMS/%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
     else
         nux_error "rpmbuild not found. Run this on a Fedora/RHEL system."
     fi
@@ -420,6 +503,16 @@ EOF
 # ============================================================================
 # Main
 # ============================================================================
+if [ "${1:-}" = "--update" ]; then
+    check_root
+    is_installed && do_update || do_install
+    exit 0
+elif [ "${1:-}" = "--uninstall" ]; then
+    check_root
+    is_installed && do_uninstall || nux_error "Not installed."
+    exit 0
+fi
+
 banner
 check_root
 show_menu

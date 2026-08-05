@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
-set -e
-
-INSTALL_DIR="/usr/local/lib/nux"
-DOWNLOAD_URL="https://github.com/DoguparthiAakash/Nux_Installers/releases/latest/download/nux-bsd.tar.gz"
-
-if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root (sudo ./update.sh)"
-  exit 1
-fi
-
-echo "Updating Nux..."
-TEMP_TAR=$(mktemp)
-curl -L -o "$TEMP_TAR" "$DOWNLOAD_URL" || {
-    echo "Failed to download update."
+DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$DIR/install.sh" ]; then
+    exec "$DIR/install.sh" --update
+else
+    echo "Installer not found at $DIR/install.sh"
     exit 1
-}
-
-tar -xzf "$TEMP_TAR" -C "$INSTALL_DIR"
-rm -f "$TEMP_TAR"
-
-echo "Update successful!"
+fi
