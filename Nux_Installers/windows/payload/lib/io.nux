@@ -1,0 +1,71 @@
+# io.nux - Nux Standard I/O Library
+# Provides buffered and raw I/O operations
+
+@priority(20)
+
+# Print an integer value as decimal digits
+func print_int(n) {
+    if (n < 0) {
+        print("-");
+        n = 0 - n;
+    }
+    if (n == 0) {
+        print("0");
+        return 0;
+    }
+    # Allocate temp buffer at high memory
+    var buf_base = 9000;
+    var len = 0;
+    var tmp = n;
+    while (tmp > 0) {
+        var digit = tmp - ((tmp / 10) * 10);
+        poke(buf_base + len, digit + 48); # ASCII offset
+        len = len + 1;
+        tmp = tmp / 10;
+    }
+    # Print in reverse (digits are stored LSB first)
+    var i = len - 1;
+    while (i >= 0) {
+        var ch = peek(buf_base + i);
+        print(ch);
+        i = i - 1;
+    }
+    return 0;
+}
+
+# Read a line from stdin into memory at dst_addr, returns length
+func read_line(dst_addr) {
+    var ch = input();
+    var len = 0;
+    while (ch != 10) { # 10 = newline
+        poke(dst_addr + len, ch);
+        len = len + 1;
+        ch = input();
+    }
+    poke(dst_addr + len, 0); # Null terminate
+    return len;
+}
+
+# Copy memory block: src -> dst for count bytes
+func memcpy(dst, src, count) {
+    if (count > 1000) {
+        var mid = count / 2;
+        var t1 = spawn memcpy(dst, src, mid);
+        var t2 = spawn memcpy(dst + mid, src + mid, count - mid);
+        join(t1);
+        join(t2);
+        return 0;
+    }
+    for (var i = 0; i < count; i = i + 1) {
+        poke(dst + i, peek(src + i));
+    }
+    return 0;
+}
+
+# Zero a block of memory
+func memset_zero(addr, count) {
+    for (var i = 0; i < count; i = i + 1) {
+        poke(addr + i, 0);
+    }
+    return 0;
+}
