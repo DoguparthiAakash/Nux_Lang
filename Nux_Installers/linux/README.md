@@ -1,0 +1,16 @@
+# Nux Programming Language (Linux)
+
+Welcome to the Nux Programming Language distribution for Linux!
+
+## What is Nux?
+Nux is an incredibly fast, lightweight, and extensible programming language. It is designed to run everywhere while remaining powerful enough for advanced ML, 3D engines, Quantum computing interfaces, and OS-level interactions.
+
+## Contents
+- **install.sh**: Shell automated installer.
+- **build_deb.sh / build_rpm.sh**: Builders for Debian and RHEL packages.
+- **update.sh**: Update manager.
+- **uninstall.sh**: Uninstaller.
+- **nux_source_only.tar.gz**: The standard library and source code.
+
+## Quick Start
+Check `SetupGuide.md` for installation instructions and `UserGuide.md` on how to start writing your first Nux program!

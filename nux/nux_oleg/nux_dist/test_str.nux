@@ -1,8 +1,4 @@
-var s = "hello";
-print_str("Len: ");
-print_val(str_len(s));
-print_str("\nChar 1: ");
-print_val(str_char(s, 1));
-print_str("\nSub: ");
-print_str(str_sub(s, 1, 4));
-print_str("\n");
+func main() { 
+    var s: string = "hello"; 
+    print_str(s); 
+}

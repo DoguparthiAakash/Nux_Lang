@@ -551,6 +551,50 @@ impl NuxVm {
                         io::stdout().flush().unwrap();
                     }
                 },
+                0x6C => { // OP_STR_LEN
+                    let id = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    if id < heap_strings.len() {
+                        self.stack.push(heap_strings[id].len() as i64);
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
+                0x6D => { // OP_STR_CHAR
+                    let idx = self.stack.pop().unwrap() as usize;
+                    let id = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    if id < heap_strings.len() {
+                        let s = &heap_strings[id];
+                        let bytes = s.as_bytes();
+                        if idx < bytes.len() {
+                            self.stack.push(bytes[idx] as i64);
+                        } else {
+                            self.stack.push(0);
+                        }
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
+                0x6E => { // OP_STR_SUB
+                    let end = self.stack.pop().unwrap() as usize;
+                    let start = self.stack.pop().unwrap() as usize;
+                    let id = self.stack.pop().unwrap() as usize;
+                    
+                    let mut sub = String::new();
+                    {
+                        let heap_strings = self.shared.heap_strings.read().unwrap();
+                        if id < heap_strings.len() {
+                            let s = &heap_strings[id];
+                            if start <= s.len() && end <= s.len() && start <= end {
+                                sub = s[start..end].to_string();
+                            }
+                        }
+                    }
+                    let mut heap_strings = self.shared.heap_strings.write().unwrap();
+                    heap_strings.push(sub);
+                    self.stack.push((heap_strings.len() - 1) as i64);
+                },
                 0x44 => { // OP_GET_LOCAL
                     let offset = self.read_i64() as usize;
                     let idx = self.base_pointer + offset;

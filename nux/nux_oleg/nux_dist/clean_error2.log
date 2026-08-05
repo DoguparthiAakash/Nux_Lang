@@ -1,0 +1,2962 @@
+╭─ ◆ nux ─────────────────────────────────
+│  test_lexer.nux  ·  building ...
+╰────────────────────────────────────────
+
+╳ nux found 422 issues in test_lexer.nux
+
+  issue #1 · Unknown class 'File'
+  ┌─ test_lexer.nux:9:19
+  │
+  │   9 ┊          this.path = path;
+  │                        ^
+  └─
+
+  issue #2 · Unknown class 'File'
+  ┌─ test_lexer.nux:13:35
+  │
+  │  13 ┊          return file_read(this.path);
+  │                                        ^
+  └─
+
+  issue #3 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:401:21
+  │
+  │ 401 ┊          this.source = src;
+  │                          ^
+  └─
+
+  issue #4 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:402:18
+  │
+  │ 402 ┊          this.pos = 0;
+  │                       ^
+  └─
+
+  issue #5 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:403:21
+  │
+  │ 403 ┊          this.length = str_len(src);
+  │                          ^
+  └─
+
+  issue #6 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:404:19
+  │
+  │ 404 ┊          this.line = 1;
+  │                        ^
+  └─
+
+  issue #7 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:405:18
+  │
+  │ 405 ┊          this.col = 1;
+  │                       ^
+  └─
+
+  issue #8 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:406:22
+  │
+  │ 406 ┊          this.tk_kind = TK_EOF;
+  │                           ^
+  └─
+
+  issue #9 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:407:22
+  │
+  │ 407 ┊          this.tk_line = 1;
+  │                           ^
+  └─
+
+  issue #10 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:408:21
+  │
+  │ 408 ┊          this.tk_col = 1;
+  │                          ^
+  └─
+
+  issue #11 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:409:23
+  │
+  │ 409 ┊          this.tk_start = 0;
+  │                            ^
+  └─
+
+  issue #12 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:410:21
+  │
+  │ 410 ┊          this.tk_end = 0;
+  │                          ^
+  └─
+
+  issue #13 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:411:22
+  │
+  │ 411 ┊          this.tk_ival = 0;
+  │                           ^
+  └─
+
+  issue #14 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:412:22
+  │
+  │ 412 ┊          this.tk_fval = 0;
+  │                           ^
+  └─
+
+  issue #15 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:413:24
+  │
+  │ 413 ┊          this.last_kind = 0;
+  │                             ^
+  └─
+
+  issue #16 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:414:27
+  │
+  │ 414 ┊          this.pending_semi = 0;
+  │                                ^
+  └─
+
+  issue #17 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:418:22
+  │
+  │ 418 ┊          if (this.pos < this.length) {
+  │                           ^
+  └─
+
+  issue #18 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:419:41
+  │
+  │ 419 ┊              var c = str_char(this.source, this.pos);
+  │                                              ^
+  └─
+
+  issue #19 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:420:22
+  │
+  │ 420 ┊              this.pos = this.pos + 1;
+  │                           ^
+  └─
+
+  issue #20 · Undefined variable 'c'
+  ┌─ test_lexer.nux:421:19
+  │
+  │ 421 ┊              if (c == 10) {
+  │                        ^
+  └─
+
+  issue #21 · Unknown class 'Lexer'
+  ┌─ test_lexer.nux:423:26
+  │
+  │ 423 ┊                  this.col = 1;
+  │                               ^
+  └─
+
+  issue #22 · Only functions/fields allowed in classes for now
+  ┌─ test_lexer.nux:424:15
+  │
+  │ 424 ┊              } else {
+  │                    ^
+  └─
+
+  issue #23 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:426:13
+  │
+  │ 426 ┊              }
+  │                  ^
+  └─
+
+  issue #24 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:427:9
+  │
+  │ 427 ┊          }
+  │              ^
+  └─
+
+  issue #25 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:428:5
+  │
+  │ 428 ┊      }
+  │          ^
+  └─
+
+  issue #26 · Undefined variable 'this'
+  ┌─ test_lexer.nux:431:17
+  │
+  │ 431 ┊          if (this.pos >= this.length) { return 0; }
+  │                      ^
+  └─
+
+  issue #27 · Undefined variable 'this'
+  ┌─ test_lexer.nux:432:29
+  │
+  │ 432 ┊          return str_char(this.source, this.pos);
+  │                                  ^
+  └─
+
+  issue #28 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:433:5
+  │
+  │ 433 ┊      }
+  │          ^
+  └─
+
+  issue #29 · Undefined variable 'this'
+  ┌─ test_lexer.nux:436:17
+  │
+  │ 436 ┊          if (this.pos + 1 >= this.length) { return 0; }
+  │                      ^
+  └─
+
+  issue #30 · Undefined variable 'this'
+  ┌─ test_lexer.nux:437:29
+  │
+  │ 437 ┊          return str_char(this.source, this.pos + 1);
+  │                                  ^
+  └─
+
+  issue #31 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:438:5
+  │
+  │ 438 ┊      }
+  │          ^
+  └─
+
+  issue #32 · Undefined variable 'this'
+  ┌─ test_lexer.nux:441:22
+  │
+  │ 441 ┊          this.tk_kind = kind;
+  │                           ^
+  └─
+
+  issue #33 · Undefined variable 'this'
+  ┌─ test_lexer.nux:442:21
+  │
+  │ 442 ┊          this.tk_end = this.pos;
+  │                          ^
+  └─
+
+  issue #34 · Undefined variable 'this'
+  ┌─ test_lexer.nux:443:24
+  │
+  │ 443 ┊          this.last_kind = kind;
+  │                             ^
+  └─
+
+  issue #35 · Undefined variable 'this'
+  ┌─ test_lexer.nux:448:20
+  │
+  │ 448 ┊          while (this.pos < this.length) {
+  │                         ^
+  └─
+
+  issue #36 · Undefined variable 'this'
+  ┌─ test_lexer.nux:449:34
+  │
+  │ 449 ┊              var c = str_char(this.source, this.pos);
+  │                                       ^
+  └─
+
+  issue #37 · Undefined variable 'this'
+  ┌─ test_lexer.nux:450:59
+  │
+  │ 450 ┊              print("skip_ws checking char at "); print(this.pos); print(": "); println(c);
+  │                                                                ^
+  └─
+
+  issue #38 · Undefined variable 'c'
+  ┌─ test_lexer.nux:450:88
+  │
+  │ 450 ┊              print("skip_ws checking char at "); print(this.pos); print(": "); println(c);
+  │                                                                                             ^
+  └─
+
+  issue #39 · Undefined variable 'c'
+  ┌─ test_lexer.nux:451:36
+  │
+  │ 451 ┊              var is_ws = lex_is_ws(c);
+  │                                         ^
+  └─
+
+  issue #40 · Undefined variable 'is_ws'
+  ┌─ test_lexer.nux:452:23
+  │
+  │ 452 ┊              if (is_ws == 0) {
+  │                            ^
+  └─
+
+  issue #41 · Undefined variable 'c'
+  ┌─ test_lexer.nux:456:19
+  │
+  │ 456 ┊              if (c == 10) {
+  │                        ^
+  └─
+
+  issue #42 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:458:13
+  │
+  │ 458 ┊              }
+  │                  ^
+  └─
+
+  issue #43 · Undefined variable 'this'
+  ┌─ test_lexer.nux:459:29
+  │
+  │ 459 ┊              this.advance_pos();
+  │                                  ^
+  └─
+
+  issue #44 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:460:9
+  │
+  │ 460 ┊          }
+  │              ^
+  └─
+
+  issue #45 · Undefined variable 'hit_nl'
+  ┌─ test_lexer.nux:461:22
+  │
+  │ 461 ┊          return hit_nl;
+  │                           ^
+  └─
+
+  issue #46 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:462:5
+  │
+  │ 462 ┊      }
+  │          ^
+  └─
+
+  issue #47 · Undefined variable 'this'
+  ┌─ test_lexer.nux:465:25
+  │
+  │ 465 ┊          var start = this.pos;
+  │                              ^
+  └─
+
+  issue #48 · Undefined variable 'this'
+  ┌─ test_lexer.nux:466:25
+  │
+  │ 466 ┊          var first = this.cur();
+  │                              ^
+  └─
+
+  issue #49 · Undefined variable 'this'
+  ┌─ test_lexer.nux:467:25
+  │
+  │ 467 ┊          this.advance_pos();
+  │                              ^
+  └─
+
+  issue #50 · Undefined variable 'first'
+  ┌─ test_lexer.nux:470:19
+  │
+  │ 470 ┊          if (first == '0') {
+  │                        ^
+  └─
+
+  issue #51 · Undefined variable 'this'
+  ┌─ test_lexer.nux:471:21
+  │
+  │ 471 ┊              if (this.pos < this.length) {
+  │                          ^
+  └─
+
+  issue #52 · Undefined variable 'this'
+  ┌─ test_lexer.nux:472:30
+  │
+  │ 472 ┊                  var nx = this.cur();
+  │                                   ^
+  └─
+
+  issue #53 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:474:24
+  │
+  │ 474 ┊                  if (nx == 'x') { is_hex = 1; }
+  │                             ^
+  └─
+
+  issue #54 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:475:24
+  │
+  │ 475 ┊                  if (nx == 'X') { is_hex = 1; }
+  │                             ^
+  └─
+
+  issue #55 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:475:46
+  │
+  │ 475 ┊                  if (nx == 'X') { is_hex = 1; }
+  │                                                   ^
+  └─
+
+  issue #56 · Undefined variable 'is_hex'
+  ┌─ test_lexer.nux:477:28
+  │
+  │ 477 ┊                  if (is_hex == 1) {
+  │                                 ^
+  └─
+
+  issue #57 · Undefined variable 'this'
+  ┌─ test_lexer.nux:480:32
+  │
+  │ 480 ┊                      while (this.pos < this.length) {
+  │                                     ^
+  └─
+
+  issue #58 · Undefined variable 'this'
+  ┌─ test_lexer.nux:481:37
+  │
+  │ 481 ┊                          var c = this.cur();
+  │                                          ^
+  └─
+
+  issue #59 · Undefined variable 'c'
+  ┌─ test_lexer.nux:482:46
+  │
+  │ 482 ┊                          var ok = lex_is_hex(c);
+  │                                                   ^
+  └─
+
+  issue #60 · Undefined variable 'c'
+  ┌─ test_lexer.nux:483:31
+  │
+  │ 483 ┊                          if (c == '_') { ok = 1; }
+  │                                    ^
+  └─
+
+  issue #61 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:483:49
+  │
+  │ 483 ┊                          if (c == '_') { ok = 1; }
+  │                                                      ^
+  └─
+
+  issue #62 · Undefined variable 'ok'
+  ┌─ test_lexer.nux:484:32
+  │
+  │ 484 ┊                          if (ok == 0) { break; }
+  │                                     ^
+  └─
+
+  issue #63 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:484:47
+  │
+  │ 484 ┊                          if (ok == 0) { break; }
+  │                                                    ^
+  └─
+
+  issue #64 · Undefined variable 'c'
+  ┌─ test_lexer.nux:485:31
+  │
+  │ 485 ┊                          if (c != '_') {
+  │                                    ^
+  └─
+
+  issue #65 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:487:25
+  │
+  │ 487 ┊                          }
+  │                              ^
+  └─
+
+  issue #66 · Undefined variable 'this'
+  ┌─ test_lexer.nux:488:41
+  │
+  │ 488 ┊                          this.advance_pos();
+  │                                              ^
+  └─
+
+  issue #67 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:489:21
+  │
+  │ 489 ┊                      }
+  │                          ^
+  └─
+
+  issue #68 · Undefined variable 'this'
+  ┌─ test_lexer.nux:490:34
+  │
+  │ 490 ┊                      this.tk_ival = val;
+  │                                       ^
+  └─
+
+  issue #69 · Undefined variable 'this'
+  ┌─ test_lexer.nux:491:32
+  │
+  │ 491 ┊                      this.set_tk(TK_NUMBER);
+  │                                     ^
+  └─
+
+  issue #70 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:493:17
+  │
+  │ 493 ┊                  } else {
+  │                      ^
+  └─
+
+  issue #71 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:493:19
+  │
+  │ 493 ┊                  } else {
+  │                        ^
+  └─
+
+  issue #72 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:495:28
+  │
+  │ 495 ┊                      if (nx == 'b') { is_bin = 1; }
+  │                                 ^
+  └─
+
+  issue #73 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:496:28
+  │
+  │ 496 ┊                      if (nx == 'B') { is_bin = 1; }
+  │                                 ^
+  └─
+
+  issue #74 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:496:50
+  │
+  │ 496 ┊                      if (nx == 'B') { is_bin = 1; }
+  │                                                       ^
+  └─
+
+  issue #75 · Undefined variable 'is_bin'
+  ┌─ test_lexer.nux:497:32
+  │
+  │ 497 ┊                      if (is_bin == 1) {
+  │                                     ^
+  └─
+
+  issue #76 · Undefined variable 'this'
+  ┌─ test_lexer.nux:500:36
+  │
+  │ 500 ┊                          while (this.pos < this.length) {
+  │                                         ^
+  └─
+
+  issue #77 · Undefined variable 'this'
+  ┌─ test_lexer.nux:501:41
+  │
+  │ 501 ┊                              var c = this.cur();
+  │                                              ^
+  └─
+
+  issue #78 · Undefined variable 'c'
+  ┌─ test_lexer.nux:503:35
+  │
+  │ 503 ┊                              if (c == '0') { ok = 1; }
+  │                                        ^
+  └─
+
+  issue #79 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:503:53
+  │
+  │ 503 ┊                              if (c == '0') { ok = 1; }
+  │                                                          ^
+  └─
+
+  issue #80 · Undefined variable 'c'
+  ┌─ test_lexer.nux:504:35
+  │
+  │ 504 ┊                              if (c == '1') { ok = 1; }
+  │                                        ^
+  └─
+
+  issue #81 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:504:53
+  │
+  │ 504 ┊                              if (c == '1') { ok = 1; }
+  │                                                          ^
+  └─
+
+  issue #82 · Undefined variable 'c'
+  ┌─ test_lexer.nux:505:35
+  │
+  │ 505 ┊                              if (c == '_') { ok = 1; }
+  │                                        ^
+  └─
+
+  issue #83 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:505:53
+  │
+  │ 505 ┊                              if (c == '_') { ok = 1; }
+  │                                                          ^
+  └─
+
+  issue #84 · Undefined variable 'c'
+  ┌─ test_lexer.nux:507:35
+  │
+  │ 507 ┊                              if (c != '_') {
+  │                                        ^
+  └─
+
+  issue #85 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:509:29
+  │
+  │ 509 ┊                              }
+  │                                  ^
+  └─
+
+  issue #86 · Undefined variable 'this'
+  ┌─ test_lexer.nux:510:45
+  │
+  │ 510 ┊                              this.advance_pos();
+  │                                                  ^
+  └─
+
+  issue #87 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:511:25
+  │
+  │ 511 ┊                          }
+  │                              ^
+  └─
+
+  issue #88 · Undefined variable 'this'
+  ┌─ test_lexer.nux:512:38
+  │
+  │ 512 ┊                          this.tk_ival = val;
+  │                                           ^
+  └─
+
+  issue #89 · Undefined variable 'this'
+  ┌─ test_lexer.nux:513:36
+  │
+  │ 513 ┊                          this.set_tk(TK_NUMBER);
+  │                                         ^
+  └─
+
+  issue #90 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:515:21
+  │
+  │ 515 ┊                      }
+  │                          ^
+  └─
+
+  issue #91 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:516:17
+  │
+  │ 516 ┊                  }
+  │                      ^
+  └─
+
+  issue #92 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:517:13
+  │
+  │ 517 ┊              }
+  │                  ^
+  └─
+
+  issue #93 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:518:9
+  │
+  │ 518 ┊          }
+  │              ^
+  └─
+
+  issue #94 · Undefined variable 'this'
+  ┌─ test_lexer.nux:525:20
+  │
+  │ 525 ┊          while (this.pos < this.length) {
+  │                         ^
+  └─
+
+  issue #95 · Undefined variable 'this'
+  ┌─ test_lexer.nux:526:25
+  │
+  │ 526 ┊              var c = this.cur();
+  │                              ^
+  └─
+
+  issue #96 · Undefined variable 'c'
+  ┌─ test_lexer.nux:527:31
+  │
+  │ 527 ┊              if (lex_is_digit(c) == 1) {
+  │                                    ^
+  └─
+
+  issue #97 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:529:13
+  │
+  │ 529 ┊              } else {
+  │                  ^
+  └─
+
+  issue #98 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:529:15
+  │
+  │ 529 ┊              } else {
+  │                    ^
+  └─
+
+  issue #99 · Undefined variable 'c'
+  ┌─ test_lexer.nux:530:23
+  │
+  │ 530 ┊                  if (c == '_') {
+  │                            ^
+  └─
+
+  issue #100 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:532:19
+  │
+  │ 532 ┊                  } else {
+  │                        ^
+  └─
+
+  issue #101 · Undefined variable 'c'
+  ┌─ test_lexer.nux:533:27
+  │
+  │ 533 ┊                      if (c == '.') {
+  │                                ^
+  └─
+
+  issue #102 · Undefined variable 'this'
+  ┌─ test_lexer.nux:535:37
+  │
+  │ 535 ┊                              if (this.pos + 1 < this.length) {
+  │                                          ^
+  └─
+
+  issue #103 · Undefined variable 'this'
+  ┌─ test_lexer.nux:536:54
+  │
+  │ 536 ┊                                  if (lex_is_digit(this.peek_next()) == 1) {
+  │                                                           ^
+  └─
+
+  issue #104 · Undefined variable 'this'
+  ┌─ test_lexer.nux:538:53
+  │
+  │ 538 ┊                                      this.advance_pos();
+  │                                                          ^
+  └─
+
+  issue #105 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:542:31
+  │
+  │ 542 ┊                              } else {
+  │                                    ^
+  └─
+
+  issue #106 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:545:25
+  │
+  │ 545 ┊                          } else {
+  │                              ^
+  └─
+
+  issue #107 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:545:27
+  │
+  │ 545 ┊                          } else {
+  │                                ^
+  └─
+
+  issue #108 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:548:21
+  │
+  │ 548 ┊                      } else {
+  │                          ^
+  └─
+
+  issue #109 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:548:23
+  │
+  │ 548 ┊                      } else {
+  │                            ^
+  └─
+
+  issue #110 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:551:17
+  │
+  │ 551 ┊                  }
+  │                      ^
+  └─
+
+  issue #111 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:552:13
+  │
+  │ 552 ┊              }
+  │                  ^
+  └─
+
+  issue #112 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:553:9
+  │
+  │ 553 ┊          }
+  │              ^
+  └─
+
+  issue #113 · Undefined variable 'start'
+  ┌─ test_lexer.nux:560:26
+  │
+  │ 560 ┊              var i = start;
+  │                               ^
+  └─
+
+  issue #114 · Undefined variable 'i'
+  ┌─ test_lexer.nux:561:22
+  │
+  │ 561 ┊              while (i < this.pos) {
+  │                           ^
+  └─
+
+  issue #115 · Undefined variable 'this'
+  ┌─ test_lexer.nux:562:38
+  │
+  │ 562 ┊                  var d = str_char(this.source, i);
+  │                                           ^
+  └─
+
+  issue #116 · Undefined variable 'd'
+  ┌─ test_lexer.nux:563:23
+  │
+  │ 563 ┊                  if (d == '.') {
+  │                            ^
+  └─
+
+  issue #117 · Undefined variable 'd'
+  ┌─ test_lexer.nux:566:27
+  │
+  │ 566 ┊                      if (d != '_') {
+  │                                ^
+  └─
+
+  issue #118 · Undefined variable 'd'
+  ┌─ test_lexer.nux:567:39
+  │
+  │ 567 ┊                          var digit = d - '0';
+  │                                            ^
+  └─
+
+  issue #119 · Undefined variable 'in_frac'
+  ┌─ test_lexer.nux:568:37
+  │
+  │ 568 ┊                          if (in_frac == 0) {
+  │                                          ^
+  └─
+
+  issue #120 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:570:27
+  │
+  │ 570 ┊                          } else {
+  │                                ^
+  └─
+
+  issue #121 · Undefined variable 'frac_part' (use 'var frac_part' to declare)
+  ┌─ test_lexer.nux:571:39
+  │
+  │ 571 ┊                              frac_part = frac_part * 10 + digit;
+  │                                            ^
+  └─
+
+  issue #122 · Undefined variable 'frac_div' (use 'var frac_div' to declare)
+  ┌─ test_lexer.nux:572:38
+  │
+  │ 572 ┊                              frac_div = frac_div * 10;
+  │                                           ^
+  └─
+
+  issue #123 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:574:21
+  │
+  │ 574 ┊                      }
+  │                          ^
+  └─
+
+  issue #124 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:575:17
+  │
+  │ 575 ┊                  }
+  │                      ^
+  └─
+
+  issue #125 · Undefined variable 'i'
+  ┌─ test_lexer.nux:576:23
+  │
+  │ 576 ┊                  i = i + 1;
+  │                            ^
+  └─
+
+  issue #126 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:577:13
+  │
+  │ 577 ┊              }
+  │                  ^
+  └─
+
+  issue #127 · Undefined variable 'int_part'
+  ┌─ test_lexer.nux:578:38
+  │
+  │ 578 ┊              var fval = float(int_part) + float(frac_part) / float(frac_div);
+  │                                           ^
+  └─
+
+  issue #128 · Undefined variable 'this'
+  ┌─ test_lexer.nux:579:26
+  │
+  │ 579 ┊              this.tk_fval = fval;
+  │                               ^
+  └─
+
+  issue #129 · Undefined variable 'this'
+  ┌─ test_lexer.nux:580:24
+  │
+  │ 580 ┊              this.set_tk(TK_FLOAT);
+  │                             ^
+  └─
+
+  issue #130 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:581:9
+  │
+  │ 581 ┊          } else {
+  │              ^
+  └─
+
+  issue #131 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:581:11
+  │
+  │ 581 ┊          } else {
+  │                ^
+  └─
+
+  issue #132 · Undefined variable 'start'
+  ┌─ test_lexer.nux:583:26
+  │
+  │ 583 ┊              var i = start;
+  │                               ^
+  └─
+
+  issue #133 · Undefined variable 'i'
+  ┌─ test_lexer.nux:584:22
+  │
+  │ 584 ┊              while (i < this.pos) {
+  │                           ^
+  └─
+
+  issue #134 · Undefined variable 'this'
+  ┌─ test_lexer.nux:585:38
+  │
+  │ 585 ┊                  var d = str_char(this.source, i);
+  │                                           ^
+  └─
+
+  issue #135 · Undefined variable 'd'
+  ┌─ test_lexer.nux:586:23
+  │
+  │ 586 ┊                  if (d != '_') {
+  │                            ^
+  └─
+
+  issue #136 · Undefined variable 'i'
+  ┌─ test_lexer.nux:589:23
+  │
+  │ 589 ┊                  i = i + 1;
+  │                            ^
+  └─
+
+  issue #137 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:590:13
+  │
+  │ 590 ┊              }
+  │                  ^
+  └─
+
+  issue #138 · Undefined variable 'this'
+  ┌─ test_lexer.nux:591:26
+  │
+  │ 591 ┊              this.tk_ival = val;
+  │                               ^
+  └─
+
+  issue #139 · Undefined variable 'this'
+  ┌─ test_lexer.nux:592:24
+  │
+  │ 592 ┊              this.set_tk(TK_NUMBER);
+  │                             ^
+  └─
+
+  issue #140 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:593:9
+  │
+  │ 593 ┊          }
+  │              ^
+  └─
+
+  issue #141 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:595:5
+  │
+  │ 595 ┊      }
+  │          ^
+  └─
+
+  issue #142 · Undefined variable 'this'
+  ┌─ test_lexer.nux:598:25
+  │
+  │ 598 ┊          var start = this.pos;
+  │                              ^
+  └─
+
+  issue #143 · Undefined variable 'this'
+  ┌─ test_lexer.nux:599:20
+  │
+  │ 599 ┊          while (this.pos < this.length) {
+  │                         ^
+  └─
+
+  issue #144 · Undefined variable 'this'
+  ┌─ test_lexer.nux:600:34
+  │
+  │ 600 ┊              if (lex_is_alnum(this.cur()) == 0) {
+  │                                       ^
+  └─
+
+  issue #145 · Undefined variable 'this'
+  ┌─ test_lexer.nux:603:29
+  │
+  │ 603 ┊              this.advance_pos();
+  │                                  ^
+  └─
+
+  issue #146 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:604:9
+  │
+  │ 604 ┊          }
+  │              ^
+  └─
+
+  issue #147 · Undefined variable 'this'
+  ┌─ test_lexer.nux:605:23
+  │
+  │ 605 ┊          var len = this.pos - start;
+  │                            ^
+  └─
+
+  issue #148 · Undefined variable 'this'
+  ┌─ test_lexer.nux:606:37
+  │
+  │ 606 ┊          var kind = lex_match_kw(this.source, start, len);
+  │                                          ^
+  └─
+
+  issue #149 · Undefined variable 'this'
+  ┌─ test_lexer.nux:607:20
+  │
+  │ 607 ┊          this.set_tk(kind);
+  │                         ^
+  └─
+
+  issue #150 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:609:5
+  │
+  │ 609 ┊      }
+  │          ^
+  └─
+
+  issue #151 · Undefined variable 'this'
+  ┌─ test_lexer.nux:612:25
+  │
+  │ 612 ┊          this.advance_pos();
+  │                              ^
+  └─
+
+  issue #152 · Undefined variable 'this'
+  ┌─ test_lexer.nux:613:23
+  │
+  │ 613 ┊          this.tk_start = this.pos;
+  │                            ^
+  └─
+
+  issue #153 · Undefined variable 'this'
+  ┌─ test_lexer.nux:614:20
+  │
+  │ 614 ┊          while (this.pos < this.length) {
+  │                         ^
+  └─
+
+  issue #154 · Undefined variable 'this'
+  ┌─ test_lexer.nux:615:25
+  │
+  │ 615 ┊              var c = this.cur();
+  │                              ^
+  └─
+
+  issue #155 · Undefined variable 'c'
+  ┌─ test_lexer.nux:616:19
+  │
+  │ 616 ┊              if (c == '"') {
+  │                        ^
+  └─
+
+  issue #156 · Undefined variable 'c'
+  ┌─ test_lexer.nux:619:19
+  │
+  │ 619 ┊              if (c == 92) {
+  │                        ^
+  └─
+
+  issue #157 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:621:13
+  │
+  │ 621 ┊              }
+  │                  ^
+  └─
+
+  issue #158 · Undefined variable 'this'
+  ┌─ test_lexer.nux:622:29
+  │
+  │ 622 ┊              this.advance_pos();
+  │                                  ^
+  └─
+
+  issue #159 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:623:9
+  │
+  │ 623 ┊          }
+  │              ^
+  └─
+
+  issue #160 · Undefined variable 'this'
+  ┌─ test_lexer.nux:624:21
+  │
+  │ 624 ┊          this.tk_end = this.pos;
+  │                          ^
+  └─
+
+  issue #161 · Undefined variable 'this'
+  ┌─ test_lexer.nux:625:25
+  │
+  │ 625 ┊          this.advance_pos();
+  │                              ^
+  └─
+
+  issue #162 · Undefined variable 'this'
+  ┌─ test_lexer.nux:626:20
+  │
+  │ 626 ┊          this.set_tk(TK_STRING);
+  │                         ^
+  └─
+
+  issue #163 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:628:5
+  │
+  │ 628 ┊      }
+  │          ^
+  └─
+
+  issue #164 · Undefined variable 'this'
+  ┌─ test_lexer.nux:631:21
+  │
+  │ 631 ┊          var c = this.cur();
+  │                          ^
+  └─
+
+  issue #165 · Undefined variable 'this'
+  ┌─ test_lexer.nux:632:25
+  │
+  │ 632 ┊          this.advance_pos();
+  │                              ^
+  └─
+
+  issue #166 · Undefined variable 'this'
+  ┌─ test_lexer.nux:633:17
+  │
+  │ 633 ┊          if (this.pos < this.length) {
+  │                      ^
+  └─
+
+  issue #167 · Undefined variable 'this'
+  ┌─ test_lexer.nux:634:26
+  │
+  │ 634 ┊              var nx = this.cur();
+  │                               ^
+  └─
+
+  issue #168 · Undefined variable 'c'
+  ┌─ test_lexer.nux:636:19
+  │
+  │ 636 ┊              if (c == '=') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #169 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:636:36
+  │
+  │ 636 ┊              if (c == '=') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #170 · Undefined variable 'this'
+  ┌─ test_lexer.nux:636:77
+  │
+  │ 636 ┊              if (c == '=') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #171 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:636:104
+  │
+  │ 636 ┊              if (c == '=') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); matched = 1; } }
+  │                                                                                                             ^
+  └─
+
+  issue #172 · Undefined variable 'c'
+  ┌─ test_lexer.nux:637:19
+  │
+  │ 637 ┊              if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #173 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:637:36
+  │
+  │ 637 ┊              if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #174 · Undefined variable 'this'
+  ┌─ test_lexer.nux:637:77
+  │
+  │ 637 ┊              if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #175 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:637:103
+  │
+  │ 637 ┊              if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+  │                                                                                                            ^
+  └─
+
+  issue #176 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:637:105
+  │
+  │ 637 ┊              if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+  │                                                                                                              ^
+  └─
+
+  issue #177 · Undefined variable 'c'
+  ┌─ test_lexer.nux:638:19
+  │
+  │ 638 ┊              if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #178 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:638:36
+  │
+  │ 638 ┊              if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #179 · Undefined variable 'this'
+  ┌─ test_lexer.nux:638:77
+  │
+  │ 638 ┊              if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #180 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:638:102
+  │
+  │ 638 ┊              if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+  │                                                                                                           ^
+  └─
+
+  issue #181 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:638:104
+  │
+  │ 638 ┊              if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+  │                                                                                                             ^
+  └─
+
+  issue #182 · Undefined variable 'c'
+  ┌─ test_lexer.nux:639:19
+  │
+  │ 639 ┊              if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #183 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:639:36
+  │
+  │ 639 ┊              if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #184 · Undefined variable 'this'
+  ┌─ test_lexer.nux:639:77
+  │
+  │ 639 ┊              if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #185 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:639:102
+  │
+  │ 639 ┊              if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+  │                                                                                                           ^
+  └─
+
+  issue #186 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:639:104
+  │
+  │ 639 ┊              if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+  │                                                                                                             ^
+  └─
+
+  issue #187 · Undefined variable 'c'
+  ┌─ test_lexer.nux:640:19
+  │
+  │ 640 ┊              if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #188 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:640:36
+  │
+  │ 640 ┊              if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #189 · Undefined variable 'this'
+  ┌─ test_lexer.nux:640:77
+  │
+  │ 640 ┊              if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #190 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:640:100
+  │
+  │ 640 ┊              if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+  │                                                                                                         ^
+  └─
+
+  issue #191 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:640:102
+  │
+  │ 640 ┊              if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+  │                                                                                                           ^
+  └─
+
+  issue #192 · Undefined variable 'c'
+  ┌─ test_lexer.nux:641:19
+  │
+  │ 641 ┊              if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #193 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:641:36
+  │
+  │ 641 ┊              if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #194 · Undefined variable 'this'
+  ┌─ test_lexer.nux:641:77
+  │
+  │ 641 ┊              if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #195 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:641:99
+  │
+  │ 641 ┊              if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+  │                                                                                                        ^
+  └─
+
+  issue #196 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:641:101
+  │
+  │ 641 ┊              if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+  │                                                                                                          ^
+  └─
+
+  issue #197 · Undefined variable 'c'
+  ┌─ test_lexer.nux:642:19
+  │
+  │ 642 ┊              if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #198 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:642:36
+  │
+  │ 642 ┊              if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #199 · Undefined variable 'this'
+  ┌─ test_lexer.nux:642:77
+  │
+  │ 642 ┊              if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #200 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:642:103
+  │
+  │ 642 ┊              if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+  │                                                                                                            ^
+  └─
+
+  issue #201 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:642:105
+  │
+  │ 642 ┊              if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+  │                                                                                                              ^
+  └─
+
+  issue #202 · Undefined variable 'c'
+  ┌─ test_lexer.nux:643:19
+  │
+  │ 643 ┊              if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+  │                        ^
+  └─
+
+  issue #203 · Undefined variable 'nx'
+  ┌─ test_lexer.nux:643:36
+  │
+  │ 643 ┊              if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+  │                                         ^
+  └─
+
+  issue #204 · Undefined variable 'this'
+  ┌─ test_lexer.nux:643:77
+  │
+  │ 643 ┊              if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+  │                                                                                  ^
+  └─
+
+  issue #205 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:643:103
+  │
+  │ 643 ┊              if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+  │                                                                                                            ^
+  └─
+
+  issue #206 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:643:105
+  │
+  │ 643 ┊              if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+  │                                                                                                              ^
+  └─
+
+  issue #207 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:646:9
+  │
+  │ 646 ┊          }
+  │              ^
+  └─
+
+  issue #208 · Undefined variable 'c'
+  ┌─ test_lexer.nux:648:15
+  │
+  │ 648 ┊          if (c == '=') { this.set_tk(TK_EQ); return 0; }
+  │                    ^
+  └─
+
+  issue #209 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:648:55
+  │
+  │ 648 ┊          if (c == '=') { this.set_tk(TK_EQ); return 0; }
+  │                                                            ^
+  └─
+
+  issue #210 · Undefined variable 'c'
+  ┌─ test_lexer.nux:649:15
+  │
+  │ 649 ┊          if (c == '<') { this.set_tk(TK_LT); return 0; }
+  │                    ^
+  └─
+
+  issue #211 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:649:55
+  │
+  │ 649 ┊          if (c == '<') { this.set_tk(TK_LT); return 0; }
+  │                                                            ^
+  └─
+
+  issue #212 · Undefined variable 'c'
+  ┌─ test_lexer.nux:650:15
+  │
+  │ 650 ┊          if (c == '>') { this.set_tk(TK_GT); return 0; }
+  │                    ^
+  └─
+
+  issue #213 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:650:55
+  │
+  │ 650 ┊          if (c == '>') { this.set_tk(TK_GT); return 0; }
+  │                                                            ^
+  └─
+
+  issue #214 · Undefined variable 'c'
+  ┌─ test_lexer.nux:651:15
+  │
+  │ 651 ┊          if (c == '&') { this.set_tk(TK_AMPERSAND); return 0; }
+  │                    ^
+  └─
+
+  issue #215 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:651:62
+  │
+  │ 651 ┊          if (c == '&') { this.set_tk(TK_AMPERSAND); return 0; }
+  │                                                                   ^
+  └─
+
+  issue #216 · Undefined variable 'c'
+  ┌─ test_lexer.nux:652:15
+  │
+  │ 652 ┊          if (c == '|') { this.set_tk(TK_PIPE); return 0; }
+  │                    ^
+  └─
+
+  issue #217 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:652:57
+  │
+  │ 652 ┊          if (c == '|') { this.set_tk(TK_PIPE); return 0; }
+  │                                                              ^
+  └─
+
+  issue #218 · Undefined variable 'c'
+  ┌─ test_lexer.nux:653:15
+  │
+  │ 653 ┊          if (c == '^') { this.set_tk(TK_CARET); return 0; }
+  │                    ^
+  └─
+
+  issue #219 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:653:58
+  │
+  │ 653 ┊          if (c == '^') { this.set_tk(TK_CARET); return 0; }
+  │                                                               ^
+  └─
+
+  issue #220 · Undefined variable 'c'
+  ┌─ test_lexer.nux:654:15
+  │
+  │ 654 ┊          if (c == '~') { this.set_tk(TK_TILDE); return 0; }
+  │                    ^
+  └─
+
+  issue #221 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:654:58
+  │
+  │ 654 ┊          if (c == '~') { this.set_tk(TK_TILDE); return 0; }
+  │                                                               ^
+  └─
+
+  issue #222 · Undefined variable 'this'
+  ┌─ test_lexer.nux:655:20
+  │
+  │ 655 ┊          this.set_tk(TK_IDENTIFIER);
+  │                         ^
+  └─
+
+  issue #223 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:657:5
+  │
+  │ 657 ┊      }
+  │          ^
+  └─
+
+  issue #224 · Undefined variable 'this'
+  ┌─ test_lexer.nux:660:17
+  │
+  │ 660 ┊          if (this.pending_semi == 1) {
+  │                      ^
+  └─
+
+  issue #225 · Undefined variable 'this'
+  ┌─ test_lexer.nux:662:26
+  │
+  │ 662 ┊              this.tk_kind = TK_SEMICOLON;
+  │                               ^
+  └─
+
+  issue #226 · Undefined variable 'this'
+  ┌─ test_lexer.nux:663:26
+  │
+  │ 663 ┊              this.tk_line = this.line;
+  │                               ^
+  └─
+
+  issue #227 · Undefined variable 'this'
+  ┌─ test_lexer.nux:664:25
+  │
+  │ 664 ┊              this.tk_col = this.col;
+  │                              ^
+  └─
+
+  issue #228 · Undefined variable 'this'
+  ┌─ test_lexer.nux:665:28
+  │
+  │ 665 ┊              this.last_kind = TK_SEMICOLON;
+  │                                 ^
+  └─
+
+  issue #229 · Undefined variable 'this'
+  ┌─ test_lexer.nux:669:28
+  │
+  │ 669 ┊          var pre_line = this.line;
+  │                                 ^
+  └─
+
+  issue #230 · Undefined variable 'this'
+  ┌─ test_lexer.nux:670:27
+  │
+  │ 670 ┊          var pre_col = this.col;
+  │                                ^
+  └─
+
+  issue #231 · Undefined variable 'this'
+  ┌─ test_lexer.nux:671:26
+  │
+  │ 671 ┊          var hit_nl = this.skip_ws();
+  │                               ^
+  └─
+
+  issue #232 · Undefined variable 'hit_nl'
+  ┌─ test_lexer.nux:672:20
+  │
+  │ 672 ┊          if (hit_nl == 1) {
+  │                         ^
+  └─
+
+  issue #233 · Undefined variable 'this'
+  ┌─ test_lexer.nux:673:38
+  │
+  │ 673 ┊              if (lex_triggers_asi(this.last_kind) == 1) {
+  │                                           ^
+  └─
+
+  issue #234 · Undefined variable 'this'
+  ┌─ test_lexer.nux:675:30
+  │
+  │ 675 ┊                  this.tk_line = pre_line;
+  │                                   ^
+  └─
+
+  issue #235 · Undefined variable 'this'
+  ┌─ test_lexer.nux:676:29
+  │
+  │ 676 ┊                  this.tk_col = pre_col;
+  │                                  ^
+  └─
+
+  issue #236 · Undefined variable 'this'
+  ┌─ test_lexer.nux:677:32
+  │
+  │ 677 ┊                  this.last_kind = TK_SEMICOLON;
+  │                                     ^
+  └─
+
+  issue #237 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:679:13
+  │
+  │ 679 ┊              }
+  │                  ^
+  └─
+
+  issue #238 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:680:9
+  │
+  │ 680 ┊          }
+  │              ^
+  └─
+
+  issue #239 · Undefined variable 'this'
+  ┌─ test_lexer.nux:682:22
+  │
+  │ 682 ┊          this.tk_line = this.line;
+  │                           ^
+  └─
+
+  issue #240 · Undefined variable 'this'
+  ┌─ test_lexer.nux:683:21
+  │
+  │ 683 ┊          this.tk_col = this.col;
+  │                          ^
+  └─
+
+  issue #241 · Undefined variable 'this'
+  ┌─ test_lexer.nux:684:23
+  │
+  │ 684 ┊          this.tk_start = this.pos;
+  │                            ^
+  └─
+
+  issue #242 · Undefined variable 'this'
+  ┌─ test_lexer.nux:686:17
+  │
+  │ 686 ┊          if (this.pos >= this.length) {
+  │                      ^
+  └─
+
+  issue #243 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:689:9
+  │
+  │ 689 ┊          }
+  │              ^
+  └─
+
+  issue #244 · Undefined variable 'this'
+  ┌─ test_lexer.nux:691:21
+  │
+  │ 691 ┊          var c = this.cur();
+  │                          ^
+  └─
+
+  issue #245 · Undefined variable 'c'
+  ┌─ test_lexer.nux:693:15
+  │
+  │ 693 ┊          if (c == '+') { this.advance_pos(); this.set_tk(TK_PLUS); return 0; }
+  │                    ^
+  └─
+
+  issue #246 · Undefined variable 'this'
+  ┌─ test_lexer.nux:693:56
+  │
+  │ 693 ┊          if (c == '+') { this.advance_pos(); this.set_tk(TK_PLUS); return 0; }
+  │                                                             ^
+  └─
+
+  issue #247 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:693:77
+  │
+  │ 693 ┊          if (c == '+') { this.advance_pos(); this.set_tk(TK_PLUS); return 0; }
+  │                                                                                  ^
+  └─
+
+  issue #248 · Undefined variable 'c'
+  ┌─ test_lexer.nux:694:15
+  │
+  │ 694 ┊          if (c == '-') { this.advance_pos(); this.set_tk(TK_MINUS); return 0; }
+  │                    ^
+  └─
+
+  issue #249 · Undefined variable 'this'
+  ┌─ test_lexer.nux:694:56
+  │
+  │ 694 ┊          if (c == '-') { this.advance_pos(); this.set_tk(TK_MINUS); return 0; }
+  │                                                             ^
+  └─
+
+  issue #250 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:694:78
+  │
+  │ 694 ┊          if (c == '-') { this.advance_pos(); this.set_tk(TK_MINUS); return 0; }
+  │                                                                                   ^
+  └─
+
+  issue #251 · Undefined variable 'c'
+  ┌─ test_lexer.nux:695:15
+  │
+  │ 695 ┊          if (c == '%') { this.advance_pos(); this.set_tk(TK_PERCENT); return 0; }
+  │                    ^
+  └─
+
+  issue #252 · Undefined variable 'this'
+  ┌─ test_lexer.nux:695:56
+  │
+  │ 695 ┊          if (c == '%') { this.advance_pos(); this.set_tk(TK_PERCENT); return 0; }
+  │                                                             ^
+  └─
+
+  issue #253 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:695:80
+  │
+  │ 695 ┊          if (c == '%') { this.advance_pos(); this.set_tk(TK_PERCENT); return 0; }
+  │                                                                                     ^
+  └─
+
+  issue #254 · Undefined variable 'c'
+  ┌─ test_lexer.nux:696:15
+  │
+  │ 696 ┊          if (c == '(') { this.advance_pos(); this.set_tk(TK_LPAREN); return 0; }
+  │                    ^
+  └─
+
+  issue #255 · Undefined variable 'this'
+  ┌─ test_lexer.nux:696:56
+  │
+  │ 696 ┊          if (c == '(') { this.advance_pos(); this.set_tk(TK_LPAREN); return 0; }
+  │                                                             ^
+  └─
+
+  issue #256 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:696:79
+  │
+  │ 696 ┊          if (c == '(') { this.advance_pos(); this.set_tk(TK_LPAREN); return 0; }
+  │                                                                                    ^
+  └─
+
+  issue #257 · Undefined variable 'c'
+  ┌─ test_lexer.nux:697:15
+  │
+  │ 697 ┊          if (c == ')') { this.advance_pos(); this.set_tk(TK_RPAREN); return 0; }
+  │                    ^
+  └─
+
+  issue #258 · Undefined variable 'this'
+  ┌─ test_lexer.nux:697:56
+  │
+  │ 697 ┊          if (c == ')') { this.advance_pos(); this.set_tk(TK_RPAREN); return 0; }
+  │                                                             ^
+  └─
+
+  issue #259 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:697:79
+  │
+  │ 697 ┊          if (c == ')') { this.advance_pos(); this.set_tk(TK_RPAREN); return 0; }
+  │                                                                                    ^
+  └─
+
+  issue #260 · Undefined variable 'c'
+  ┌─ test_lexer.nux:698:15
+  │
+  │ 698 ┊          if (c == '[') { this.advance_pos(); this.set_tk(TK_LBRACKET); return 0; }
+  │                    ^
+  └─
+
+  issue #261 · Undefined variable 'this'
+  ┌─ test_lexer.nux:698:56
+  │
+  │ 698 ┊          if (c == '[') { this.advance_pos(); this.set_tk(TK_LBRACKET); return 0; }
+  │                                                             ^
+  └─
+
+  issue #262 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:698:81
+  │
+  │ 698 ┊          if (c == '[') { this.advance_pos(); this.set_tk(TK_LBRACKET); return 0; }
+  │                                                                                      ^
+  └─
+
+  issue #263 · Undefined variable 'c'
+  ┌─ test_lexer.nux:699:15
+  │
+  │ 699 ┊          if (c == ']') { this.advance_pos(); this.set_tk(TK_RBRACKET); return 0; }
+  │                    ^
+  └─
+
+  issue #264 · Undefined variable 'this'
+  ┌─ test_lexer.nux:699:56
+  │
+  │ 699 ┊          if (c == ']') { this.advance_pos(); this.set_tk(TK_RBRACKET); return 0; }
+  │                                                             ^
+  └─
+
+  issue #265 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:699:81
+  │
+  │ 699 ┊          if (c == ']') { this.advance_pos(); this.set_tk(TK_RBRACKET); return 0; }
+  │                                                                                      ^
+  └─
+
+  issue #266 · Undefined variable 'c'
+  ┌─ test_lexer.nux:700:15
+  │
+  │ 700 ┊          if (c == '{') { this.advance_pos(); this.set_tk(TK_LBRACE); return 0; }
+  │                    ^
+  └─
+
+  issue #267 · Undefined variable 'this'
+  ┌─ test_lexer.nux:700:56
+  │
+  │ 700 ┊          if (c == '{') { this.advance_pos(); this.set_tk(TK_LBRACE); return 0; }
+  │                                                             ^
+  └─
+
+  issue #268 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:700:79
+  │
+  │ 700 ┊          if (c == '{') { this.advance_pos(); this.set_tk(TK_LBRACE); return 0; }
+  │                                                                                    ^
+  └─
+
+  issue #269 · Undefined variable 'c'
+  ┌─ test_lexer.nux:701:15
+  │
+  │ 701 ┊          if (c == '}') { this.advance_pos(); this.set_tk(TK_RBRACE); return 0; }
+  │                    ^
+  └─
+
+  issue #270 · Undefined variable 'this'
+  ┌─ test_lexer.nux:701:56
+  │
+  │ 701 ┊          if (c == '}') { this.advance_pos(); this.set_tk(TK_RBRACE); return 0; }
+  │                                                             ^
+  └─
+
+  issue #271 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:701:79
+  │
+  │ 701 ┊          if (c == '}') { this.advance_pos(); this.set_tk(TK_RBRACE); return 0; }
+  │                                                                                    ^
+  └─
+
+  issue #272 · Undefined variable 'c'
+  ┌─ test_lexer.nux:702:15
+  │
+  │ 702 ┊          if (c == ';') { this.advance_pos(); this.set_tk(TK_SEMICOLON); return 0; }
+  │                    ^
+  └─
+
+  issue #273 · Undefined variable 'this'
+  ┌─ test_lexer.nux:702:56
+  │
+  │ 702 ┊          if (c == ';') { this.advance_pos(); this.set_tk(TK_SEMICOLON); return 0; }
+  │                                                             ^
+  └─
+
+  issue #274 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:702:82
+  │
+  │ 702 ┊          if (c == ';') { this.advance_pos(); this.set_tk(TK_SEMICOLON); return 0; }
+  │                                                                                       ^
+  └─
+
+  issue #275 · Undefined variable 'c'
+  ┌─ test_lexer.nux:703:15
+  │
+  │ 703 ┊          if (c == '.') { this.advance_pos(); this.set_tk(TK_DOT); return 0; }
+  │                    ^
+  └─
+
+  issue #276 · Undefined variable 'this'
+  ┌─ test_lexer.nux:703:56
+  │
+  │ 703 ┊          if (c == '.') { this.advance_pos(); this.set_tk(TK_DOT); return 0; }
+  │                                                             ^
+  └─
+
+  issue #277 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:703:76
+  │
+  │ 703 ┊          if (c == '.') { this.advance_pos(); this.set_tk(TK_DOT); return 0; }
+  │                                                                                 ^
+  └─
+
+  issue #278 · Undefined variable 'c'
+  ┌─ test_lexer.nux:704:15
+  │
+  │ 704 ┊          if (c == ',') { this.advance_pos(); this.set_tk(TK_COMMA); return 0; }
+  │                    ^
+  └─
+
+  issue #279 · Undefined variable 'this'
+  ┌─ test_lexer.nux:704:56
+  │
+  │ 704 ┊          if (c == ',') { this.advance_pos(); this.set_tk(TK_COMMA); return 0; }
+  │                                                             ^
+  └─
+
+  issue #280 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:704:78
+  │
+  │ 704 ┊          if (c == ',') { this.advance_pos(); this.set_tk(TK_COMMA); return 0; }
+  │                                                                                   ^
+  └─
+
+  issue #281 · Undefined variable 'c'
+  ┌─ test_lexer.nux:705:15
+  │
+  │ 705 ┊          if (c == '@') { this.advance_pos(); this.set_tk(TK_AT); return 0; }
+  │                    ^
+  └─
+
+  issue #282 · Undefined variable 'this'
+  ┌─ test_lexer.nux:705:56
+  │
+  │ 705 ┊          if (c == '@') { this.advance_pos(); this.set_tk(TK_AT); return 0; }
+  │                                                             ^
+  └─
+
+  issue #283 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:705:75
+  │
+  │ 705 ┊          if (c == '@') { this.advance_pos(); this.set_tk(TK_AT); return 0; }
+  │                                                                                ^
+  └─
+
+  issue #284 · Undefined variable 'c'
+  ┌─ test_lexer.nux:707:15
+  │
+  │ 707 ┊          if (c == '*') {
+  │                    ^
+  └─
+
+  issue #285 · Undefined variable 'this'
+  ┌─ test_lexer.nux:709:21
+  │
+  │ 709 ┊              if (this.cur() == '*') {
+  │                          ^
+  └─
+
+  issue #286 · Undefined variable 'this'
+  ┌─ test_lexer.nux:711:28
+  │
+  │ 711 ┊                  this.set_tk(TK_STAR_STAR);
+  │                                 ^
+  └─
+
+  issue #287 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:712:13
+  │
+  │ 712 ┊              } else {
+  │                  ^
+  └─
+
+  issue #288 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:712:15
+  │
+  │ 712 ┊              } else {
+  │                    ^
+  └─
+
+  issue #289 · Undefined variable 'this'
+  ┌─ test_lexer.nux:713:28
+  │
+  │ 713 ┊                  this.set_tk(TK_STAR);
+  │                                 ^
+  └─
+
+  issue #290 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:716:9
+  │
+  │ 716 ┊          }
+  │              ^
+  └─
+
+  issue #291 · Undefined variable 'c'
+  ┌─ test_lexer.nux:718:15
+  │
+  │ 718 ┊          if (c == '=') {
+  │                    ^
+  └─
+
+  issue #292 · Undefined variable 'this'
+  ┌─ test_lexer.nux:720:21
+  │
+  │ 720 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); return 0; }
+  │                          ^
+  └─
+
+  issue #293 · Undefined variable 'this'
+  ┌─ test_lexer.nux:720:69
+  │
+  │ 720 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); return 0; }
+  │                                                                          ^
+  └─
+
+  issue #294 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:720:91
+  │
+  │ 720 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); return 0; }
+  │                                                                                                ^
+  └─
+
+  issue #295 · Undefined variable 'this'
+  ┌─ test_lexer.nux:721:21
+  │
+  │ 721 ┊              if (this.cur() == '>') { this.advance_pos(); this.set_tk(TK_FAT_ARROW); return 0; }
+  │                          ^
+  └─
+
+  issue #296 · Undefined variable 'this'
+  ┌─ test_lexer.nux:721:69
+  │
+  │ 721 ┊              if (this.cur() == '>') { this.advance_pos(); this.set_tk(TK_FAT_ARROW); return 0; }
+  │                                                                          ^
+  └─
+
+  issue #297 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:721:95
+  │
+  │ 721 ┊              if (this.cur() == '>') { this.advance_pos(); this.set_tk(TK_FAT_ARROW); return 0; }
+  │                                                                                                    ^
+  └─
+
+  issue #298 · Undefined variable 'this'
+  ┌─ test_lexer.nux:722:24
+  │
+  │ 722 ┊              this.set_tk(TK_EQ);
+  │                             ^
+  └─
+
+  issue #299 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:724:9
+  │
+  │ 724 ┊          }
+  │              ^
+  └─
+
+  issue #300 · Undefined variable 'c'
+  ┌─ test_lexer.nux:726:15
+  │
+  │ 726 ┊          if (c == ':') {
+  │                    ^
+  └─
+
+  issue #301 · Undefined variable 'this'
+  ┌─ test_lexer.nux:728:21
+  │
+  │ 728 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_COLON_EQ); return 0; }
+  │                          ^
+  └─
+
+  issue #302 · Undefined variable 'this'
+  ┌─ test_lexer.nux:728:69
+  │
+  │ 728 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_COLON_EQ); return 0; }
+  │                                                                          ^
+  └─
+
+  issue #303 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:728:94
+  │
+  │ 728 ┊              if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_COLON_EQ); return 0; }
+  │                                                                                                   ^
+  └─
+
+  issue #304 · Undefined variable 'this'
+  ┌─ test_lexer.nux:729:21
+  │
+  │ 729 ┊              if (this.cur() == ':') { this.advance_pos(); this.set_tk(TK_COLON_COLON); return 0; }
+  │                          ^
+  └─
+
+  issue #305 · Undefined variable 'this'
+  ┌─ test_lexer.nux:729:69
+  │
+  │ 729 ┊              if (this.cur() == ':') { this.advance_pos(); this.set_tk(TK_COLON_COLON); return 0; }
+  │                                                                          ^
+  └─
+
+  issue #306 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:729:97
+  │
+  │ 729 ┊              if (this.cur() == ':') { this.advance_pos(); this.set_tk(TK_COLON_COLON); return 0; }
+  │                                                                                                      ^
+  └─
+
+  issue #307 · Undefined variable 'this'
+  ┌─ test_lexer.nux:730:24
+  │
+  │ 730 ┊              this.set_tk(TK_COLON);
+  │                             ^
+  └─
+
+  issue #308 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:732:9
+  │
+  │ 732 ┊          }
+  │              ^
+  └─
+
+  issue #309 · Undefined variable 'c'
+  ┌─ test_lexer.nux:734:15
+  │
+  │ 734 ┊          if (c == '/') {
+  │                    ^
+  └─
+
+  issue #310 · Undefined variable 'this'
+  ┌─ test_lexer.nux:736:21
+  │
+  │ 736 ┊              if (this.cur() == '/') {
+  │                          ^
+  └─
+
+  issue #311 · Undefined variable 'this'
+  ┌─ test_lexer.nux:738:30
+  │
+  │ 738 ┊                  var nc = this.cur();
+  │                                   ^
+  └─
+
+  issue #312 · Undefined variable 'this'
+  ┌─ test_lexer.nux:740:25
+  │
+  │ 740 ┊                  if (this.pos >= this.length) { is_comment = 1; }
+  │                              ^
+  └─
+
+  issue #313 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:740:64
+  │
+  │ 740 ┊                  if (this.pos >= this.length) { is_comment = 1; }
+  │                                                                     ^
+  └─
+
+  issue #314 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:741:24
+  │
+  │ 741 ┊                  if (nc == ' ') { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #315 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:741:50
+  │
+  │ 741 ┊                  if (nc == ' ') { is_comment = 1; }
+  │                                                       ^
+  └─
+
+  issue #316 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:742:24
+  │
+  │ 742 ┊                  if (nc == 9) { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #317 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:742:48
+  │
+  │ 742 ┊                  if (nc == 9) { is_comment = 1; }
+  │                                                     ^
+  └─
+
+  issue #318 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:743:24
+  │
+  │ 743 ┊                  if (nc == 13) { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #319 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:743:49
+  │
+  │ 743 ┊                  if (nc == 13) { is_comment = 1; }
+  │                                                      ^
+  └─
+
+  issue #320 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:744:24
+  │
+  │ 744 ┊                  if (nc == 10) { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #321 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:744:49
+  │
+  │ 744 ┊                  if (nc == 10) { is_comment = 1; }
+  │                                                      ^
+  └─
+
+  issue #322 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:745:36
+  │
+  │ 745 ┊                  if (lex_is_alpha(nc) == 1) { is_comment = 1; }
+  │                                         ^
+  └─
+
+  issue #323 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:745:62
+  │
+  │ 745 ┊                  if (lex_is_alpha(nc) == 1) { is_comment = 1; }
+  │                                                                   ^
+  └─
+
+  issue #324 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:746:24
+  │
+  │ 746 ┊                  if (nc == '/') { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #325 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:746:50
+  │
+  │ 746 ┊                  if (nc == '/') { is_comment = 1; }
+  │                                                       ^
+  └─
+
+  issue #326 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:747:24
+  │
+  │ 747 ┊                  if (nc == '!') { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #327 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:747:50
+  │
+  │ 747 ┊                  if (nc == '!') { is_comment = 1; }
+  │                                                       ^
+  └─
+
+  issue #328 · Undefined variable 'nc'
+  ┌─ test_lexer.nux:748:24
+  │
+  │ 748 ┊                  if (nc == '*') { is_comment = 1; }
+  │                             ^
+  └─
+
+  issue #329 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:748:50
+  │
+  │ 748 ┊                  if (nc == '*') { is_comment = 1; }
+  │                                                       ^
+  └─
+
+  issue #330 · Undefined variable 'this'
+  ┌─ test_lexer.nux:751:32
+  │
+  │ 751 ┊                      while (this.pos < this.length) {
+  │                                     ^
+  └─
+
+  issue #331 · Undefined variable 'this'
+  ┌─ test_lexer.nux:752:33
+  │
+  │ 752 ┊                          if (this.cur() == 10) { break; }
+  │                                      ^
+  └─
+
+  issue #332 · Undefined variable 'this'
+  ┌─ test_lexer.nux:753:41
+  │
+  │ 753 ┊                          this.advance_pos();
+  │                                              ^
+  └─
+
+  issue #333 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:754:21
+  │
+  │ 754 ┊                      }
+  │                          ^
+  └─
+
+  issue #334 · Undefined variable 'this'
+  ┌─ test_lexer.nux:755:36
+  │
+  │ 755 ┊                      this.next_token();
+  │                                         ^
+  └─
+
+  issue #335 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:757:17
+  │
+  │ 757 ┊                  } else {
+  │                      ^
+  └─
+
+  issue #336 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:757:19
+  │
+  │ 757 ┊                  } else {
+  │                        ^
+  └─
+
+  issue #337 · Undefined variable 'this'
+  ┌─ test_lexer.nux:758:32
+  │
+  │ 758 ┊                      this.set_tk(TK_SLASH_SLASH);
+  │                                     ^
+  └─
+
+  issue #338 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:761:13
+  │
+  │ 761 ┊              }
+  │                  ^
+  └─
+
+  issue #339 · Undefined variable 'this'
+  ┌─ test_lexer.nux:762:24
+  │
+  │ 762 ┊              this.set_tk(TK_SLASH);
+  │                             ^
+  └─
+
+  issue #340 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:764:9
+  │
+  │ 764 ┊          }
+  │              ^
+  └─
+
+  issue #341 · Undefined variable 'c'
+  ┌─ test_lexer.nux:766:15
+  │
+  │ 766 ┊          if (c == '#') {
+  │                    ^
+  └─
+
+  issue #342 · Undefined variable 'this'
+  ┌─ test_lexer.nux:768:21
+  │
+  │ 768 ┊              if (this.cur() == '*') {
+  │                          ^
+  └─
+
+  issue #343 · Undefined variable 'this'
+  ┌─ test_lexer.nux:771:28
+  │
+  │ 771 ┊                  while (this.pos < this.length) {
+  │                                 ^
+  └─
+
+  issue #344 · Undefined variable 'this'
+  ┌─ test_lexer.nux:773:29
+  │
+  │ 773 ┊                      if (this.cur() == '#') {
+  │                                  ^
+  └─
+
+  issue #345 · Undefined variable 'this'
+  ┌─ test_lexer.nux:775:33
+  │
+  │ 775 ┊                          if (this.pos < this.length) {
+  │                                      ^
+  └─
+
+  issue #346 · Undefined variable 'this'
+  ┌─ test_lexer.nux:776:37
+  │
+  │ 776 ┊                              if (this.cur() == '*') {
+  │                                          ^
+  └─
+
+  issue #347 · Undefined variable 'this'
+  ┌─ test_lexer.nux:778:49
+  │
+  │ 778 ┊                                  this.advance_pos();
+  │                                                      ^
+  └─
+
+  issue #348 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:779:29
+  │
+  │ 779 ┊                              }
+  │                                  ^
+  └─
+
+  issue #349 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:780:25
+  │
+  │ 780 ┊                          }
+  │                              ^
+  └─
+
+  issue #350 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:781:21
+  │
+  │ 781 ┊                      } else {
+  │                          ^
+  └─
+
+  issue #351 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:781:23
+  │
+  │ 781 ┊                      } else {
+  │                            ^
+  └─
+
+  issue #352 · Undefined variable 'this'
+  ┌─ test_lexer.nux:782:33
+  │
+  │ 782 ┊                          if (this.cur() == '*') {
+  │                                      ^
+  └─
+
+  issue #353 · Undefined variable 'this'
+  ┌─ test_lexer.nux:784:37
+  │
+  │ 784 ┊                              if (this.pos < this.length) {
+  │                                          ^
+  └─
+
+  issue #354 · Undefined variable 'this'
+  ┌─ test_lexer.nux:785:41
+  │
+  │ 785 ┊                                  if (this.cur() == '#') {
+  │                                              ^
+  └─
+
+  issue #355 · Undefined variable 'this'
+  ┌─ test_lexer.nux:787:53
+  │
+  │ 787 ┊                                      this.advance_pos();
+  │                                                          ^
+  └─
+
+  issue #356 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:789:29
+  │
+  │ 789 ┊                              }
+  │                                  ^
+  └─
+
+  issue #357 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:790:25
+  │
+  │ 790 ┊                          } else {
+  │                              ^
+  └─
+
+  issue #358 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:790:27
+  │
+  │ 790 ┊                          } else {
+  │                                ^
+  └─
+
+  issue #359 · Undefined variable 'this'
+  ┌─ test_lexer.nux:791:45
+  │
+  │ 791 ┊                              this.advance_pos();
+  │                                                  ^
+  └─
+
+  issue #360 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:793:21
+  │
+  │ 793 ┊                      }
+  │                          ^
+  └─
+
+  issue #361 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:794:17
+  │
+  │ 794 ┊                  }
+  │                      ^
+  └─
+
+  issue #362 · Undefined variable 'this'
+  ┌─ test_lexer.nux:795:32
+  │
+  │ 795 ┊                  this.next_token();
+  │                                     ^
+  └─
+
+  issue #363 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:797:13
+  │
+  │ 797 ┊              } else {
+  │                  ^
+  └─
+
+  issue #364 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:797:15
+  │
+  │ 797 ┊              } else {
+  │                    ^
+  └─
+
+  issue #365 · Undefined variable 'this'
+  ┌─ test_lexer.nux:798:28
+  │
+  │ 798 ┊                  while (this.pos < this.length) {
+  │                                 ^
+  └─
+
+  issue #366 · Undefined variable 'this'
+  ┌─ test_lexer.nux:799:29
+  │
+  │ 799 ┊                      if (this.cur() == 10) { break; }
+  │                                  ^
+  └─
+
+  issue #367 · Undefined variable 'this'
+  ┌─ test_lexer.nux:800:37
+  │
+  │ 800 ┊                      this.advance_pos();
+  │                                          ^
+  └─
+
+  issue #368 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:801:17
+  │
+  │ 801 ┊                  }
+  │                      ^
+  └─
+
+  issue #369 · Undefined variable 'this'
+  ┌─ test_lexer.nux:802:32
+  │
+  │ 802 ┊                  this.next_token();
+  │                                     ^
+  └─
+
+  issue #370 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:804:13
+  │
+  │ 804 ┊              }
+  │                  ^
+  └─
+
+  issue #371 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:805:9
+  │
+  │ 805 ┊          }
+  │              ^
+  └─
+
+  issue #372 · Undefined variable 'c'
+  ┌─ test_lexer.nux:808:15
+  │
+  │ 808 ┊          if (c == '!') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #373 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:808:36
+  │
+  │ 808 ┊          if (c == '!') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #374 · Undefined variable 'c'
+  ┌─ test_lexer.nux:809:15
+  │
+  │ 809 ┊          if (c == '<') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #375 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:809:36
+  │
+  │ 809 ┊          if (c == '<') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #376 · Undefined variable 'c'
+  ┌─ test_lexer.nux:810:15
+  │
+  │ 810 ┊          if (c == '>') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #377 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:810:36
+  │
+  │ 810 ┊          if (c == '>') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #378 · Undefined variable 'c'
+  ┌─ test_lexer.nux:811:15
+  │
+  │ 811 ┊          if (c == '&') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #379 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:811:36
+  │
+  │ 811 ┊          if (c == '&') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #380 · Undefined variable 'c'
+  ┌─ test_lexer.nux:812:15
+  │
+  │ 812 ┊          if (c == '|') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #381 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:812:36
+  │
+  │ 812 ┊          if (c == '|') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #382 · Undefined variable 'c'
+  ┌─ test_lexer.nux:813:15
+  │
+  │ 813 ┊          if (c == '^') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #383 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:813:36
+  │
+  │ 813 ┊          if (c == '^') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #384 · Undefined variable 'c'
+  ┌─ test_lexer.nux:814:15
+  │
+  │ 814 ┊          if (c == '~') { is_op = 1; }
+  │                    ^
+  └─
+
+  issue #385 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:814:36
+  │
+  │ 814 ┊          if (c == '~') { is_op = 1; }
+  │                                         ^
+  └─
+
+  issue #386 · Undefined variable 'this'
+  ┌─ test_lexer.nux:816:30
+  │
+  │ 816 ┊              this.lex_operator();
+  │                                   ^
+  └─
+
+  issue #387 · Undefined variable 'c'
+  ┌─ test_lexer.nux:820:15
+  │
+  │ 820 ┊          if (c == 39) {
+  │                    ^
+  └─
+
+  issue #388 · Undefined variable 'this'
+  ┌─ test_lexer.nux:822:21
+  │
+  │ 822 ┊              if (this.pos < this.length) {
+  │                          ^
+  └─
+
+  issue #389 · Undefined variable 'this'
+  ┌─ test_lexer.nux:823:30
+  │
+  │ 823 ┊                  var ch = this.cur();
+  │                                   ^
+  └─
+
+  issue #390 · Undefined variable 'this'
+  ┌─ test_lexer.nux:824:33
+  │
+  │ 824 ┊                  this.advance_pos();
+  │                                      ^
+  └─
+
+  issue #391 · Undefined variable 'this'
+  ┌─ test_lexer.nux:825:25
+  │
+  │ 825 ┊                  if (this.pos < this.length) {
+  │                              ^
+  └─
+
+  issue #392 · Undefined variable 'this'
+  ┌─ test_lexer.nux:826:29
+  │
+  │ 826 ┊                      if (this.cur() == 39) {
+  │                                  ^
+  └─
+
+  issue #393 · Undefined variable 'this'
+  ┌─ test_lexer.nux:828:38
+  │
+  │ 828 ┊                          this.tk_ival = ch;
+  │                                           ^
+  └─
+
+  issue #394 · Undefined variable 'this'
+  ┌─ test_lexer.nux:829:36
+  │
+  │ 829 ┊                          this.set_tk(TK_NUMBER);
+  │                                         ^
+  └─
+
+  issue #395 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:830:21
+  │
+  │ 830 ┊                      } else {
+  │                          ^
+  └─
+
+  issue #396 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:830:23
+  │
+  │ 830 ┊                      } else {
+  │                            ^
+  └─
+
+  issue #397 · Undefined variable 'this'
+  ┌─ test_lexer.nux:831:36
+  │
+  │ 831 ┊                          this.set_tk(TK_IDENTIFIER);
+  │                                         ^
+  └─
+
+  issue #398 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:833:17
+  │
+  │ 833 ┊                  } else {
+  │                      ^
+  └─
+
+  issue #399 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:833:19
+  │
+  │ 833 ┊                  } else {
+  │                        ^
+  └─
+
+  issue #400 · Undefined variable 'this'
+  ┌─ test_lexer.nux:834:32
+  │
+  │ 834 ┊                      this.set_tk(TK_IDENTIFIER);
+  │                                     ^
+  └─
+
+  issue #401 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:836:13
+  │
+  │ 836 ┊              } else {
+  │                  ^
+  └─
+
+  issue #402 · Unexpected token at top level: Else
+  ┌─ test_lexer.nux:836:15
+  │
+  │ 836 ┊              } else {
+  │                    ^
+  └─
+
+  issue #403 · Undefined variable 'this'
+  ┌─ test_lexer.nux:837:28
+  │
+  │ 837 ┊                  this.set_tk(TK_IDENTIFIER);
+  │                                 ^
+  └─
+
+  issue #404 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:840:9
+  │
+  │ 840 ┊          }
+  │              ^
+  └─
+
+  issue #405 · Undefined variable 'c'
+  ┌─ test_lexer.nux:842:15
+  │
+  │ 842 ┊          if (c == '"') {
+  │                    ^
+  └─
+
+  issue #406 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:845:9
+  │
+  │ 845 ┊          }
+  │              ^
+  └─
+
+  issue #407 · Undefined variable 'c'
+  ┌─ test_lexer.nux:847:27
+  │
+  │ 847 ┊          if (lex_is_digit(c) == 1) {
+  │                                ^
+  └─
+
+  issue #408 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:850:9
+  │
+  │ 850 ┊          }
+  │              ^
+  └─
+
+  issue #409 · Undefined variable 'c'
+  ┌─ test_lexer.nux:852:27
+  │
+  │ 852 ┊          if (lex_is_alpha(c) == 1) {
+  │                                ^
+  └─
+
+  issue #410 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:855:9
+  │
+  │ 855 ┊          }
+  │              ^
+  └─
+
+  issue #411 · Undefined variable 'this'
+  ┌─ test_lexer.nux:857:25
+  │
+  │ 857 ┊          this.advance_pos();
+  │                              ^
+  └─
+
+  issue #412 · Undefined variable 'this'
+  ┌─ test_lexer.nux:858:20
+  │
+  │ 858 ┊          this.set_tk(TK_IDENTIFIER);
+  │                         ^
+  └─
+
+  issue #413 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:860:5
+  │
+  │ 860 ┊      }
+  │          ^
+  └─
+
+  issue #414 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:861:1
+  │
+  │ 861 ┊  }
+  │      ^
+  └─
+
+  issue #415 · Undefined class 'Lexer'
+  ┌─ test_lexer.nux:969:22
+  │
+  │ 969 ┊  var lexer = new Lexer;
+  │                           ^
+  └─
+
+  issue #416 · Undefined variable 'lexer'
+  ┌─ test_lexer.nux:972:17
+  │
+  │ 972 ┊  lexer.next_token();
+  │                      ^
+  └─
+
+  issue #417 · Undefined variable 'lexer'
+  ┌─ test_lexer.nux:973:19
+  │
+  │ 973 ┊  var t_type = lexer.tk_kind;
+  │                        ^
+  └─
+
+  issue #418 · Undefined variable 't_type'
+  ┌─ test_lexer.nux:974:15
+  │
+  │ 974 ┊  while (t_type != 0) {
+  │                    ^
+  └─
+
+  issue #419 · Undefined variable 't_type'
+  ┌─ test_lexer.nux:976:17
+  │
+  │ 976 ┊      print(t_type);
+  │                      ^
+  └─
+
+  issue #420 · Undefined variable 'lexer'
+  ┌─ test_lexer.nux:980:21
+  │
+  │ 980 ┊      lexer.next_token();
+  │                          ^
+  └─
+
+  issue #421 · Undefined variable 'lexer'
+  ┌─ test_lexer.nux:981:19
+  │
+  │ 981 ┊      t_type = lexer.tk_kind;
+  │                        ^
+  └─
+
+  issue #422 · Unexpected token at top level: RBrace
+  ┌─ test_lexer.nux:982:1
+  │
+  │ 982 ┊  }
+  │      ^
+  └─
+
+  ✗ build stopped — 422 issues must be resolved
+

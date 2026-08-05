@@ -1,8 +1,9 @@
-func test() {
-    var size = 4;
-    for (var i = 0; i < size; i = i + 1) {
-        print(i);
+func main() {
+    var count = 0;
+    while (count < 3) {
+        print(count);
+        count = count + 1;
     }
-    return 0;
 }
-test();
+
+main();

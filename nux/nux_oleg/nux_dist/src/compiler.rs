@@ -267,6 +267,12 @@ impl Parser {
                     }
                     
                     if src_content.is_none() {
+                         let path = std::path::Path::new(&file_name);
+                         if let Ok(content) = std::fs::read_to_string(&path) {
+                             src_content = Some(content);
+                         }
+                    }
+                    if src_content.is_none() {
                          let path = std::path::Path::new("lib").join(&file_name);
                          if let Ok(content) = std::fs::read_to_string(&path) {
                              src_content = Some(content);
@@ -280,9 +286,7 @@ impl Parser {
                      }
                     
                     if let Some(src) = src_content {
-                        let mut imported_defs = String::new();
-                        self.parse_imported_source(&src, &mut definitions);
-                        
+                        self.parse_imported_source(&src, &mut definitions, &mut main_body);
                     } else {
                         self.errors.push(CompileError::new(format!("Import not found: {} (Searched in NUX_LIB_PATH and lib/)", file_name), self.prev_span));
                     }
@@ -352,21 +356,34 @@ impl Parser {
         Ok(self.asm_output.clone())
     }
 
-    fn parse_imported_source(&mut self, source: &str, definitions: &mut String) {
+    fn parse_imported_source(&mut self, source: &str, definitions: &mut String, main_body: &mut String) {
         let mut sub_parser = Parser::new(source);
+        sub_parser.var_addr_counter = self.var_addr_counter;
+        sub_parser.scopes = self.scopes.clone();
+        sub_parser.classes = self.classes.clone();
+        sub_parser.bound_types = self.bound_types.clone();
+        sub_parser.enums = self.enums.clone();
+        sub_parser.traits = self.traits.clone();
+
         loop {
             match sub_parser.current_token {
                 Token::EOF => break,
                 Token::Class => {
                     if let Err(e) = sub_parser.parse_class(definitions) {
-                         eprintln!("Import Parse Error (Class): {:?}", e);
-                         break;
+                         self.errors.push(e);
+                         sub_parser.synchronize();
                     }
                 },
-                Token::Func => {
+                Token::Func | Token::Fn => {
                     if let Err(e) = sub_parser.parse_func(definitions, "") {
-                         eprintln!("Import Parse Error (Func): {:?}", e);
-                         break;
+                         self.errors.push(e);
+                         sub_parser.synchronize();
+                    }
+                },
+                Token::Trait => {
+                    if let Err(e) = sub_parser.parse_trait() {
+                         self.errors.push(e);
+                         sub_parser.synchronize();
                     }
                 },
                 Token::Import => { 
@@ -387,6 +404,12 @@ impl Parser {
                         }
                         
                         if src_content.is_none() {
+                             let path = std::path::Path::new(&file_name);
+                             if let Ok(content) = std::fs::read_to_string(&path) {
+                                 src_content = Some(content);
+                             }
+                        }
+                        if src_content.is_none() {
                              let path = std::path::Path::new("lib").join(&file_name);
                              if let Ok(content) = std::fs::read_to_string(&path) {
                                  src_content = Some(content);
@@ -400,7 +423,7 @@ impl Parser {
                      }
                         
                         if let Some(src) = src_content {
-                             self.parse_imported_source(&src, definitions);
+                             sub_parser.parse_imported_source(&src, definitions, main_body);
                         } else {
                              eprintln!("Warning: Transitive import not found: {}", raw_name);
                         }
@@ -408,16 +431,30 @@ impl Parser {
                      sub_parser.advance();
                      if sub_parser.current_token == Token::SemiColon { sub_parser.advance(); }
                 },
-                _ => { sub_parser.advance(); }
+                Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
+                Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
+                Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
+                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
+                    if let Err(e) = sub_parser.parse_statement_or_expr(main_body) {
+                        self.errors.push(e);
+                        sub_parser.synchronize();
+                    }
+                },
+                Token::SemiColon => sub_parser.advance(),
+                _ => {
+                    self.errors.push(CompileError::new(format!("Unexpected token in import: {:?}", sub_parser.current_token), sub_parser.current_span));
+                    sub_parser.advance();
+                }
             }
         }
         
-        for (k, v) in sub_parser.classes {
-            self.classes.insert(k, v);
-        }
-        for (k, v) in sub_parser.bound_types {
-            self.bound_types.insert(k, v);
-        }
+        self.var_addr_counter = sub_parser.var_addr_counter;
+        self.scopes = sub_parser.scopes;
+        self.classes = sub_parser.classes;
+        self.bound_types = sub_parser.bound_types;
+        self.enums = sub_parser.enums;
+        self.traits = sub_parser.traits;
+        self.errors.extend(sub_parser.errors);
     }
 
     fn error<T>(&self, msg: String) -> Result<T, CompileError> {
@@ -734,6 +771,7 @@ impl Parser {
              },
              Token::Identifier(name) => {
                  let part1 = name.clone();
+                 self.advance();
                  
                  if part1 == "arr_set" {
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -946,7 +984,11 @@ impl Parser {
                         if self.current_token == Token::Eq {
                           let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
                           let offset = if let Type::Class(cname) = typ {
-                              if let Some(cinfo) = self.classes.get(&cname) { *cinfo.fields.get(&member).unwrap() } 
+                              if Some(cname.clone()) == self.current_class_name {
+                                  if let Some(off) = self.current_class_fields.get(&member) { *off }
+                                  else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                              }
+                              else if let Some(cinfo) = self.classes.get(&cname) { *cinfo.fields.get(&member).unwrap() } 
                               else { return self.error(format!("Unknown class '{}'", cname)); }
                           } else {
                              if let Some(off) = self.current_class_fields.get(&member) {
@@ -963,7 +1005,7 @@ impl Parser {
                               VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
                               VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n\n", idx)); }
                           }
-                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset));
+                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset * 8));
                           self.advance(); 
                           self.parse_expression(out)?;
                           if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
@@ -1054,7 +1096,7 @@ impl Parser {
                   let label_id = self.label_id_counter; self.label_id_counter += 1;
                   let label_else = format!("__if_else_{}", label_id);
                   let label_end = format!("__if_end_{}", label_id);
-                  out.push_str(&format!("PUSH 0\nJE {}\n", label_else));
+                  out.push_str(&format!("JE {}\n", label_else));
                   self.parse_block(out)?;
                   out.push_str(&format!("JMP {}\n{}:\n", label_end, label_else));
                   if self.current_token == Token::Else {
@@ -1076,7 +1118,7 @@ impl Parser {
                   self.parse_expression(out)?;
                   if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                   self.advance();
-                  out.push_str(&format!("PUSH 0\nJE {}\n", label_end));
+                  out.push_str(&format!("JE {}\n", label_end));
                   self.parse_block(out)?;
                   out.push_str(&format!("JMP {}\n{}:\n", label_start, label_end));
                   self.loop_stack.pop();
@@ -1094,7 +1136,7 @@ impl Parser {
                   out.push_str(&format!("{}:\n", label_start));
                   if self.current_token != Token::SemiColon {
                        self.parse_expression(out)?;
-                       out.push_str(&format!("PUSH 0\nJE {}\n", label_end));
+                       out.push_str(&format!("JE {}\n", label_end));
                   }
                   if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
                   self.advance();
@@ -1292,6 +1334,7 @@ impl Parser {
                 let t = self.parse_expression(out)?;
                 if t == Type::Float { out.push_str("PRINT_FLOAT\n"); } 
                 else if t == Type::Char { out.push_str("PRINT_CHAR\n"); }
+                else if t == Type::String { out.push_str("PRINT_STR\n"); }
                 else { out.push_str("PRINT_VAL\n"); }
              }
              if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
@@ -1776,7 +1819,9 @@ impl Parser {
                              typ = Type::Int;
                         } else {
                             let offset = if let Type::Class(cname) = &typ {
-                                 if let Some(cinfo) = self.classes.get(cname) { 
+                                 if Some(cname.clone()) == self.current_class_name {
+                                     if let Some(f) = self.current_class_fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                                 } else if let Some(cinfo) = self.classes.get(cname) { 
                                      if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
                                  } else { return self.error(format!("Unknown class '{}'", cname)); }
                             } else {
@@ -1787,7 +1832,7 @@ impl Parser {
                                      if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
                                  }
                             };
-                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset)); typ = Type::Unknown;
+                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8)); typ = Type::Unknown;
                         }
                     }
                     Ok(typ)

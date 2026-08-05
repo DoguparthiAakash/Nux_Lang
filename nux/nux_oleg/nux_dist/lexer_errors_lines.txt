@@ -1,0 +1,50 @@
+[38;5;242m  issue #[0m[38;5;220m1[0m ┬╖ [38;5;242mUnknown class 'File'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:9:19
+[38;5;242m  issue #[0m[38;5;220m2[0m ┬╖ [38;5;242mUnknown class 'File'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:13:35
+[38;5;242m  issue #[0m[38;5;220m3[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:401:21
+[38;5;242m  issue #[0m[38;5;220m4[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:402:18
+[38;5;242m  issue #[0m[38;5;220m5[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:403:21
+[38;5;242m  issue #[0m[38;5;220m6[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:404:19
+[38;5;242m  issue #[0m[38;5;220m7[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:405:18
+[38;5;242m  issue #[0m[38;5;220m8[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:406:22
+[38;5;242m  issue #[0m[38;5;220m9[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:407:22
+[38;5;242m  issue #[0m[38;5;220m10[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:408:21
+[38;5;242m  issue #[0m[38;5;220m11[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:409:23
+[38;5;242m  issue #[0m[38;5;220m12[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:410:21
+[38;5;242m  issue #[0m[38;5;220m13[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:411:22
+[38;5;242m  issue #[0m[38;5;220m14[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:412:22
+[38;5;242m  issue #[0m[38;5;220m15[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:413:24
+[38;5;242m  issue #[0m[38;5;220m16[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:414:27
+[38;5;242m  issue #[0m[38;5;220m17[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:418:22
+[38;5;242m  issue #[0m[38;5;220m18[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:419:41
+[38;5;242m  issue #[0m[38;5;220m19[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:420:22
+[38;5;242m  issue #[0m[38;5;220m20[0m ┬╖ [38;5;242mUndefined variable 'c'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:421:19
+[38;5;242m  issue #[0m[38;5;220m21[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:423:26
+[38;5;242m  issue #[0m[38;5;220m22[0m ┬╖ [38;5;242mOnly functions/fields allowed in classes for now[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:424:15
+[38;5;242m  issue #[0m[38;5;220m23[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:426:13
+[38;5;242m  issue #[0m[38;5;220m24[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:427:9
+[38;5;242m  issue #[0m[38;5;220m25[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:428:5
+[38;5;242m  issue #[0m[38;5;220m26[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:431:17
+[38;5;242m  issue #[0m[38;5;220m27[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:432:29
+[38;5;242m  issue #[0m[38;5;220m28[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:433:5
+[38;5;242m  issue #[0m[38;5;220m29[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:436:17
+[38;5;242m  issue #[0m[38;5;220m30[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:437:29
+[38;5;242m  issue #[0m[38;5;220m31[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:438:5
+[38;5;242m  issue #[0m[38;5;220m32[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:441:22
+[38;5;242m  issue #[0m[38;5;220m33[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:442:21
+[38;5;242m  issue #[0m[38;5;220m34[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:443:24
+[38;5;242m  issue #[0m[38;5;220m35[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:448:20
+[38;5;242m  issue #[0m[38;5;220m36[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:449:34
+[38;5;242m  issue #[0m[38;5;220m37[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:450:59
+[38;5;242m  issue #[0m[38;5;220m38[0m ┬╖ [38;5;242mUndefined variable 'c'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:450:88
+[38;5;242m  issue #[0m[38;5;220m39[0m ┬╖ [38;5;242mUndefined variable 'c'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:451:36
+[38;5;242m  issue #[0m[38;5;220m40[0m ┬╖ [38;5;242mUndefined variable 'is_ws'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:452:23
+[38;5;242m  issue #[0m[38;5;220m41[0m ┬╖ [38;5;242mUndefined variable 'c'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:456:19
+[38;5;242m  issue #[0m[38;5;220m42[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:458:13
+[38;5;242m  issue #[0m[38;5;220m43[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:459:29
+[38;5;242m  issue #[0m[38;5;220m44[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:460:9
+[38;5;242m  issue #[0m[38;5;220m45[0m ┬╖ [38;5;242mUndefined variable 'hit_nl'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:461:22
+[38;5;242m  issue #[0m[38;5;220m46[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:462:5
+[38;5;242m  issue #[0m[38;5;220m47[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:465:25
+[38;5;242m  issue #[0m[38;5;220m48[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:466:25
+[38;5;242m  issue #[0m[38;5;220m49[0m ┬╖ [38;5;242mUndefined variable 'this'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:467:25
+[38;5;242m  issue #[0m[38;5;220m50[0m ┬╖ [38;5;242mUndefined variable 'first'[0m -> [38;5;242m  ΓöîΓöÇ [0mtest_lexer.nux:470:19
