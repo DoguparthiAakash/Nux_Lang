@@ -219,7 +219,7 @@ do_install() {
 # Nux Programming Language
 export NUX_HOME="$CURRENT_LINK"
 export NUX_LIB_PATH="$CURRENT_LINK/lib"
-export PATH="$PATH:$NUX_HOME"
+export PATH="\$PATH:\$NUX_HOME"
 ENVEOF
         chmod 644 /etc/profile.d/nux.sh
     fi
