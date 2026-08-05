@@ -228,11 +228,13 @@ fn cmd_build(args: &[String]) {
         process::exit(1);
     }
     
-    let pb = create_spinner("Compiling project...");
+    let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
+    println!("{} {} {} {}", "╭─".truecolor(80, 80, 80), "◆".bright_blue(), "nux".white().bold(), "─────────────────────────────────".truecolor(80, 80, 80));
+    println!("{}  {}  {}  {}", "│".truecolor(80, 80, 80), project_name.white().bold(), "·".truecolor(80, 80, 80), "building ...".truecolor(80, 80, 80));
+    println!("{}", "╰────────────────────────────────────────".truecolor(80, 80, 80));
     
     let source = fs::read_to_string(&main_file).unwrap_or_else(|_| {
-        pb.finish_and_clear();
-        eprintln!("  {} Failed to read main.nux", "✕".red().bold());
+        eprintln!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "✕".red(), "error".red(), "Failed to read main.nux".white());
         process::exit(1);
     });
     
@@ -254,12 +256,10 @@ fn cmd_build(args: &[String]) {
             let output_file = build_dir.join(format!("{}.nuxc", project_name));
             fs::write(&output_file, bytecode).unwrap();
             
-            pb.finish_and_clear();
             let mode = if release { "release" } else { "debug" };
-            println!("  {} {} [{}] → {}", "✔".green().bold(), project_name.white().bold(), mode.dimmed(), output_file.display().to_string().cyan());
+            println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
         }
         Err(errors) => {
-            pb.finish_and_clear();
             print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
             process::exit(1);
         }
@@ -267,7 +267,7 @@ fn cmd_build(args: &[String]) {
 }
 
 fn cmd_run(args: &[String]) {
-    if args.is_empty() {
+    if args.is_empty() || (args.len() == 1 && args[0] == ".") {
         let current_dir = env::current_dir().unwrap();
         if current_dir.join("nux.toml").exists() {
             cmd_build(&[]);
@@ -275,7 +275,7 @@ fn cmd_run(args: &[String]) {
             let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.nuxc", project_name));
             
             if let Ok(bytecode) = fs::read(&bytecode_file) {
-                println!("  {} {}\n", "▶".bright_magenta(), project_name.white().bold());
+                println!("{} {} {}  {}\n", "╰─".truecolor(80, 80, 80), "▶".cyan(), "running".cyan(), project_name.white().bold());
                 let mut vm = NuxVm::new(bytecode);
                 vm.run();
             } else {
@@ -297,17 +297,18 @@ fn cmd_run(args: &[String]) {
         } else {
             let source = fs::read_to_string(input_file).unwrap();
             
-            let pb = create_spinner(&format!("Compiling {}...", input_file));
+            println!("{} {} {} {}", "╭─".truecolor(80, 80, 80), "◆".bright_blue(), "nux".white().bold(), "─────────────────────────────────".truecolor(80, 80, 80));
+            println!("{}  {}  {}  {}", "│".truecolor(80, 80, 80), input_file.white().bold(), "·".truecolor(80, 80, 80), "building ...".truecolor(150, 150, 150));
+            println!("{}", "╰────────────────────────────────────────".truecolor(80, 80, 80));
             
             match compile(&source) {
                 Ok(bytecode) => {
-                    pb.finish_and_clear();
-                    println!("  {} {}\n", "▶".bright_magenta(), input_file.white().bold());
+                    println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), input_file.white().bold(), "(memory only)".truecolor(150, 150, 150));
+                    println!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "▶".bright_cyan(), "running".bright_cyan(), input_file.white().bold());
                     let mut vm = NuxVm::new(bytecode);
                     vm.run();
                 }
                 Err(errors) => {
-                    pb.finish_and_clear();
                     print_errors(&source, errors, input_file);
                     process::exit(1);
                 }

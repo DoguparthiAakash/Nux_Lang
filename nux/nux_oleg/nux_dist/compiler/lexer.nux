@@ -112,7 +112,6 @@ var TK_CARET = 110;
 var TK_AMPERSAND = 111;
 var TK_PIPE = 112;
 var TK_TILDE = 113;
-
 func lex_is_digit(c) {
     if (c >= '0') {
         if (c <= '9') {
@@ -121,7 +120,6 @@ func lex_is_digit(c) {
     }
     return 0;
 }
-
 func lex_is_alpha(c) {
     if (c >= 'a') {
         if (c <= 'z') { return 1; }
@@ -132,7 +130,6 @@ func lex_is_alpha(c) {
     if (c == '_') { return 1; }
     return 0;
 }
-
 func lex_is_alnum(c) {
     if (lex_is_digit(c) == 1) { return 1; }
     if (lex_is_alpha(c) == 1) { return 1; }
@@ -146,7 +143,6 @@ func lex_is_hex(c) {
     }
     if (c >= 'A') {
         if (c <= 'F') { return 1; }
-    }
     return 0;
 }
 
@@ -349,12 +345,6 @@ func lex_hex_val(c) {
         if (c <= 'F') { return c - 'A' + 10; }
     }
     return 0;
-}
-
-class Lexer {
-    var source;
-    var pos;
-    var length;
     var line;
     var col;
     var tk_kind;
@@ -366,7 +356,6 @@ class Lexer {
     var tk_fval;
     var last_kind;
     var pending_semi;
-
     func init(src) {
         self.source = src;
         self.pos = 0;
@@ -382,8 +371,6 @@ class Lexer {
         self.tk_fval = 0;
         self.last_kind = 0;
         self.pending_semi = 0;
-    }
-
     func advance_pos() {
         if (self.pos < self.length) {
             var c = str_char(self.source, self.pos);
@@ -394,19 +381,12 @@ class Lexer {
             } else {
                 self.col = self.col + 1;
             }
-        }
-    }
-
     func cur() {
         if (self.pos >= self.length) { return 0; }
         return str_char(self.source, self.pos);
-    }
-
     func peek_next() {
         if (self.pos + 1 >= self.length) { return 0; }
         return str_char(self.source, self.pos + 1);
-    }
-
     func set_tk(kind) {
         self.tk_kind = kind;
         self.tk_end = self.pos;
@@ -427,10 +407,7 @@ class Lexer {
                 hit_nl = 1;
             }
             self.advance_pos();
-        }
         return hit_nl;
-    }
-
     func lex_number() {
         var start = self.pos;
         var first = self.cur();
@@ -484,8 +461,6 @@ class Lexer {
                         parsed_prefix = 1;
                     }
                 }
-            }
-        }
         
         if (parsed_prefix == 1) {
             return 0;
@@ -576,8 +551,6 @@ class Lexer {
         var kind = lex_match_kw(self.source, start, len);
         self.set_tk(kind);
         return 0;
-    }
-
     func lex_string() {
         self.advance_pos();
         self.tk_start = self.pos;
@@ -594,9 +567,6 @@ class Lexer {
         self.tk_end = self.pos;
         self.advance_pos();
         self.set_tk(TK_STRING);
-        return 0;
-    }
-
     func lex_operator() {
         var c = self.cur();
         self.advance_pos();
@@ -623,10 +593,6 @@ class Lexer {
         if (c == '^') { self.set_tk(TK_CARET); return 0; }
         if (c == '~') { self.set_tk(TK_TILDE); return 0; }
         self.set_tk(TK_IDENTIFIER);
-        return 0;
-    }
-
-    func next_token() {
         if (self.pending_semi == 1) {
             self.pending_semi = 0;
             self.tk_kind = TK_SEMICOLON;
@@ -684,15 +650,12 @@ class Lexer {
             }
             return 0;
         }
-
         if (c == '=') {
             self.advance_pos();
             if (self.cur() == '=') { self.advance_pos(); self.set_tk(TK_EQ_EQ); return 0; }
             if (self.cur() == '>') { self.advance_pos(); self.set_tk(TK_FAT_ARROW); return 0; }
             self.set_tk(TK_EQ);
             return 0;
-        }
-
         if (c == ':') {
             self.advance_pos();
             if (self.cur() == '=') { self.advance_pos(); self.set_tk(TK_COLON_EQ); return 0; }
@@ -700,7 +663,6 @@ class Lexer {
             self.set_tk(TK_COLON);
             return 0;
         }
-
         if (c == '/') {
             self.advance_pos();
             if (self.cur() == '/') {
@@ -728,11 +690,8 @@ class Lexer {
                     self.set_tk(TK_SLASH_SLASH);
                     return 0;
                 }
-            }
             self.set_tk(TK_SLASH);
             return 0;
-        }
-
         if (c == '#') {
             self.advance_pos();
             if (self.cur() == '*') {
@@ -771,9 +730,6 @@ class Lexer {
                 }
                 self.next_token();
                 return 0;
-            }
-        }
-
         var is_op = 0;
         if (c == '!') { is_op = 1; }
         if (c == '<') { is_op = 1; }
@@ -805,7 +761,6 @@ class Lexer {
                 }
             } else {
                 self.set_tk(TK_IDENTIFIER);
-            }
             return 0;
         }
 
@@ -817,8 +772,6 @@ class Lexer {
         if (lex_is_digit(c) == 1) {
             self.lex_number();
             return 0;
-        }
-
         if (lex_is_alpha(c) == 1) {
             self.lex_identifier();
             return 0;
@@ -930,47 +883,3 @@ func print_tk_name(kind) {
     print(kind);
     return 0;
 }
-
-var test_src = "func main() {\n    var x = 42;\n    if (x > 0) {\n        println(\"hello\");\n    }\n}\n";
-
-println("=== Nux Lexer Test ===");
-println("Source:");
-println(test_src);
-println("--- Tokens ---");
-
-var lex = new Lexer;
-lex.init(test_src);
-
-print("Length: ");
-println(lex.length);
-print("First char: ");
-println(str_char(lex.source, 0));
-print("Second char: ");
-println(str_char(lex.source, 1));
-print("lex_is_alpha(117) = ");
-println(lex_is_alpha(117));
-
-var count = 0;
-var done = 0;
-while (done == 0) {
-    lex.next_token();
-    var k = lex.tk_kind;
-    print_tk_name(k);
-    print(" ");
-    print(lex.tk_line);
-    print(":");
-    print(lex.tk_col);
-    if (k == TK_NUMBER) {
-        print(" val=");
-        print(lex.tk_ival);
-    }
-    println("");
-    count = count + 1;
-    if (k == TK_EOF) {
-        done = 1;
-    }
-}
-
-println("--- Done ---");
-print("Total tokens: ");
-println(count);

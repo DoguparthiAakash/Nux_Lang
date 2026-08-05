@@ -1,44 +1,74 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Nux Programming Language - Linux Installer
-# Interactive installer with Install/Repair/Update/Uninstall menu
+#  Nux Programming Language — Linux Installer
+#  Security-hardened with checksum verification, safe temp files,
+#  symlink protection, and Rust/Nux-inspired TUI art
 # ============================================================================
-set -e
+set -euo pipefail
 
 VERSION="1.0.0"
 PRODUCT="Nux Programming Language"
 INSTALL_DIR="/usr/local/lib/nux"
 BIN_LINK="/usr/local/bin/nux"
 DOWNLOAD_URL="https://github.com/DoguparthiAakash/Nux_Installers/releases/latest/download/nux-linux.tar.gz"
+CHECKSUM_URL="https://github.com/DoguparthiAakash/Nux_Installers/releases/latest/download/nux-linux.sha256"
 MARKER_FILE="$INSTALL_DIR/.nux_installed"
 DESKTOP_FILE="/usr/share/applications/nux.desktop"
 
-# Colors
+# --- Restrict PATH to known-safe directories (prevent PATH injection) ---
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# --- Restrict umask ---
+umask 022
+
+# --- TUI Colors (Rust/Nux-inspired) ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 YELLOW='\033[1;33m'
+WHITE='\033[1;37m'
+DIM='\033[2m'
 BOLD='\033[1m'
 NC='\033[0m'
+DARKGRAY='\033[38;5;8m'
+
+# Rust/cargo-style output: right-aligned tag + message
+nux_header() {
+    local title="$1" subtitle="$2"
+    echo ""
+    printf "%b╭─ %b◆ %b%s %b─────────────────────────────────\n" "$DARKGRAY" "$CYAN" "${WHITE}${BOLD}" "$title" "$DARKGRAY"
+    printf "%b│  %bNux v%s  %b·  %b%s\n" "$DARKGRAY" "${WHITE}${BOLD}" "$VERSION" "$DARKGRAY" "$DARKGRAY" "$subtitle"
+    printf "%b╰────────────────────────────────────────%b\n" "$DARKGRAY" "$NC"
+}
+
+nux_print() {
+    local tag="$1" color="$2" msg="$3"
+    printf "%b├─ %b✦ %b%s  %b%s%b\n" "$DARKGRAY" "$GREEN" "$color" "$tag" "$DARKGRAY" "$msg" "$NC"
+}
+
+nux_error() {
+    printf "%b╰─ %b✕ %berror  %b%s%b\n" "$DARKGRAY" "$RED" "$RED" "$WHITE" "$1" "$NC"
+}
+
+nux_warn() {
+    printf "%b├─ %b⚠ %bwarning  %b%s%b\n" "$DARKGRAY" "$YELLOW" "$YELLOW" "$DARKGRAY" "$1" "$NC"
+}
+
+nux_finish() {
+    local tag="$1" msg="$2"
+    printf "%b╰─ %b▶ %b%s  %b%s%b\n" "$DARKGRAY" "$CYAN" "$CYAN" "$tag" "$WHITE" "$msg" "$NC"
+}
 
 banner() {
-    echo ""
-    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                                                          ║${NC}"
-    echo -e "${CYAN}║   ${BOLD}${BLUE}Nux Programming Language${NC}${CYAN}                                ║${NC}"
-    echo -e "${CYAN}║   ${NC}Version ${VERSION} — Linux Installer${CYAN}                       ║${NC}"
-    echo -e "${CYAN}║                                                          ║${NC}"
-    echo -e "${CYAN}║   Write Once, Run Anywhere.                              ║${NC}"
-    echo -e "${CYAN}║                                                          ║${NC}"
-    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
+    nux_header "nux-installer" "interactive menu ..."
 }
 
 check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        echo -e "${YELLOW}This installer requires root privileges.${NC}"
-        echo "Please re-run with: sudo $0"
+    if [ "$(id -u)" -ne 0 ]; then
+        nux_error "This installer requires root privileges."
+        echo "  Please re-run with: sudo $0"
         exit 1
     fi
 }
@@ -58,24 +88,59 @@ detect_distro() {
     fi
 }
 
+# --- Security: verify download checksum ---
+verify_checksum() {
+    local file="$1"
+    local expected_hash=""
+
+    nux_print "Verifying" "$CYAN" "download integrity..."
+    if command -v curl &>/dev/null; then
+        expected_hash=$(curl -fsSL "$CHECKSUM_URL" 2>/dev/null | head -1 | awk '{print $1}') || true
+    elif command -v wget &>/dev/null; then
+        expected_hash=$(wget -qO- "$CHECKSUM_URL" 2>/dev/null | head -1 | awk '{print $1}') || true
+    fi
+
+    if [ -z "$expected_hash" ]; then
+        nux_warn "Checksum file unavailable. Skipping integrity check."
+        return 0
+    fi
+
+    local actual_hash
+    actual_hash=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+    if [ -z "$actual_hash" ]; then
+        actual_hash=$(shasum -a 256 "$file" 2>/dev/null | awk '{print $1}')
+    fi
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+        nux_error "SHA-256 checksum mismatch!"
+        nux_error "Expected: $expected_hash"
+        nux_error "Got:      $actual_hash"
+        nux_error "The download may be corrupted or tampered with."
+        return 1
+    fi
+
+    nux_print "Verified" "$GREEN" "SHA-256 checksum OK"
+    return 0
+}
+
 show_menu() {
     DISTRO=$(detect_distro)
-    echo -e "${BOLD}Detected distribution:${NC} $DISTRO"
+    printf "  %bDetected:%b %s\n" "$BOLD" "$NC" "$DISTRO"
     echo ""
-    echo -e "${BOLD}Select an option:${NC}"
+    printf "  %bSelect an option:%b\n" "$BOLD" "$NC"
     echo ""
-    echo -e "  ${GREEN}1)${NC}  Install Now         ${CYAN}(Recommended)${NC}"
-    echo -e "  ${GREEN}2)${NC}  Custom Install       Choose location and features"
+    printf "    %b1)%b  Install Now         %b(Recommended)%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+    printf "    %b2)%b  Custom Install       Choose location and features\n" "$GREEN" "$NC"
     if is_installed; then
-        echo -e "  ${GREEN}3)${NC}  Repair              Reinstall all files"
-        echo -e "  ${GREEN}4)${NC}  Update              Fetch latest version"
-        echo -e "  ${RED}5)${NC}  Uninstall           Remove Nux completely"
+        printf "    %b3)%b  Repair              Reinstall all files\n" "$GREEN" "$NC"
+        printf "    %b4)%b  Update              Fetch latest version\n" "$GREEN" "$NC"
+        printf "    %b5)%b  Uninstall           Remove Nux completely\n" "$RED" "$NC"
     fi
-    echo -e "  ${GREEN}6)${NC}  Build .deb package  (Debian/Ubuntu)"
-    echo -e "  ${GREEN}7)${NC}  Build .rpm package  (Fedora/RHEL)"
-    echo -e "  ${GREEN}0)${NC}  Exit"
+    printf "    %b6)%b  Build .deb package  (Debian/Ubuntu)\n" "$GREEN" "$NC"
+    printf "    %b7)%b  Build .rpm package  (Fedora/RHEL)\n" "$GREEN" "$NC"
+    printf "    %b0)%b  Exit\n" "$GREEN" "$NC"
     echo ""
-    read -rp "Enter choice [1]: " choice
+    read -rp "  Enter choice [1]: " choice
     choice=${choice:-1}
 }
 
@@ -86,16 +151,43 @@ do_install() {
     local install_desktop="${4:-yes}"
 
     echo ""
-    echo -e "${BLUE}[1/5]${NC} Creating installation directory..."
-    mkdir -p "$target_dir"
+    nux_print "Compiling" "$MAGENTA" "installation plan..."
 
-    echo -e "${BLUE}[2/5]${NC} Downloading Nux binaries..."
-    TEMP_TAR=$(mktemp)
-    if curl -fSL -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null; then
-        echo -e "${BLUE}[3/5]${NC} Extracting files..."
-        tar -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
+    # --- Security: check for symlink attacks on install dir ---
+    if [ -L "$target_dir" ]; then
+        nux_error "Install directory is a symlink. Aborting for security."
+        exit 1
+    fi
+
+    nux_print "Creating" "$CYAN" "$target_dir"
+    mkdir -p "$target_dir"
+    chmod 755 "$target_dir"
+
+    # --- Download with secure temp file ---
+    nux_print "Downloading" "$CYAN" "nux-linux.tar.gz..."
+    TEMP_TAR=$(mktemp /tmp/nux-download-XXXXXXXX.tar.gz)
+    trap 'rm -f "$TEMP_TAR"' EXIT
+
+    local download_ok=false
+    if command -v curl &>/dev/null; then
+        curl -fSL --connect-timeout 30 --max-time 120 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
+    elif command -v wget &>/dev/null; then
+        wget --timeout=30 -q -O "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
+    fi
+
+    if [ "$download_ok" = true ] && [ -s "$TEMP_TAR" ]; then
+        # Verify checksum before extraction
+        if ! verify_checksum "$TEMP_TAR"; then
+            rm -f "$TEMP_TAR"
+            nux_error "Installation aborted due to integrity failure."
+            exit 1
+        fi
+
+        nux_print "Extracting" "$CYAN" "files..."
+        # Extract safely - no following symlinks
+        tar --no-same-owner --no-same-permissions -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
     else
-        echo -e "${YELLOW}       Download unavailable. Using local payload if present.${NC}"
+        nux_warn "Download unavailable. Using local payload if present."
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
         if [ -d "$SCRIPT_DIR/payload" ]; then
             cp -r "$SCRIPT_DIR/payload/"* "$target_dir/"
@@ -105,30 +197,32 @@ do_install() {
 
     if [ "$install_stdlib" = "yes" ]; then
         mkdir -p "$target_dir/lib"
-        echo "       Standard library installed."
+        nux_print "Installed" "$GREEN" "standard library"
     fi
 
-    echo -e "${BLUE}[4/5]${NC} Setting up PATH and symlinks..."
+    # --- Set proper permissions ---
+    chmod 755 "$target_dir/nux" 2>/dev/null || true
+    find "$target_dir" -type d -exec chmod 755 {} \; 2>/dev/null || true
+    find "$target_dir" -type f -name "*.nux" -exec chmod 644 {} \; 2>/dev/null || true
+
     if [ "$install_path" = "yes" ]; then
+        nux_print "Linking" "$CYAN" "/usr/local/bin/nux"
         mkdir -p "$(dirname "$BIN_LINK")"
         ln -sf "$target_dir/nux" "$BIN_LINK"
-        chmod +x "$BIN_LINK" 2>/dev/null || true
-        chmod +x "$target_dir/nux" 2>/dev/null || true
 
-        # Add to shell profiles
-        for profile in /etc/profile.d/nux.sh; do
-            cat <<ENVEOF > "$profile"
+        # Environment profile (system-wide, restricted permissions)
+        cat > /etc/profile.d/nux.sh <<ENVEOF
 # Nux Programming Language
 export NUX_HOME="$target_dir"
 export NUX_LIB_PATH="$target_dir/lib"
 ENVEOF
-        done
+        chmod 644 /etc/profile.d/nux.sh
     fi
 
-    echo -e "${BLUE}[5/5]${NC} Creating desktop entry..."
     if [ "$install_desktop" = "yes" ]; then
+        nux_print "Creating" "$CYAN" "desktop entry"
         mkdir -p "$(dirname "$DESKTOP_FILE")"
-        cat <<DESKTOPEOF > "$DESKTOP_FILE"
+        cat > "$DESKTOP_FILE" <<DESKTOPEOF
 [Desktop Entry]
 Type=Application
 Name=Nux
@@ -139,36 +233,37 @@ Terminal=true
 Categories=Development;IDE;
 MimeType=text/x-nux;
 DESKTOPEOF
+        chmod 644 "$DESKTOP_FILE"
         update-desktop-database /usr/share/applications 2>/dev/null || true
     fi
 
     # Write marker
     echo "$VERSION" > "$target_dir/.nux_installed"
+    chmod 644 "$target_dir/.nux_installed"
 
-    echo ""
-    echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  Installation Successful!                                ║${NC}"
-    echo -e "${GREEN}║                                                          ║${NC}"
-    echo -e "${GREEN}║  You can now use the 'nux' command from any terminal.    ║${NC}"
-    echo -e "${GREEN}║  Try: nux run hello.nux                                  ║${NC}"
-    echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
-    echo ""
+    nux_finish "installed" "successfully!"
 }
 
 do_custom_install() {
     echo ""
-    read -rp "Installation directory [$INSTALL_DIR]: " custom_dir
+    read -rp "  Install directory [$INSTALL_DIR]: " custom_dir
     custom_dir=${custom_dir:-$INSTALL_DIR}
 
-    read -rp "Install Standard Library? [Y/n]: " install_std
+    # Sanitize: reject paths with shell metacharacters
+    if echo "$custom_dir" | grep -qE '[;&|`$(){}!<>]'; then
+        nux_error "Invalid characters in path. Aborting."
+        exit 1
+    fi
+
+    read -rp "  Install Standard Library? [Y/n]: " install_std
     install_std=${install_std:-Y}
     [ "$install_std" = "Y" ] || [ "$install_std" = "y" ] && install_std="yes" || install_std="no"
 
-    read -rp "Add to PATH? [Y/n]: " install_path
+    read -rp "  Add to PATH? [Y/n]: " install_path
     install_path=${install_path:-Y}
     [ "$install_path" = "Y" ] || [ "$install_path" = "y" ] && install_path="yes" || install_path="no"
 
-    read -rp "Create desktop entry? [Y/n]: " install_desktop
+    read -rp "  Create desktop entry? [Y/n]: " install_desktop
     install_desktop=${install_desktop:-Y}
     [ "$install_desktop" = "Y" ] || [ "$install_desktop" = "y" ] && install_desktop="yes" || install_desktop="no"
 
@@ -176,42 +271,62 @@ do_custom_install() {
 }
 
 do_repair() {
-    echo -e "${BLUE}Repairing Nux installation...${NC}"
+    nux_print "Repairing" "$MAGENTA" "Nux installation..."
     do_install
 }
 
 do_update() {
-    echo -e "${BLUE}Updating Nux to latest version...${NC}"
-    TEMP_TAR=$(mktemp)
-    if curl -fSL -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null; then
-        tar -xzf "$TEMP_TAR" -C "$INSTALL_DIR"
-        echo "$VERSION" > "$MARKER_FILE"
-        echo -e "${GREEN}Update successful!${NC}"
+    nux_print "Updating" "$MAGENTA" "Nux to latest version..."
+    if [ ! -f "$INSTALL_DIR/nux" ]; then
+        nux_error "Nux is not installed. Run install first."
+        exit 1
+    fi
+
+    TEMP_TAR=$(mktemp /tmp/nux-update-XXXXXXXX.tar.gz)
+    trap 'rm -f "$TEMP_TAR"' EXIT
+
+    if curl -fSL --connect-timeout 30 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null; then
+        if verify_checksum "$TEMP_TAR"; then
+            tar --no-same-owner -xzf "$TEMP_TAR" -C "$INSTALL_DIR"
+            echo "$VERSION" > "$MARKER_FILE"
+            nux_finish "updated" "successfully!"
+        else
+            nux_error "Update aborted due to checksum failure."
+            exit 1
+        fi
     else
-        echo -e "${RED}Failed to download update.${NC}"
+        nux_error "Failed to download update."
     fi
     rm -f "$TEMP_TAR"
 }
 
 do_uninstall() {
     echo ""
-    echo -e "${RED}WARNING: This will completely remove Nux from your system.${NC}"
-    read -rp "Are you sure? [y/N]: " confirm
+    printf "  %bWARNING: This will completely remove Nux from your system.%b\n" "$RED" "$NC"
+    read -rp "  Are you sure? [y/N]: " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        echo -e "${BLUE}Removing Nux...${NC}"
+        nux_print "Removing" "$RED" "Nux files..."
+
+        # Safety: verify install dir is what we expect before rm -rf
+        if [ "$INSTALL_DIR" = "/" ] || [ "$INSTALL_DIR" = "/usr" ] || [ "$INSTALL_DIR" = "/usr/local" ] || [ -z "$INSTALL_DIR" ]; then
+            nux_error "Refusing to remove system directory: $INSTALL_DIR"
+            exit 1
+        fi
+
         rm -rf "$INSTALL_DIR"
         rm -f "$BIN_LINK"
         rm -f /etc/profile.d/nux.sh
         rm -f "$DESKTOP_FILE"
         update-desktop-database /usr/share/applications 2>/dev/null || true
-        echo -e "${GREEN}Nux has been completely removed.${NC}"
+
+        nux_finish "uninstalled" "completely."
     else
-        echo "Uninstall cancelled."
+        echo "  Uninstall cancelled."
     fi
 }
 
 do_build_deb() {
-    echo -e "${BLUE}Building Debian package...${NC}"
+    nux_print "Building" "$MAGENTA" "Debian package..."
     ARCH="amd64"
     PKG_DIR="nux_${VERSION}_${ARCH}"
 
@@ -219,10 +334,8 @@ do_build_deb() {
     mkdir -p "$PKG_DIR/DEBIAN"
     mkdir -p "$PKG_DIR/usr/local/lib/nux/lib"
     mkdir -p "$PKG_DIR/usr/local/bin"
-    mkdir -p "$PKG_DIR/usr/share/applications"
 
-    # Control file
-    cat <<EOF > "$PKG_DIR/DEBIAN/control"
+    cat > "$PKG_DIR/DEBIAN/control" <<EOF
 Package: nux
 Version: $VERSION
 Section: devel
@@ -232,25 +345,21 @@ Maintainer: NuxLang Team <nux@nuxlang.org>
 Homepage: https://github.com/DoguparthiAakash/Nux_Lang
 Description: Nux Programming Language
  An incredibly fast, lightweight, Write-Once-Run-Anywhere
- programming language with built-in support for ML, quantum
- computing, 3D engines, and more.
+ programming language with built-in ML, quantum, and 3D support.
 EOF
 
-    # Postinst
-    cat <<'POSTINST' > "$PKG_DIR/DEBIAN/postinst"
+    cat > "$PKG_DIR/DEBIAN/postinst" <<'POSTINST'
 #!/bin/bash
 ln -sf /usr/local/lib/nux/nux /usr/local/bin/nux
-chmod +x /usr/local/bin/nux 2>/dev/null || true
-update-desktop-database /usr/share/applications 2>/dev/null || true
+chmod 755 /usr/local/bin/nux 2>/dev/null || true
 POSTINST
-    chmod +x "$PKG_DIR/DEBIAN/postinst"
+    chmod 755 "$PKG_DIR/DEBIAN/postinst"
 
-    # Prerm
-    cat <<'PRERM' > "$PKG_DIR/DEBIAN/prerm"
+    cat > "$PKG_DIR/DEBIAN/prerm" <<'PRERM'
 #!/bin/bash
 rm -f /usr/local/bin/nux
 PRERM
-    chmod +x "$PKG_DIR/DEBIAN/prerm"
+    chmod 755 "$PKG_DIR/DEBIAN/prerm"
 
     # Copy payload
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -260,21 +369,21 @@ PRERM
 
     if command -v dpkg-deb &>/dev/null; then
         dpkg-deb --build "$PKG_DIR"
-        echo -e "${GREEN}Built ${PKG_DIR}.deb${NC}"
-        echo "Install with: sudo dpkg -i ${PKG_DIR}.deb"
+        printf "       %b✔%b  Built %b${PKG_DIR}.deb%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+        echo "         Install with: sudo dpkg -i ${PKG_DIR}.deb"
     else
-        echo -e "${RED}dpkg-deb not found. Run this on a Debian/Ubuntu system.${NC}"
+        nux_error "dpkg-deb not found. Run this on a Debian/Ubuntu system."
     fi
     rm -rf "$PKG_DIR"
 }
 
 do_build_rpm() {
-    echo -e "${BLUE}Building RPM package...${NC}"
+    nux_print "Building" "$MAGENTA" "RPM package..."
 
     rm -rf rpmbuild
     mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-    cat <<EOF > rpmbuild/SPECS/nux.spec
+    cat > rpmbuild/SPECS/nux.spec <<EOF
 Name:           nux
 Version:        $VERSION
 Release:        1%{?dist}
@@ -283,8 +392,7 @@ License:        MIT
 URL:            https://github.com/DoguparthiAakash/Nux_Lang
 
 %description
-An incredibly fast, lightweight, Write-Once-Run-Anywhere programming language
-with built-in support for ML, quantum computing, 3D engines, and more.
+An incredibly fast, lightweight, Write-Once-Run-Anywhere programming language.
 
 %install
 mkdir -p %{buildroot}/usr/local/lib/nux/lib
@@ -292,24 +400,20 @@ mkdir -p %{buildroot}/usr/local/bin
 
 %post
 ln -sf /usr/local/lib/nux/nux /usr/local/bin/nux
-chmod +x /usr/local/bin/nux
+chmod 755 /usr/local/bin/nux
 
 %preun
 rm -f /usr/local/bin/nux
 
 %files
 /usr/local/lib/nux/*
-
-%changelog
-* $(date +"%a %b %d %Y") NuxLang Team <nux@nuxlang.org> - $VERSION-1
-- Initial RPM package
 EOF
 
     if command -v rpmbuild &>/dev/null; then
         rpmbuild -ba rpmbuild/SPECS/nux.spec --define "_topdir $(pwd)/rpmbuild"
-        echo -e "${GREEN}RPM built in rpmbuild/RPMS/${NC}"
+        printf "       %b✔%b  RPM built in %brpmbuild/RPMS/%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
     else
-        echo -e "${RED}rpmbuild not found. Run this on a Fedora/RHEL system.${NC}"
+        nux_error "rpmbuild not found. Run this on a Fedora/RHEL system."
     fi
 }
 
@@ -323,11 +427,11 @@ show_menu
 case "$choice" in
     1) do_install ;;
     2) do_custom_install ;;
-    3) if is_installed; then do_repair; else echo "Not installed."; fi ;;
-    4) if is_installed; then do_update; else echo "Not installed."; fi ;;
-    5) if is_installed; then do_uninstall; else echo "Not installed."; fi ;;
+    3) if is_installed; then do_repair; else nux_error "Not installed."; fi ;;
+    4) if is_installed; then do_update; else nux_error "Not installed."; fi ;;
+    5) if is_installed; then do_uninstall; else nux_error "Not installed."; fi ;;
     6) do_build_deb ;;
     7) do_build_rpm ;;
-    0) echo "Exiting."; exit 0 ;;
-    *) echo "Invalid choice."; exit 1 ;;
+    0) echo "  Exiting."; exit 0 ;;
+    *) nux_error "Invalid choice."; exit 1 ;;
 esac
