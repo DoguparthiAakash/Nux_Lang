@@ -11,12 +11,12 @@ func arr_new(size) {
 }
 func arr_set(arr, idx, val) {
     asm {
-        val
         arr
         idx
         PUSH 8
         OP_MUL
         OP_ADD
+        val
         POKE
     }
 }

@@ -1211,8 +1211,8 @@ impl NuxVm {
                     }
                 },
                 OP_POKE => {
-                    let addr = self.pop();
                     let val = self.pop();
+                    let addr = self.pop();
                     let shared = self.shared.clone();
                     let success = {
                         let mut state = shared.lock();

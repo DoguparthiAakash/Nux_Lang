@@ -1197,7 +1197,7 @@ impl Parser {
                           }
                           
                           // Field Addr
-                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset));
+                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset * 8));
                           
                           self.advance(); // Skip =
                           let mut sub_out = String::new();
@@ -1223,7 +1223,13 @@ impl Parser {
                       } else if self.current_token == Token::LParen {
                           // Method Call
                           // Resolve "this"/object again
-                          let (loc, _) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                          let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r.clone() } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                          
+                          let cname = if let Type::Class(c) = &typ {
+                               c.clone()
+                          } else {
+                               part1.clone() // Fallback if type not known
+                          };
                            
                           // Push Object Instance (implicitly passed as first arg)
                           match loc {
@@ -1264,7 +1270,7 @@ impl Parser {
                                self.advance();
                           } else if self.current_token == Token::SemiColon { self.advance(); }
                           
-                          out.push_str(&format!("CALL {}_{} {}\nPOP\n", part1, member, arg_count));
+                          out.push_str(&format!("CALL {}_{} {}\nPOP\n", cname, member, arg_count));
                       } else {
                            return self.error("Expected = or ( after member name".to_string());
                       }
@@ -2661,7 +2667,7 @@ impl Parser {
                              }
                         };
                         
-                        out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset));
+                        out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8));
                         // Typ becomes Unknown unless we track field types
                         typ = Type::Unknown;
                     }
@@ -2700,7 +2706,10 @@ impl Parser {
                      return self.error(format!("Undefined class '{}'", name));
                 };
                 
-                out.push_str(&format!("PUSH {}\nPUSH 1\nOP_IMG_ALLOC\n", size));
+                out.push_str(&format!("PUSH {}
+PUSH 1
+OP_IMG_ALLOC
+", size * 8));
                 
                 if self.current_token == Token::LParen { 
                      self.advance(); 
