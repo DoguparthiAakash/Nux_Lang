@@ -36,6 +36,12 @@ pub fn transpile_and_compile(asm: &str, output_path: &str, config: &TranspilerCo
                 .arg(output_path)
                 .arg("-O3") // Extreme mode thrives on -O3
                 .arg("-ffast-math") // Extra speed for Extreme
+                .arg("-L")
+                .arg(r"E:\nux\Nux_Lang\nux_ui\target\release")
+                .arg("-lnux_ui")
+                .arg("-luser32")
+                .arg("-lgdi32")
+                .arg("-ladvapi32") // just in case
                 .status()
                 .map_err(|e| format!("Failed to run gcc: {}", e))?;
                 
@@ -96,8 +102,16 @@ void nux_free(void* ptr) {
 #define NUX_STACK_SIZE 1024
 NUX_INT stack[NUX_STACK_SIZE];
 int sp = -1;
+#endif
+
+// Nux UI FFI Declarations
+extern NUX_INT ffi_window_create(NUX_INT title_ptr, NUX_INT width, NUX_INT height);
+extern NUX_INT ffi_window_update(void);
+extern NUX_INT ffi_draw_rect(NUX_INT x, NUX_INT y, NUX_INT w, NUX_INT h, NUX_INT color);
+extern NUX_INT ffi_window_close(void);
 "#);
             }
+
             code.push_str(r#"
 NUX_INT vars[1024];
 
@@ -269,6 +283,22 @@ int main() {
                     sim_sp -= 1;
                     code.push_str(&format!("    free((void*)r[{}]);\n", sim_sp));
                 },
+                "OP_WINDOW_NEW" => {
+                    sim_sp -= 2;
+                    code.push_str(&format!("    ffi_window_create(0, r[{}], r[{}]);\n", sim_sp, sim_sp+1));
+                },
+                "OP_IMG_DRAW" | "OP_GFX_UPDATE" => {
+                    code.push_str("    ffi_window_update();\n");
+                },
+                "OP_DRAW_PIXEL" | "OP_IMG_SET" => {
+                    sim_sp -= 3;
+                    // Draw a 1x1 rect: x, y, 1, 1, color
+                    code.push_str(&format!("    ffi_draw_rect(r[{}], r[{}], 1, 1, r[{}]);\n", sim_sp, sim_sp+1, sim_sp+2));
+                },
+                "OP_GFX_CLEAR" => {
+                    sim_sp -= 1;
+                    code.push_str(&format!("    ffi_draw_rect(0, 0, 10000, 10000, r[{}]);\n", sim_sp));
+                },
                 "EXIT" => code.push_str("    NUX_EXIT();\n"),
                 "RET" => code.push_str("    return 0;\n"),
                 _ => code.push_str(&format!("    // Unknown (Extreme): {}\n", line)),
@@ -314,6 +344,10 @@ int main() {
                      }
                 },
                 "OP_LIMIT_MEM" => code.push_str("    { NUX_INT percent = POP(); /* memory limit */ }\n"),
+                "OP_WINDOW_NEW" => code.push_str("    { NUX_INT h = POP(); NUX_INT w = POP(); ffi_window_create(0, w, h); }\n"),
+                "OP_IMG_DRAW" | "OP_GFX_UPDATE" => code.push_str("    ffi_window_update();\n"),
+                "OP_DRAW_PIXEL" | "OP_IMG_SET" => code.push_str("    { NUX_INT c = POP(); NUX_INT y = POP(); NUX_INT x = POP(); ffi_draw_rect(x, y, 1, 1, c); }\n"),
+                "OP_GFX_CLEAR" => code.push_str("    { NUX_INT c = POP(); ffi_draw_rect(0, 0, 10000, 10000, c); }\n"),
                 "EXIT" => code.push_str("    NUX_EXIT();\n"),
                 "RET" => code.push_str("    return 0;\n"), 
                 "CALL" => code.push_str(&format!("    /* Call {} not fully implemented in C transpiler yet */\n", parts[1])), 

@@ -240,7 +240,11 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             },
             "RET" => ops.push(0x71),
             "EXIT" => ops.push(0xFF),
-            _ => return Err(format!("Unknown instruction: {}", mnemonic)),
+            "OP_RETAIN" => ops.push(0x85),
+            "OP_RELEASE" => ops.push(0x86),
+            "OP_MATMUL_SIMD" => ops.push(0x87),
+            "OP_GPU_DISPATCH" => ops.push(0x88),
+            _ => return Err(format!("Unknown instruction: {} (full line: {})", mnemonic, line)),
         }
     }
     

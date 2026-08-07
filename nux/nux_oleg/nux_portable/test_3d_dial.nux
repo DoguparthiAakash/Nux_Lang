@@ -1,0 +1,87 @@
+import "lib/graphics2d.nux";
+import "lib/graphics3d.nux";
+
+func arr_new(size) {
+    asm {
+        size
+        PUSH 8
+        OP_MUL
+        OP_ALLOC
+    }
+}
+func arr_set(arr, idx, val) {
+    asm {
+        val
+        arr
+        idx
+        PUSH 8
+        OP_MUL
+        OP_ADD
+        POKE
+    }
+}
+func arr_get(arr, idx) {
+    asm {
+        arr
+        idx
+        PUSH 8
+        OP_MUL
+        OP_ADD
+        PEEK
+    }
+}
+
+func main() {
+    var win: Window = new Window;
+    win.init(800, 600);
+    var cam: Camera3D = new Camera3D;
+    cam.init(600, 1);
+
+    var px = arr_new(8);
+    var py = arr_new(8);
+    var pz = arr_new(8);
+
+    # Circle points (r=100)
+    arr_set(px, 0, 100); arr_set(py, 0, 0);   arr_set(pz, 0, 500);
+    arr_set(px, 1, 70);  arr_set(py, 1, 70);  arr_set(pz, 1, 500);
+    arr_set(px, 2, 0);   arr_set(py, 2, 100); arr_set(pz, 2, 500);
+    arr_set(px, 3, -70); arr_set(py, 3, 70);  arr_set(pz, 3, 500);
+    arr_set(px, 4, -100);arr_set(py, 4, 0);   arr_set(pz, 4, 500);
+    arr_set(px, 5, -70); arr_set(py, 5, -70); arr_set(pz, 5, 500);
+    arr_set(px, 6, 0);   arr_set(py, 6, -100);arr_set(pz, 6, 500);
+    arr_set(px, 7, 70);  arr_set(py, 7, -70); arr_set(pz, 7, 500);
+
+    var angle = 0;
+    var num_points = 8;
+    var pt: Vector3 = new Vector3;
+    
+    while (angle < 500) {
+        win.clear(0); # Black background
+        var i = 0;
+        
+        while (i < num_points) {
+            var z_pulse = 500 - (angle % 300);
+            var px_val = arr_get(px, i);
+            var py_val = arr_get(py, i);
+            pt.init(px_val, py_val, z_pulse);
+            
+            var proj: Vector2 = cam.project(pt);
+            
+            var screen_x = proj.x + 400;
+            var screen_y = proj.y + 300;
+            
+            win.draw_pixel(screen_x, screen_y, 16711935);
+            win.draw_pixel(screen_x+1, screen_y, 16711935);
+            win.draw_pixel(screen_x-1, screen_y, 16711935);
+            win.draw_pixel(screen_x, screen_y+1, 16711935);
+            win.draw_pixel(screen_x, screen_y-1, 16711935);
+            
+            i = i + 1;
+        }
+        win.update();
+        angle = angle + 1;
+    }
+}
+
+main();
+

@@ -91,6 +91,7 @@ fn main() {
                  high_level::compile_high_level(&source)
             } else {
                  // println!("Compiling as NuxASM...");
+                 println!("ASM OUTPUT:\n{}", source);
                  compiler::compile(&source).map_err(|e| vec![CompileError { message: e, span: Span { line: 0, col: 0 } }])
             };
 

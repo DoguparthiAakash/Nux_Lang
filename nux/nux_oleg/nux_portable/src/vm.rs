@@ -113,6 +113,12 @@ const OP_LIMIT_MEM: u8 = 0x84;
 const OP_VISION_DETECT: u8 = 0xB0;
 const OP_EXIT: u8 = 0xFF;
 
+// Memory Safety & GPU Opcodes
+const OP_RETAIN: u8 = 0x85;
+const OP_RELEASE: u8 = 0x86;
+const OP_MATMUL_SIMD: u8 = 0x87;
+const OP_GPU_DISPATCH: u8 = 0x88;
+
 // Simple SpinLock Implementation for Kernel Safety
 pub struct SpinLock<T> {
     lock: AtomicBool,
@@ -184,6 +190,7 @@ struct SharedState {
     next_handle: i64,
     heap_ptr: usize,
     mem_limit: Option<usize>,
+    ref_counts: std::collections::HashMap<usize, usize>,
 }
 
 #[derive(Clone)]
@@ -242,6 +249,7 @@ impl NuxVm {
                 next_handle: 1,
                 heap_ptr: 1024, // Reserve 1024 bytes for null and globals
                 mem_limit: None,
+                ref_counts: std::collections::HashMap::new(),
             })),
         }
     }

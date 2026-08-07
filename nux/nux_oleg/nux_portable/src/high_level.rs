@@ -51,6 +51,7 @@ pub fn compile_to_asm_source(source: &str) -> Result<String, Vec<CompileError>> 
 pub fn compile_high_level(source: &str) -> Result<Vec<u8>, Vec<CompileError>> {
     match compile_to_asm_source(source) {
         Ok(asm) => {
+            std::fs::write("dump.txt", asm.clone()).unwrap();
             crate::compiler::compile(&asm).map_err(|e| vec![CompileError::new(e, Span { line: 0, col: 0 })])
         },
         Err(e) => Err(e),
@@ -515,6 +516,8 @@ impl Parser {
         let mut fields = HashMap::new();
         let mut offset = 0;
         
+        self.classes.insert(name.clone(), ClassInfo { fields: fields.clone(), size: 0 });
+        
         // Inside class, we expect functions (methods).
         while self.current_token != Token::RBrace && self.current_token != Token::EOF {
             if self.current_token == Token::Func {
@@ -531,6 +534,7 @@ impl Parser {
                 // Add to fields
                 fields.insert(field_name, offset);
                 offset += 1; // All fields are 8 bytes (1 slot)
+                self.classes.insert(name.clone(), ClassInfo { fields: fields.clone(), size: offset });
                 
                 // Optional initialization or type?
                 // Expect : Type
@@ -634,7 +638,7 @@ impl Parser {
         self.advance();
         
         // Parse Arguments
-        let mut args = Vec::new();
+        let mut args: Vec<(String, Type)> = Vec::new();
         if self.current_token != Token::RParen {
             loop {
                 let arg_name = match &self.current_token {
@@ -642,7 +646,24 @@ impl Parser {
                     _ => return self.error("Expected argument name".to_string()),
                 };
                 self.advance();
-                args.push(arg_name);
+                
+                let mut arg_type = Type::Unknown;
+                if self.current_token == Token::Colon {
+                    self.advance();
+                    match &self.current_token {
+                        Token::Identifier(s) => { arg_type = Type::Class(s.clone()); self.advance(); },
+                        Token::KwInt => { arg_type = Type::Int; self.advance(); },
+                        Token::KwFloat => { arg_type = Type::Float; self.advance(); },
+                        Token::KwByte => { arg_type = Type::Byte; self.advance(); },
+                        Token::KwShort => { arg_type = Type::Short; self.advance(); },
+                        Token::KwLong => { arg_type = Type::Long; self.advance(); },
+                        Token::KwChar => { arg_type = Type::Char; self.advance(); },
+                        Token::KwString => { arg_type = Type::String; self.advance(); },
+                        _ => return self.error("Expected type after colon".to_string()),
+                    }
+                }
+                
+                args.push((arg_name, arg_type));
                 
                 if self.current_token == Token::Comma {
                     self.advance();
@@ -708,13 +729,13 @@ impl Parser {
         let num_args = args.len() as i64;
         self.local_offset = num_args + (arg_start as i64); // Locals start after arguments
         
-        for (i, arg) in args.iter().enumerate() {
+        for (i, (arg, arg_typ)) in args.iter().enumerate() {
              // Arguments are at positive offsets 0, 1, 2, ...
              // If class method, they shift by 1.
              let offset = (i + arg_start) as i64;
              let loc = VarLocation::Local(offset);
              if let Some(scope) = self.scopes.last_mut() {
-                 scope.insert(arg.clone(), (loc, Type::Int));
+                 scope.insert(arg.clone(), (loc, arg_typ.clone()));
              }
         }
         
@@ -887,18 +908,47 @@ impl Parser {
                  while self.current_token != Token::RBrace && self.current_token != Token::EOF {
                      if let Token::String(s) = &self.current_token {
                          out.push_str(s); out.push('\n'); self.advance();
-                     } else if let Token::Identifier(name) = &self.current_token {
+                     } else if let Token::Identifier(name_ref) = &self.current_token {
+                         let name = name_ref.clone();
                          // Resolve Variable
-                         if let Some((loc, _)) = self.resolve_var(name) {
+                         if let Some((loc, _)) = self.resolve_var(&name) {
                              match loc {
                                  VarLocation::Local(idx) => out.push_str(&format!("GET_LOCAL {}\n", idx)),
                                  VarLocation::Global(addr) => out.push_str(&format!("GET_GLOBAL {}\n", addr)),
                              }
-                         } else {
-                              // If not resolved, assume opcode/label
-                              out.push_str(name); out.push('\n');
-                         }
-                         self.advance();
+                          } else {
+                               // If not resolved, assume opcode/label
+                               out.push_str(&name); 
+                               self.advance();
+                               let upper = name.to_ascii_uppercase();
+                               if upper == "PUSH" || upper == "GET_LOCAL" || upper == "SET_LOCAL" 
+                                   || upper == "OP_GET_LOCAL" || upper == "OP_SET_LOCAL"
+                                   || upper == "GET_GLOBAL" || upper == "SET_GLOBAL"
+                                   || upper == "JMP" || upper == "JE" || upper == "CALL" {
+                                   
+                                   if upper == "CALL" {
+                                        if let Token::Identifier(lbl) = &self.current_token {
+                                            out.push_str(&format!(" {}", lbl));
+                                            self.advance();
+                                        }
+                                        if let Token::Number(num) = &self.current_token {
+                                            out.push_str(&format!(" {}", num));
+                                            self.advance();
+                                        }
+                                   } else {
+                                       if let Token::Number(num) = &self.current_token {
+                                           out.push_str(&format!(" {}", num));
+                                           self.advance();
+                                       } else if let Token::Identifier(arg) = &self.current_token {
+                                           out.push_str(&format!(" {}", arg));
+                                           self.advance();
+                                       }
+                                   }
+                               }
+                               out.push('\n');
+                               continue;
+                          }
+                          self.advance();
                      } else if let Token::Number(n) = &self.current_token {
                          out.push_str(&format!("{}\n", n)); 
                          self.advance();
@@ -1795,20 +1845,29 @@ impl Parser {
         
         // Optional Type Constraint
         let mut constraint = None;
+        let mut explicit_type = None;
         if self.current_token == Token::Colon {
              self.advance(); // skip :
              match &self.current_token {
                  Token::Identifier(s) => {
+                     explicit_type = Some(Type::Class(s.clone()));
                      if let Some(bounds) = self.bound_types.get(s) {
                          constraint = Some(*bounds);
                      }
+                     self.advance();
                  },
-                 _ => {}
+                 Token::KwInt => { explicit_type = Some(Type::Int); self.advance(); },
+                 Token::KwFloat => { explicit_type = Some(Type::Float); self.advance(); },
+                 Token::KwByte => { explicit_type = Some(Type::Byte); self.advance(); },
+                 Token::KwShort => { explicit_type = Some(Type::Short); self.advance(); },
+                 Token::KwLong => { explicit_type = Some(Type::Long); self.advance(); },
+                 Token::KwChar => { explicit_type = Some(Type::Char); self.advance(); },
+                 Token::KwString => { explicit_type = Some(Type::String); self.advance(); },
+                 _ => { self.advance(); /* fallback */ }
              }
-             self.advance(); // consume type
         }
         
-        let mut final_type = expected_type.clone();
+        let mut final_type = if let Some(t) = explicit_type { t } else { expected_type.clone() };
         
         // = value
         if self.current_token == Token::Eq {
@@ -2553,6 +2612,30 @@ impl Parser {
                         self.advance();
                         let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
                         self.advance();
+                        
+                        if self.current_token == Token::LParen {
+                            self.advance();
+                            let mut arg_count = 1;
+                            if self.current_token != Token::RParen {
+                                loop {
+                                    self.parse_expression_and_push(out)?;
+                                    arg_count += 1;
+                                    if self.current_token == Token::Comma { self.advance(); } else { break; }
+                                }
+                            }
+                            if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                            self.advance();
+                            
+                            let cname = if let Type::Class(cname) = &typ {
+                                cname.clone()
+                            } else {
+                                return self.error(format!("Method '{}' called on non-class type {:?}", member, typ));
+                            };
+                            
+                            out.push_str(&format!("CALL {}_{} {}\n", cname, member, arg_count));
+                            typ = Type::Unknown; // Methods return unknown for now
+                            continue;
+                        }
                         
                         let offset = if let Type::Class(cname) = &typ {
                              if let Some(cinfo) = self.classes.get(cname) {
