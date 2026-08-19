@@ -6,8 +6,8 @@
 #    - nux-*.rpm       (Fedora/RHEL/CentOS/openSUSE)
 #    - nux-*.tar.gz    (Arch/Gentoo/Alpine/BSD generic)
 #
-#  Requirements: cargo, cargo-deb, cargo-generate-rpm
-#  Install tools: cargo install cargo-deb cargo-generate-rpm
+#  Requirements: gcc, fpm
+#  Install tools: gem install fpm
 # ─────────────────────────────────────────────────────────────
 set -e
 
@@ -26,39 +26,37 @@ mkdir -p "$DIST"
 
 # ── 1. Release Binary ──────────────────────────────────────────
 info "Building Nux release binary..."
-cd "$SRC"
-cargo build --release
-BINARY="target/release/nux"
+cd "$SRC/runtime_c"
+gcc -O3 main.c vm.c vision/vision.c -lm -o nux
+BINARY="nux"
 [ -f "$BINARY" ] || die "Build failed — binary not found."
 ok "Binary ready: $BINARY"
 
-# ── 2. .deb (Debian/Ubuntu) ───────────────────────────────────
-if command -v cargo-deb > /dev/null 2>&1 || cargo deb --version > /dev/null 2>&1; then
-  info "Building .deb package..."
-  cargo deb --no-build --output "../../$DIST/nux_${NUX_VERSION}_amd64.deb"
+# ── 2. .deb and .rpm (Debian/Ubuntu/Fedora/RHEL) ────────────────
+if command -v fpm > /dev/null 2>&1; then
+  info "Building .deb and .rpm packages..."
+  STAGING=$(mktemp -d)
+  mkdir -p "$STAGING/usr/bin"
+  cp "$BINARY" "$STAGING/usr/bin/nux"
+  
+  fpm -s dir -t deb -n nux -v "${NUX_VERSION}" -C "$STAGING" -p "../../../../$DIST/nux_${NUX_VERSION}_amd64.deb" usr/bin/nux
   ok "Created: $DIST/nux_${NUX_VERSION}_amd64.deb"
-else
-  info "Skipping .deb (cargo-deb not installed)"
-  info "  Install: cargo install cargo-deb"
-fi
-
-# ── 3. .rpm (Fedora/RHEL) ─────────────────────────────────────
-if cargo generate-rpm --version > /dev/null 2>&1; then
-  info "Building .rpm package..."
-  cargo generate-rpm --output "../../$DIST/nux-${NUX_VERSION}-1.x86_64.rpm"
+  
+  fpm -s dir -t rpm -n nux -v "${NUX_VERSION}" -C "$STAGING" -p "../../../../$DIST/nux-${NUX_VERSION}-1.x86_64.rpm" usr/bin/nux
   ok "Created: $DIST/nux-${NUX_VERSION}-1.x86_64.rpm"
+  rm -rf "$STAGING"
 else
-  info "Skipping .rpm (cargo-generate-rpm not installed)"
-  info "  Install: cargo install cargo-generate-rpm"
+  info "Skipping .deb and .rpm (fpm not installed)"
+  info "  Install: gem install fpm"
 fi
 
-cd ../..
+cd ../../../../
 
 # ── 4. Generic .tar.gz ────────────────────────────────────────
 info "Building generic .tar.gz..."
 STAGING=$(mktemp -d)
 mkdir -p "$STAGING/usr/bin" "$STAGING/usr/share/doc/nux"
-cp "$SRC/target/release/nux" "$STAGING/usr/bin/nux"
+cp "$SRC/runtime_c/nux" "$STAGING/usr/bin/nux"
 cp README.md "$STAGING/usr/share/doc/nux/" 2>/dev/null || true
 cp install.sh uninstall.sh "$STAGING/" 2>/dev/null || true
 

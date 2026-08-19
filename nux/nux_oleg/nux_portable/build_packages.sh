@@ -10,23 +10,25 @@ RED='\033[1;31m'
 RESET='\033[0m'
 
 echo -e "${CYAN}Building Nux release binary...${RESET}"
-cargo build --release
+cd runtime_c
+gcc -O3 main.c vm.c vision/vision.c -lm -o nux
+cd ..
 
-echo -e "${CYAN}Building Debian package (.deb)...${RESET}"
-if ! command -v cargo-deb &> /dev/null; then
-    echo "Installing cargo-deb..."
-    cargo install cargo-deb
+echo -e "${CYAN}Building Debian and RPM packages...${RESET}"
+if command -v fpm &> /dev/null; then
+    mkdir -p target/pkg/usr/bin
+    cp runtime_c/nux target/pkg/usr/bin/nux
+    
+    mkdir -p target/debian target/generate-rpm
+    
+    fpm -s dir -t deb -n nux -v "0.4.0" -C target/pkg -p target/debian/nux_0.4.0_amd64.deb usr/bin/nux
+    echo -e "${GREEN}✓ Debian package created in target/debian/${RESET}"
+    
+    fpm -s dir -t rpm -n nux -v "0.4.0" -C target/pkg -p target/generate-rpm/nux-0.4.0-1.x86_64.rpm usr/bin/nux
+    echo -e "${GREEN}✓ RPM package created in target/generate-rpm/${RESET}"
+else
+    echo -e "${RED}Skipping .deb and .rpm (fpm not installed). Install with: gem install fpm${RESET}"
 fi
-cargo deb
-echo -e "${GREEN}✓ Debian package created in target/debian/${RESET}"
-
-echo -e "${CYAN}Building RPM package (.rpm)...${RESET}"
-if ! command -v cargo-generate-rpm &> /dev/null; then
-    echo "Installing cargo-generate-rpm..."
-    cargo install cargo-generate-rpm
-fi
-cargo generate-rpm
-echo -e "${GREEN}✓ RPM package created in target/generate-rpm/${RESET}"
 
 echo -e "${CYAN}Building macOS/Linux Tarballs...${RESET}"
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -38,7 +40,7 @@ esac
 
 TAR_NAME="nux-0.4.0-${OS}-${ARCH}.tar.gz"
 mkdir -p target/dist
-tar -czf "target/dist/${TAR_NAME}" -C target/release nux
+tar -czf "target/dist/${TAR_NAME}" -C runtime_c nux
 echo -e "${GREEN}✓ Tarball created in target/dist/${TAR_NAME}${RESET}"
 
 echo -e "${GREEN}All packages built successfully!${RESET}"

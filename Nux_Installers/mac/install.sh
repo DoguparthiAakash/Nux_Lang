@@ -113,9 +113,30 @@ do_install() {
         rm -f "$target_dir/nux" 2>/dev/null || true
         tar --no-same-owner -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
     else
-        nux_warn "Download unavailable. Using local payload."
+        nux_warn "Download unavailable. Attempting to compile from source..."
         SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-        [ -d "$SCRIPT_DIR/payload" ] && cp -r "$SCRIPT_DIR/payload/"* "$target_dir/"
+        SRC_DIR="$SCRIPT_DIR/../../nux/nux_oleg/nux_portable/runtime_c"
+        if [ -d "$SRC_DIR" ]; then
+            if command -v clang &>/dev/null; then
+                nux_print "Compiling" "$CYAN" "using clang..."
+                clang -O3 "$SRC_DIR/main.c" "$SRC_DIR/vm.c" "$SRC_DIR/vision/vision.c" -lm -o "$target_dir/nux"
+            elif command -v gcc &>/dev/null; then
+                nux_print "Compiling" "$CYAN" "using gcc..."
+                gcc -O3 "$SRC_DIR/main.c" "$SRC_DIR/vm.c" "$SRC_DIR/vision/vision.c" -lm -o "$target_dir/nux"
+            else
+                nux_error "No C compiler (clang/gcc) found. Installation failed."
+                exit 1
+            fi
+            if [ -f "$SRC_DIR/compiler.nuxi" ]; then
+                cp "$SRC_DIR/compiler.nuxi" "$target_dir/"
+            fi
+        elif [ -d "$SCRIPT_DIR/payload" ]; then
+            nux_warn "Source directory not found. Using local payload."
+            cp -r "$SCRIPT_DIR/payload/"* "$target_dir/"
+        else
+            nux_error "No payload or source available. Installation aborted."
+            exit 1
+        fi
     fi
     rm -f "$TEMP_TAR"
 

@@ -10,6 +10,8 @@ void vm_init(VM* vm) {
     vm->csp = 0;
     vm->fp = 0;
     memset(vm->heap, 0, HEAP_SIZE);
+    vm->heap_strings_count = 0;
+    vm->heap_arrays_count = 0;
 }
 
 void vm_load(VM* vm, uint8_t* code, int size, int entry_offset) {
@@ -301,6 +303,234 @@ void vm_run(VM* vm) {
             }
             case OP_GFX_RECT: {
                 ext_gfx_rect(vm);
+                break;
+            }
+            
+            case OP_ARRAY_ALLOC: {
+                Value count_val = pop(vm);
+                int count = (int)count_val.as.i;
+                if (vm->heap_arrays_count < 10000) {
+                    nux_int* data = (nux_int*)malloc(sizeof(nux_int) * count);
+                    for (int i = 0; i < count; i++) {
+                        data[count - 1 - i] = pop(vm).as.i;
+                    }
+                    vm->heap_arrays[vm->heap_arrays_count].data = data;
+                    vm->heap_arrays[vm->heap_arrays_count].size = count;
+                    push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_arrays_count});
+                    vm->heap_arrays_count++;
+                } else {
+                    push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                }
+                break;
+            }
+            case OP_ARRAY_GET: {
+                Value idx_val = pop(vm);
+                Value arr_id_val = pop(vm);
+                int idx = (int)idx_val.as.i;
+                int arr_id = (int)arr_id_val.as.i;
+                if (arr_id >= 0 && arr_id < vm->heap_arrays_count) {
+                    if (idx >= 0 && idx < vm->heap_arrays[arr_id].size) {
+                        push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_arrays[arr_id].data[idx]});
+                    } else {
+                        printf("Array index out of bounds: %d\n", idx);
+                        exit(1);
+                    }
+                } else {
+                    printf("Invalid array ID: %d\n", arr_id);
+                    exit(1);
+                }
+                break;
+            }
+            case OP_ARRAY_SET: {
+                Value val = pop(vm);
+                Value idx_val = pop(vm);
+                Value arr_id_val = pop(vm);
+                int idx = (int)idx_val.as.i;
+                int arr_id = (int)arr_id_val.as.i;
+                if (arr_id >= 0 && arr_id < vm->heap_arrays_count) {
+                    if (idx >= 0 && idx < vm->heap_arrays[arr_id].size) {
+                        vm->heap_arrays[arr_id].data[idx] = val.as.i;
+                    } else {
+                        printf("Array index out of bounds: %d\n", idx);
+                        exit(1);
+                    }
+                } else {
+                    printf("Invalid array ID: %d\n", arr_id);
+                    exit(1);
+                }
+                break;
+            }
+            case OP_FS_READ: {
+                Value path_id_val = pop(vm);
+                int path_id = (int)path_id_val.as.i;
+                char* path = "";
+                if (path_id >= 0 && path_id < vm->heap_strings_count) {
+                    path = vm->heap_strings[path_id];
+                }
+                FILE* f = fopen(path, "rb");
+                if (f) {
+                    fseek(f, 0, SEEK_END);
+                    long fsize = ftell(f);
+                    fseek(f, 0, SEEK_SET);
+                    char* content = (char*)malloc(fsize + 1);
+                    fread(content, 1, fsize, f);
+                    content[fsize] = '\0';
+                    fclose(f);
+                    
+                    if (vm->heap_strings_count < 10000) {
+                        vm->heap_strings[vm->heap_strings_count] = content;
+                        push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_strings_count});
+                        vm->heap_strings_count++;
+                    } else {
+                        free(content);
+                        push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                    }
+                } else {
+                    if (vm->heap_strings_count < 10000) {
+                        vm->heap_strings[vm->heap_strings_count] = strdup("");
+                        push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_strings_count});
+                        vm->heap_strings_count++;
+                    } else {
+                        push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                    }
+                }
+                break;
+            }
+            case OP_FS_WRITE: {
+                Value data_id_val = pop(vm);
+                Value path_id_val = pop(vm);
+                int data_id = (int)data_id_val.as.i;
+                int path_id = (int)path_id_val.as.i;
+                char* path = "";
+                char* data = "";
+                if (path_id >= 0 && path_id < vm->heap_strings_count) path = vm->heap_strings[path_id];
+                if (data_id >= 0 && data_id < vm->heap_strings_count) data = vm->heap_strings[data_id];
+                FILE* f = fopen(path, "wb");
+                int success = 0;
+                if (f) {
+                    fwrite(data, 1, strlen(data), f);
+                    fclose(f);
+                    success = 1;
+                }
+                push(vm, (Value){.type = VAL_INT, .as.i = success});
+                break;
+            }
+            case OP_FS_EXISTS: {
+                Value path_id_val = pop(vm);
+                int path_id = (int)path_id_val.as.i;
+                char* path = "";
+                if (path_id >= 0 && path_id < vm->heap_strings_count) path = vm->heap_strings[path_id];
+                FILE* f = fopen(path, "rb");
+                int success = 0;
+                if (f) {
+                    fclose(f);
+                    success = 1;
+                }
+                push(vm, (Value){.type = VAL_INT, .as.i = success});
+                break;
+            }
+            case OP_OS_ENV: {
+                Value key_id_val = pop(vm);
+                int key_id = (int)key_id_val.as.i;
+                char* key = "";
+                if (key_id >= 0 && key_id < vm->heap_strings_count) key = vm->heap_strings[key_id];
+                char* val = getenv(key);
+                char* res = val ? strdup(val) : strdup("");
+                if (vm->heap_strings_count < 10000) {
+                    vm->heap_strings[vm->heap_strings_count] = res;
+                    push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_strings_count});
+                    vm->heap_strings_count++;
+                } else {
+                    free(res);
+                    push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                }
+                break;
+            }
+            case 0x68: { // OP_PUSH_STR
+                uint8_t next_op = read_u8(vm);
+                if (next_op != 0x01) {
+                    printf("Expected PUSH length after OP_PUSH_STR\n");
+                    exit(1);
+                }
+                int len = (int)read_long(vm);
+                char* s = (char*)malloc(len + 1);
+                for (int i = 0; i < len; i++) {
+                    s[i] = (char)read_u8(vm);
+                }
+                s[len] = '\0';
+                if (vm->heap_strings_count < 10000) {
+                    vm->heap_strings[vm->heap_strings_count] = s;
+                    push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_strings_count});
+                    vm->heap_strings_count++;
+                } else {
+                    free(s);
+                    push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                }
+                break;
+            }
+            case 0x6B: { // OP_PRINT_STR
+                Value id_val = pop(vm);
+                int id = (int)id_val.as.i;
+                if (id >= 0 && id < vm->heap_strings_count) {
+                    printf("%s", vm->heap_strings[id]);
+                }
+                break;
+            }
+            case 0x6C: { // OP_STR_LEN
+                Value id_val = pop(vm);
+                int id = (int)id_val.as.i;
+                if (id >= 0 && id < vm->heap_strings_count) {
+                    push(vm, (Value){.type = VAL_INT, .as.i = strlen(vm->heap_strings[id])});
+                } else {
+                    push(vm, (Value){.type = VAL_INT, .as.i = 0});
+                }
+                break;
+            }
+            case 0x6D: { // OP_STR_CHAR
+                Value idx_val = pop(vm);
+                Value id_val = pop(vm);
+                int idx = (int)idx_val.as.i;
+                int id = (int)id_val.as.i;
+                if (id >= 0 && id < vm->heap_strings_count) {
+                    char* s = vm->heap_strings[id];
+                    if (idx >= 0 && idx < strlen(s)) {
+                        push(vm, (Value){.type = VAL_INT, .as.i = s[idx]});
+                    } else {
+                        push(vm, (Value){.type = VAL_INT, .as.i = 0});
+                    }
+                } else {
+                    push(vm, (Value){.type = VAL_INT, .as.i = 0});
+                }
+                break;
+            }
+            case 0x6E: { // OP_STR_SUB
+                Value end_val = pop(vm);
+                Value start_val = pop(vm);
+                Value id_val = pop(vm);
+                int end = (int)end_val.as.i;
+                int start = (int)start_val.as.i;
+                int id = (int)id_val.as.i;
+                
+                char* sub = strdup("");
+                if (id >= 0 && id < vm->heap_strings_count) {
+                    char* s = vm->heap_strings[id];
+                    int len = strlen(s);
+                    if (start >= 0 && start <= len && end >= 0 && end <= len && start <= end) {
+                        free(sub);
+                        sub = (char*)malloc(end - start + 1);
+                        strncpy(sub, s + start, end - start);
+                        sub[end - start] = '\0';
+                    }
+                }
+                
+                if (vm->heap_strings_count < 10000) {
+                    vm->heap_strings[vm->heap_strings_count] = sub;
+                    push(vm, (Value){.type = VAL_INT, .as.i = vm->heap_strings_count});
+                    vm->heap_strings_count++;
+                } else {
+                    free(sub);
+                    push(vm, (Value){.type = VAL_INT, .as.i = -1});
+                }
                 break;
             }
             

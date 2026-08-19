@@ -29,10 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
 
       - name: Install build dependencies
         run: |
@@ -40,30 +36,29 @@ jobs:
           sudo apt-get install -y libudev-dev pkg-config rpm ruby-dev rubygems build-essential
           sudo gem install --no-document fpm
 
-      - name: Install cargo-deb & cargo-generate-rpm
-        run: cargo install cargo-deb cargo-generate-rpm --locked
+      - name: Install fpm
+        run: sudo gem install --no-document fpm
 
-      - name: Build Nux (release)
+      - name: Build Nux C VM (release)
         run: |
-          cd ${{ env.NUX_SRC }}
-          cargo build --release
+          cd ${{ env.NUX_SRC }}/runtime_c
+          gcc -O3 main.c vm.c vision/vision.c -lm -o nux
 
-      - name: Build .deb package
+      - name: Build .deb and .rpm packages
         run: |
-          cd ${{ env.NUX_SRC }}
-          cargo deb --no-build --output ../../nux_${{ env.NUX_VERSION }}_amd64.deb
-
-      - name: Build .rpm package
-        run: |
-          cd ${{ env.NUX_SRC }}
-          cargo generate-rpm --output ../../nux-${{ env.NUX_VERSION }}-1.x86_64.rpm
+          STAGING=$(mktemp -d)
+          mkdir -p "$STAGING/usr/bin"
+          cp ${{ env.NUX_SRC }}/runtime_c/nux "$STAGING/usr/bin/nux"
+          fpm -s dir -t deb -n nux -v ${{ env.NUX_VERSION }} -C "$STAGING" -p nux_${{ env.NUX_VERSION }}_amd64.deb usr/bin/nux
+          fpm -s dir -t rpm -n nux -v ${{ env.NUX_VERSION }} -C "$STAGING" -p nux-${{ env.NUX_VERSION }}-1.x86_64.rpm usr/bin/nux
 
       - name: Build .tar.gz (generic)
         run: |
           STAGING=$(mktemp -d)
           mkdir -p "$STAGING/usr/bin"
-          cp ${{ env.NUX_SRC }}/target/release/nux "$STAGING/usr/bin/nux"
+          cp ${{ env.NUX_SRC }}/runtime_c/nux "$STAGING/usr/bin/nux"
           cp install.sh uninstall.sh "$STAGING/" 2>/dev/null || true
+          # We should copy compiler.nuxi too if we had it, but for now we package the binary
           tar czf nux-${{ env.NUX_VERSION }}-linux-x86_64.tar.gz -C "$STAGING" .
 
       - name: Upload artifacts
@@ -84,30 +79,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust + cross-compile target
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
 
       - name: Install cross-compilation tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y gcc-aarch64-linux-gnu libudev-dev
 
-      - name: Install cargo-deb
-        run: cargo install cargo-deb --locked
-
-      - name: Cross-compile Nux for ARM64
+      - name: Cross-compile Nux C VM for ARM64
         run: |
-          cd ${{ env.NUX_SRC }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-          cargo build --release --target aarch64-unknown-linux-gnu
+          cd ${{ env.NUX_SRC }}/runtime_c
+          aarch64-linux-gnu-gcc -O3 main.c vm.c vision/vision.c -lm -o nux
 
       - name: Build .tar.gz (ARM64 generic)
         run: |
           STAGING=$(mktemp -d)
           mkdir -p "$STAGING/usr/bin"
-          cp ${{ env.NUX_SRC }}/target/aarch64-unknown-linux-gnu/release/nux "$STAGING/usr/bin/nux"
+          cp ${{ env.NUX_SRC }}/runtime_c/nux "$STAGING/usr/bin/nux"
           tar czf nux-${{ env.NUX_VERSION }}-linux-aarch64.tar.gz -C "$STAGING" .
 
       - name: Upload artifacts
@@ -125,26 +112,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain (both targets)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Build for Intel
         run: |
-          cd ${{ env.NUX_SRC }}
-          cargo build --release --target x86_64-apple-darwin
+          cd ${{ env.NUX_SRC }}/runtime_c
+          clang -target x86_64-apple-macos10.12 -O3 main.c vm.c vision/vision.c -lm -o nux_x86_64
 
       - name: Build for Apple Silicon
         run: |
-          cd ${{ env.NUX_SRC }}
-          cargo build --release --target aarch64-apple-darwin
+          cd ${{ env.NUX_SRC }}/runtime_c
+          clang -target arm64-apple-macos11 -O3 main.c vm.c vision/vision.c -lm -o nux_arm64
 
       - name: Create Universal Binary (lipo)
         run: |
           lipo -create \
-            ${{ env.NUX_SRC }}/target/x86_64-apple-darwin/release/nux \
-            ${{ env.NUX_SRC }}/target/aarch64-apple-darwin/release/nux \
+            ${{ env.NUX_SRC }}/runtime_c/nux_x86_64 \
+            ${{ env.NUX_SRC }}/runtime_c/nux_arm64 \
             -output nux-universal
 
       - name: Package .tar.gz (macOS universal)

@@ -94,6 +94,19 @@ typedef enum {
     // Vision
     OP_VISION_DETECT = 0xB0, // Arg: Mode (1=Gray, 2=Edge)
 
+    // Array
+    OP_ARRAY_ALLOC = 0xA0,
+    OP_ARRAY_GET = 0xA1,
+    OP_ARRAY_SET = 0xA2,
+    
+    // File System
+    OP_FS_READ = 0xC0,
+    OP_FS_WRITE = 0xC1,
+    OP_FS_EXISTS = 0xC2,
+    
+    // OS
+    OP_OS_ENV = 0xC5,
+
     // Legacy Graphics (Direct)
     OP_GFX_TEXT = 0x3C,
     OP_GFX_RECT = 0x3D

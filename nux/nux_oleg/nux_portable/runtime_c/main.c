@@ -1,15 +1,52 @@
+#ifdef _WIN32
+#include <windows.h>
+#include <conio.h>
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#endif
+#endif
+
 #include "vm.h"
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <unistd.h>
 #include <termios.h>
+#endif
 #include <fcntl.h>
 #include <time.h>
 #include <string.h>
 
 // --- Terminal Runtime (Ported) ---
-struct termios orig_termios;
 int input_key = -1;
+
+#ifdef _WIN32
+HANDLE hStdin;
+DWORD orig_console_mode;
+
+void disableRawMode() {
+    if (hStdin != INVALID_HANDLE_VALUE) {
+        SetConsoleMode(hStdin, orig_console_mode);
+    }
+    printf("\033[?25h");
+}
+
+void enableRawMode() {
+    hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    if (hStdin == INVALID_HANDLE_VALUE) return;
+
+    GetConsoleMode(hStdin, &orig_console_mode);
+    atexit(disableRawMode);
+
+    DWORD raw = orig_console_mode;
+    raw &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+    SetConsoleMode(hStdin, raw);
+    
+    printf("\033[?25l"); 
+    printf("\033[2J"); // Clear
+}
+#else
+struct termios orig_termios;
 
 void disableRawMode() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
@@ -25,8 +62,32 @@ void enableRawMode() {
     printf("\033[?25l"); 
     printf("\033[2J"); // Clear
 }
+#endif
 
 void process_input() {
+#ifdef _WIN32
+    if (_kbhit()) {
+        int c = _getch();
+        if (c == 224 || c == 0) { // Arrow keys in Windows usually start with 224 or 0
+            int ext = _getch();
+            switch (ext) {
+                case 72: input_key = 0; break; // Up
+                case 80: input_key = 1; break; // Down
+                case 75: input_key = 2; break; // Left
+                case 77: input_key = 3; break; // Right
+            }
+        } else if (c == 27) { // Esc
+            input_key = 5;
+        } else {
+            if (c == 'w') input_key = 0;
+            if (c == 's') input_key = 1;
+            if (c == 'a') input_key = 2;
+            if (c == 'd') input_key = 3;
+            if (c == 'q') input_key = 5;
+            if (c == 'j') input_key = 4; // Action
+        }
+    }
+#else
     char c;
     if (read(STDIN_FILENO, &c, 1) == 1) {
         if (c == 27) {
@@ -47,15 +108,21 @@ void process_input() {
             if (c == 'a') input_key = 2;
             if (c == 'd') input_key = 3;
             if (c == 'q') input_key = 5;
+            if (c == 'j') input_key = 4; // Action
         }
     }
+#endif
 }
 
 // --- Ext Impl ---
 void ext_print(nux_int val) { printf("%ld\n", val); fflush(stdout); }
 void ext_print_char(char c) { printf("%c", c); fflush(stdout); }
 void ext_sleep(int ms) {
+#ifdef _WIN32
+    Sleep(ms);
+#else
     usleep(ms * 1000);
+#endif
     input_key = -1; 
 }
 int ext_is_key_down(int key) {
@@ -244,7 +311,7 @@ int main(int argc, char** argv) {
     // CLI Proxy Logic
     char* cmd_arg = argv[1];
     
-    // Pass-through commands to nuxc (Rust Compiler)
+    // Pass-through commands to the self-hosted compiler
     if (strcmp(cmd_arg, "build") == 0 || 
         strcmp(cmd_arg, "compile") == 0 || 
         strcmp(cmd_arg, "edit") == 0 || 
@@ -252,9 +319,21 @@ int main(int argc, char** argv) {
         strcmp(cmd_arg, "translate") == 0 ||
         strcmp(cmd_arg, "update") == 0) {
         
+        char compiler_path[1024];
+        snprintf(compiler_path, sizeof(compiler_path), "%s/compiler.nuxi", self_path);
+        
+        // Pass arguments via environment variables for OP_OS_ENV to read
+        if (argc > 2) {
+            setenv("NUX_BUILD_IN", argv[2], 1);
+        }
+        if (argc > 3) {
+            setenv("NUX_BUILD_OUT", argv[3], 1);
+        }
+        
         char cmd[2048];
-        snprintf(cmd, 2048, "%s/nuxc", self_path);
-        for(int i=1; i<argc; i++) {
+        // Execute compiler.nuxi using this exact runtime
+        snprintf(cmd, 2048, "%s/nux %s", self_path, compiler_path);
+        for(int i=2; i<argc; i++) {
             strncat(cmd, " ", 2048 - strlen(cmd) - 1);
             strncat(cmd, argv[i], 2048 - strlen(cmd) - 1);
         }
@@ -276,8 +355,15 @@ int main(int argc, char** argv) {
         // Explicit Output Path
         snprintf(out_path, 256, "%s.nuxi", filename);
         
+        char compiler_path[1024];
+        snprintf(compiler_path, sizeof(compiler_path), "%s/compiler.nuxi", self_path);
+        
+        setenv("NUX_BUILD_IN", filename, 1);
+        setenv("NUX_BUILD_OUT", out_path, 1);
+        
         char cmd[2048];
-        snprintf(cmd, 2048, "%s/nuxc build %s %s", self_path, filename, out_path);
+        // Call the C VM to run the self-hosted compiler
+        snprintf(cmd, 2048, "%s/nux %s build %s %s", self_path, compiler_path, filename, out_path);
         
         int res = system(cmd);
         if (res != 0) {

@@ -24,6 +24,16 @@ typedef struct {
     
     // Heap (Simple byte array)
     uint8_t heap[HEAP_SIZE];
+    
+    // Nux Reference Types
+    char* heap_strings[10000];
+    int heap_strings_count;
+    
+    struct {
+        nux_int* data;
+        int size;
+    } heap_arrays[10000];
+    int heap_arrays_count;
 } VM;
 
 void vm_init(VM* vm);
