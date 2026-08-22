@@ -1,21 +1,23 @@
-#ifdef _WIN32
+#include "vm.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <time.h>
+#include <string.h>
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(_WIN64)
 #include <windows.h>
 #include <conio.h>
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
 #endif
-#endif
-
-#include "vm.h"
-#include <stdio.h>
-#include <stdlib.h>
 #ifndef _WIN32
+#define _WIN32 1
+#endif
+#else
 #include <unistd.h>
 #include <termios.h>
 #endif
-#include <fcntl.h>
-#include <time.h>
-#include <string.h>
 
 // --- Terminal Runtime (Ported) ---
 int input_key = -1;
