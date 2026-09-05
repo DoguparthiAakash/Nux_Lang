@@ -1,0 +1,69 @@
+# Nux Type Checker
+# Resolves types, enforces trait bounds, and constructs the TST (Typed Syntax Tree).
+
+class Type {
+    var kind; # e.g. "Integer", "Reference", "Pointer", "Struct"
+    var inner;
+    var is_mut;
+    
+    func init(k) {
+        this.kind = k;
+        this.inner = 0;
+        this.is_mut = 0;
+    }
+}
+
+class TSTNode {
+    var type_info;
+    var def_id;
+    var span;
+    var children;
+
+    func init(t_info, d_id, sp) {
+        this.type_info = t_info;
+        this.def_id = d_id;
+        this.span = sp;
+        this.children = new List();
+        this.children.init();
+    }
+}
+
+class TypeChecker {
+    var query_engine;
+    var diagnostics;
+
+    func init(qe, diag) {
+        this.query_engine = qe;
+        this.diagnostics = diag;
+    }
+
+    func check(rst_node, is_unsafe_context) {
+        # Traverses RST and infers/checks types
+        
+        # Enforce unsafe operations
+        if (rst_node.type == "AstNodeDereferenceExpr") {
+            # In a real checker, we would first infer the type of the expression being derefed.
+            var is_raw_ptr = 1; # Mock check
+            if (is_raw_ptr && is_unsafe_context == 0) {
+                # This needs to trigger a diagnostic error!
+                # ctx.diagnostics.emit(...) "dereference of raw pointer requires unsafe function or block"
+            }
+        }
+        
+        # Enforce Send/Sync on thread boundaries (mock)
+        if (rst_node.type == "ThreadSpawn") {
+            var is_send = 0; # compute based on captured variables
+            if (is_send == 0) {
+                # ctx.diagnostics.emit(...) "type is not Send"
+            }
+        }
+        
+        var t = new Type();
+        t.init("Unit");
+        
+        var tst_node = new TSTNode();
+        tst_node.init(t, rst_node.def_id, rst_node.span);
+        
+        return tst_node;
+    }
+}

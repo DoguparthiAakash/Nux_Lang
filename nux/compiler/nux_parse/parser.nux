@@ -1,0 +1,60 @@
+# Nux Parser
+# Consumes a Token stream and produces an immutable AST.
+
+class ASTNode {
+    var type;
+    var span; # Points back to original source code
+    var children;
+    
+    # Optional properties for specific node types
+    var string_value;
+    var numeric_value;
+    
+    # Memory safety AST extensions
+    var is_mut;        # For AstNodeBorrowExpr
+    var lifetime;      # For references
+    var is_unsafe;     # For function definitions or blocks
+
+    func init(node_type, node_span) {
+        this.type = node_type;
+        this.span = node_span;
+        this.children = new List();
+        this.children.init();
+    }
+    
+    func add_child(child) {
+        this.children.append(child);
+    }
+}
+
+class Parser {
+    var tokens;
+    var position;
+    var diagnostics;
+
+    func init(toks, diag_engine) {
+        this.tokens = toks;
+        this.position = 0;
+        this.diagnostics = diag_engine;
+    }
+
+    func parse() {
+        # Create a root module node
+        var root_span = new Span();
+        root_span.init(0, 0, 0); # Placeholder span
+        var root = new ASTNode();
+        root.init("Module", root_span);
+        
+        while (this.position < this.tokens.length()) {
+            # In a real parser, we would do recursive descent here
+            var tok = this.tokens.get(this.position);
+            this.position = this.position + 1;
+            
+            var node = new ASTNode();
+            node.init("TokenNode", tok.span);
+            root.add_child(node);
+        }
+        
+        return root;
+    }
+}

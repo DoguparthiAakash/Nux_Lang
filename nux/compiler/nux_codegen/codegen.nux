@@ -1,0 +1,29 @@
+# Nux Code Generation
+# Translates CIR to Machine Code, LLVM IR, or C.
+
+class CodegenBackend {
+    var output_type; # "native", "llvm", "c"
+    
+    func init(out_type) {
+        this.output_type = out_type;
+    }
+
+    func generate(cir_func) {
+        if (this.output_type == "native") {
+            return this.generate_native(cir_func);
+        }
+        # other backends...
+        return 0;
+    }
+
+    func generate_native(cir_func) {
+        # Emits machine code into an executable buffer
+        # Similar to the old JITCompiler but operates purely on CIR blocks
+        var native_code = mem_alloc_aligned(4096, 4096);
+        mem_protect(native_code, 4096, PROT_READ | PROT_WRITE | PROT_EXEC);
+        
+        # ... emit x86-64 / ARM64 ...
+        
+        return native_code;
+    }
+}

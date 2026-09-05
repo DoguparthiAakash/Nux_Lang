@@ -1,0 +1,81 @@
+# Nux Driver and Query Engine
+# Orchestrates the compiler pipeline using on-demand, memoized queries.
+
+class CompileContext {
+    var source_files;
+    var diagnostics;
+    var query_cache;
+
+    func init() {
+        this.source_files = new Map();
+        this.source_files.init();
+        
+        # Load the diagnostics engine (assumes nux_diagnostics/diagnostics.nux is linked)
+        this.diagnostics = new DiagnosticEngine();
+        this.diagnostics.init();
+        
+        this.query_cache = new Map();
+        this.query_cache.init();
+    }
+
+    func add_source_file(file_id, content) {
+        this.source_files.put(file_id, content);
+    }
+
+    # -- Query Methods --
+    
+    func get_tokens(file_id) {
+        var cache_key = "tokens_" + file_id;
+        var cached = this.query_cache.get(cache_key);
+        if (cached != 0) {
+            return cached;
+        }
+
+        var source = this.source_files.get(file_id);
+        if (source == 0) {
+            # emit error
+            return 0;
+        }
+
+        # In real code, call nux_lex
+        # var tokens = nux_lex_run(source);
+        var tokens = new List();
+        tokens.init();
+
+        this.query_cache.put(cache_key, tokens);
+        return tokens;
+    }
+
+    func get_ast(file_id) {
+        var cache_key = "ast_" + file_id;
+        var cached = this.query_cache.get(cache_key);
+        if (cached != 0) {
+            return cached;
+        }
+
+        var tokens = this.get_tokens(file_id);
+        # var ast = nux_parse_run(tokens, this.diagnostics);
+        var ast = 0; # Placeholder
+
+        this.query_cache.put(cache_key, ast);
+        return ast;
+    }
+
+    func compile_all() {
+        # Entry point for the compiler driver.
+        # It requests the final output, which triggers the query engine recursively.
+        print("Starting compilation...");
+        
+        # In a real build, we iterate over all root files
+        # this.get_codegen_binary(root_file_id)
+        
+        if (this.diagnostics.has_errors) {
+            this.diagnostics.print_all();
+            print("Compilation failed due to previous errors.");
+            return 1;
+        }
+        
+        print("Compilation finished successfully.");
+        return 0;
+    }
+}
