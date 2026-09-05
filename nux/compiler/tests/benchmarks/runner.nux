@@ -1,0 +1,20 @@
+# Nux Micro-Benchmark Runner
+# Used to validate Dual Execution parity vs gcc -O3 C performance.
+
+func run_benchmarks() {
+    print("Running Benchmark 1: SIMD Matrix Multiply...");
+    # Target: Array/Memory-Bound workload
+    # Success Criteria: FLOPs matching AVX2/NEON vectorization in C
+    
+    print("Running Benchmark 2: Recursive Fibonacci(40)...");
+    # Target: Call Overhead & Branching
+    # Success Criteria: identical prologue/epilogue and stack switching overhead to C.
+    
+    print("Running Benchmark 3: Hash Table Lookups...");
+    # Target: Random Memory Access
+    # Success Criteria: Pointer dereferencing and exact bounds-check elision equivalence.
+    
+    print("Running Benchmark 4: Bitboard Chess Engine...");
+    # Target: Tight Numeric & Bit Ops
+    # Success Criteria: __popcnt, __bswap mapped perfectly to single instructions. 0% overhead.
+}

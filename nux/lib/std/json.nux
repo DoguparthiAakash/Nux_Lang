@@ -1,0 +1,18 @@
+# std::json
+# Fast, zero-allocation JSON parsing via compile-time reflection.
+
+class Json {
+    # Nux compiler natively implements `comptime` (compile-time) macros.
+    # @[comptime] runs at compile-time to generate a strictly-typed parser
+    # for the given struct T, eliding all runtime reflection overhead.
+    
+    @[comptime]
+    func parse(json_str, type_T) {
+        # Generates a parsing state machine specific to type_T's fields
+    }
+    
+    @[comptime]
+    func serialize(object) {
+        # Generates a string-builder sequence specific to object's layout
+    }
+}

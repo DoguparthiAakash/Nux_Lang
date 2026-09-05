@@ -1,0 +1,26 @@
+# test_bytecode_emission.nux
+# Demonstrates that the Nux compiler intercepts standard library calls
+# and fuses them into native zero-cost bytecodes (SYSCALL, CALL_EXTERN, INTRINSIC).
+
+import std::tensor::Tensor;
+import std::process::cmd;
+import std::interop::python;
+
+func main() {
+    # 1. Tensor Math -> Lowers to `Intrinsic vec_add_4s`
+    var t1 = new Tensor([2, 2]);
+    var t2 = new Tensor([2, 2]);
+    t1.add(t2);
+    
+    # 2. Tensor FFI -> Lowers to `ExternCall cblas_dgemm` (CALL_EXTERN)
+    t1.matmul(t2);
+    
+    # 3. Process Spawning -> Lowers to `Intrinsic syscall_exec` (SYSCALL)
+    var c = cmd("ls");
+    c.run();
+    
+    # 4. Python Interop -> Lowers to `ExternCall PyRun_SimpleString`
+    var py = new python::PyModule("numpy");
+    
+    return 0;
+}

@@ -1,0 +1,167 @@
+# synapse::tensor
+# The core N-Dimensional Array (Tensor) data structure for Synapse.
+
+import std::collections::List;
+import synapse::gpu;
+
+class Tensor {
+    var data: *f32;
+    var shape: List;
+    var strides: List;
+    var size: usize;
+    var device: u8; # 0 = CPU, 1 = GPU
+    
+    var requires_grad: bool;
+    var grad: *f32;
+    var creator_node: u32; # reference to Autograd Node ID (0 if leaf)
+    
+    func init(shape: List, requires_grad: bool) {
+        this.shape = shape;
+        this.requires_grad = requires_grad;
+        this.device = 0;
+        this.creator_node = 0;
+        
+        # Calculate size and strides
+        this.size = 1;
+        var i = 0;
+        var num_dims = this.shape.len();
+        this.strides = new List();
+        this.strides.init();
+        
+        # simple dense contiguous stride calculation
+        while (i < num_dims) {
+            this.size = this.size * this.shape.get(i);
+            i += 1;
+        }
+        
+        # Allocate host memory
+        # In a real environment we'd use std::alloc or similar
+        this.data = synapse_cuda_malloc(this.size * 4); # 4 bytes per f32
+        
+        if (this.requires_grad) {
+            this.grad = synapse_cuda_malloc(this.size * 4);
+        } else {
+            # Need to initialize with 0 for pointer safety, but Nux doesn't have nulls natively easily
+            # Let's allocate dummy or set a flag.
+            this.grad = synapse_cuda_malloc(4); # dummy allocation if no grad
+        }
+    }
+    
+    func to_device() {
+        if (this.device == 0) {
+            var dev_data = gpu::DEVICE.malloc(this.size * 4);
+            gpu::DEVICE.memcpy_to_device(dev_data, this.data, this.size * 4);
+            this.data = dev_data;
+            
+            if (this.requires_grad) {
+                var dev_grad = gpu::DEVICE.malloc(this.size * 4);
+                gpu::DEVICE.memcpy_to_device(dev_grad, this.grad, this.size * 4);
+                this.grad = dev_grad;
+            }
+            this.device = 1;
+        }
+    }
+    
+    func to_host() {
+        if (this.device == 1) {
+            var host_data = synapse_cuda_malloc(this.size * 4);
+            gpu::DEVICE.memcpy_to_host(host_data, this.data, this.size * 4);
+            # We would free device memory here in a real implementation
+            this.data = host_data;
+            
+            if (this.requires_grad) {
+                var host_grad = synapse_cuda_malloc(this.size * 4);
+                gpu::DEVICE.memcpy_to_host(host_grad, this.grad, this.size * 4);
+                this.grad = host_grad;
+            }
+            this.device = 0;
+        }
+    }
+    
+    # Mathematical Operations
+    # For now, we assume these operations happen on the same device.
+    
+    func matmul(other: Tensor) -> Tensor {
+        # A: (M, K), B: (K, N) -> C: (M, N)
+        var M = this.shape.get(0);
+        var K = this.shape.get(1);
+        var N = other.shape.get(1);
+        
+        var out_shape = new List();
+        out_shape.init();
+        out_shape.append(M);
+        out_shape.append(N);
+        
+        var result = new Tensor();
+        result.init(out_shape, this.requires_grad | other.requires_grad);
+        
+        if (this.device == 1) {
+            result.to_device();
+            gpu::matmul(this.data, other.data, result.data, M, K, N);
+        } else {
+            # CPU fallback (using the mock C function as a CPU kernel for now)
+            synapse_cuda_matmul_f32(this.data, other.data, result.data, M, K, N);
+        }
+        
+        return result;
+    }
+    
+    func conv2d(weight: Tensor, stride: u32, padding: u32) -> Tensor {
+        # I: (C_in, H, W)
+        # W: (C_out, C_in, kH, kW)
+        var C_in = this.shape.get(0);
+        var H = this.shape.get(1);
+        var Width = this.shape.get(2);
+        
+        var C_out = weight.shape.get(0);
+        var kH = weight.shape.get(2);
+        var kW = weight.shape.get(3);
+        
+        var H_out = (H + 2 * padding - kH) / stride + 1;
+        var W_out = (Width + 2 * padding - kW) / stride + 1;
+        
+        var out_shape = new List();
+        out_shape.init();
+        out_shape.append(C_out);
+        out_shape.append(H_out);
+        out_shape.append(W_out);
+        
+        var result = new Tensor();
+        result.init(out_shape, this.requires_grad | weight.requires_grad);
+        
+        if (this.device == 1) {
+            result.to_device();
+            gpu::conv2d(this.data, weight.data, result.data, C_in, H, Width, C_out, kH, kW, stride, padding);
+        } else {
+            synapse_cuda_conv2d_f32(this.data, weight.data, result.data, C_in, H, Width, C_out, kH, kW, stride, padding);
+        }
+        
+        return result;
+    }
+    
+    func add(other: Tensor) -> Tensor {
+        var result = new Tensor();
+        result.init(this.shape, this.requires_grad | other.requires_grad);
+        
+        if (this.device == 1) {
+            result.to_device();
+            gpu::add(this.data, other.data, result.data, this.size);
+        } else {
+            synapse_cuda_add_f32(this.data, other.data, result.data, this.size);
+        }
+        return result;
+    }
+    
+    func mul(other: Tensor) -> Tensor {
+        var result = new Tensor();
+        result.init(this.shape, this.requires_grad | other.requires_grad);
+        
+        if (this.device == 1) {
+            result.to_device();
+            gpu::mul(this.data, other.data, result.data, this.size);
+        } else {
+            synapse_cuda_mul_f32(this.data, other.data, result.data, this.size);
+        }
+        return result;
+    }
+}

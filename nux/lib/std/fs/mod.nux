@@ -1,0 +1,23 @@
+# std::fs::mod
+# File System Operations
+# Uses direct `open`, `read`, `write` native OS syscalls.
+
+class File {
+    var fd;
+    
+    func init(path_str, flags) {
+        # Native lowering translates this to `open(path, flags)`
+    }
+    
+    func read(buffer) {
+        # Lowered to `read(fd, buffer)`
+    }
+    
+    func write(buffer) {
+        # Lowered to `write(fd, buffer)`
+    }
+    
+    func drop() {
+        # RAII deterministic cleanup: lowered to `close(fd)`
+    }
+}

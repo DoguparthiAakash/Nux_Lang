@@ -1,0 +1,23 @@
+# nux_backend::ptx_codegen
+# Native AOT backend specifically for generating Nvidia PTX bytecode.
+# Invoked when a function is tagged with @[gpu_kernel].
+
+class PTXCodegen {
+    var ptx_buffer;
+    
+    func init() {
+        this.ptx_buffer = ".version 7.0\n.target sm_50\n.address_size 64\n\n";
+    }
+    
+    func generate(cir_function) {
+        # Translate CIR directly to PTX assembly.
+        this.ptx_buffer = this.ptx_buffer + ".visible .entry " + cir_function.name + "() {\n";
+        
+        # ... iterate through CIR blocks emitting things like:
+        # ld.global.f32 %f1, [%rd1]
+        # add.f32 %f3, %f1, %f2
+        
+        this.ptx_buffer = this.ptx_buffer + "  ret;\n}\n";
+        return this.ptx_buffer;
+    }
+}

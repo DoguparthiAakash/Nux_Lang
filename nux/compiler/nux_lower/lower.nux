@@ -120,4 +120,107 @@ class Lowering {
         
         return this.current_func;
     }
+
+    func lower_method_call(block, target, receiver_type, method_name, args_list) {
+        # Standard Library Ecosystem Fusing
+        # Intercept high-level method calls and fuse them directly into zero-cost bytecodes
+        
+        if (receiver_type == "std::tensor::Tensor") {
+            if (method_name == "add") {
+                # Map tensor addition directly to a SIMD intrinsic instead of a function call
+                block.add_intrinsic_call(target, "vec_add_4s", args_list);
+                return 1;
+            }
+            if (method_name == "matmul") {
+                # Map matrix multiplication directly to the OpenBLAS C FFI
+                block.add_extern_call(target, "cblas_dgemm", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::process::Cmd") {
+            if (method_name == "run") {
+                # Map process spawning directly to a bare-metal OS syscall
+                block.add_intrinsic_call(target, "syscall_exec", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::interop::python") {
+            if (method_name == "__py_eval") {
+                # Map python evaluation directly to libpython C API
+                block.add_extern_call(target, "PyRun_SimpleString", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::fs::File") {
+            if (method_name == "init") {
+                block.add_intrinsic_call(target, "syscall_open", args_list);
+                return 1;
+            }
+            if (method_name == "read") {
+                block.add_intrinsic_call(target, "syscall_read", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::crypto::hash::Sha256") {
+            if (method_name == "init") {
+                block.add_extern_call(target, "crypto_hash_sha256_init", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::math") {
+            if (method_name == "sin") {
+                block.add_intrinsic_call(target, "fpu_sin", args_list);
+                return 1;
+            }
+            if (method_name == "cos") {
+                block.add_intrinsic_call(target, "fpu_cos", args_list);
+                return 1;
+            }
+            if (method_name == "sqrt") {
+                block.add_intrinsic_call(target, "fpu_sqrt", args_list);
+                return 1;
+            }
+            if (method_name == "pow") {
+                block.add_intrinsic_call(target, "fpu_pow", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::ptr::RawPtr") {
+            if (method_name == "read_volatile") {
+                block.add_intrinsic_call(target, "volatile_read", args_list);
+                return 1;
+            }
+            if (method_name == "write_volatile") {
+                block.add_intrinsic_call(target, "volatile_write", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::arch::io") {
+            if (method_name == "inb") {
+                block.add_intrinsic_call(target, "asm_inb", args_list);
+                return 1;
+            }
+            if (method_name == "outb") {
+                block.add_intrinsic_call(target, "asm_outb", args_list);
+                return 1;
+            }
+        }
+        
+        if (receiver_type == "std::db::sql::SqlConnection") {
+            if (method_name == "init") {
+                # Bind to SQLite open
+                block.add_extern_call(target, "sqlite3_open", args_list);
+                return 1;
+            }
+        }
+        
+        return 0; # Fallback to standard function call lowering
+    }
 }

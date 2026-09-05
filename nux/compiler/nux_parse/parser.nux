@@ -23,6 +23,11 @@ class ASTNode {
     var bit_width;     # For arbitrary width integers (e.g., 7 for u7)
     var is_intrinsic;  # For functions tagged with @[intrinsic]
 
+    # OS-Level Bare-Metal Extensions
+    var is_asm_block;     # True if this is an `asm { ... }` block
+    var is_extern_block;  # True if this is an `extern { ... }` block
+    var attributes;       # List of attributes like @[entry], @[no_std], @[interrupt]
+    
     func init(node_type, node_span) {
         this.type = node_type;
         this.span = node_span;

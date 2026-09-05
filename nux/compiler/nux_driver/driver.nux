@@ -24,22 +24,34 @@ class CompileContext {
 
     # -- Query Methods --
     
-    func compile(source_text) {
+    func compile(source_text, execution_mode) {
         var ast = this.queries.get_ast(this, source_text);
+        
+        # Check for force_native attribute
+        if (execution_mode == "jit" && ast.has_attribute("force_native")) {
+            this.diagnostics.emit_error("Module is marked @[force_native] but compiled for JIT VM. Use 'nux build --native'.");
+            return "Compilation failed.";
+        }
+        
         var rst = this.queries.get_rst(this, ast);
         var tst = this.queries.get_tst(this, rst);
         var cir = this.queries.get_cir(this, tst);
         var borrowck_passed = this.queries.get_borrowck(this, cir);
         
         if (borrowck_passed) {
-            var backend = new CodegenBackend();
-            backend.init();
-            var assembly = backend.generate(cir);
-            
-            # Simulated linking process
-            this.link_native_objects(assembly);
-            
-            return assembly;
+            if (execution_mode == "native") {
+                var backend = new CodegenBackend();
+                backend.init("native");
+                var assembly = backend.generate(cir);
+                this.link_native_objects(assembly);
+                return assembly;
+            } else if (execution_mode == "jit") {
+                # VM Path
+                var backend = new CodegenBackend();
+                backend.init("nrbc"); # Nux Register Bytecode
+                var bytecode = backend.generate(cir);
+                return bytecode;
+            }
         } else {
             return "Compilation failed due to borrow checker errors.";
         }

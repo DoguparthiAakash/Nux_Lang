@@ -1,0 +1,15 @@
+# std::thread
+# OS-level multithreading. Distinct from structured concurrency tasks.
+# Binds to pthread or Windows Threads via FFI.
+
+class Thread {
+    var thread_handle;
+    
+    func spawn(callable) {
+        # Lowered to ExternCall for pthread_create
+    }
+    
+    func join() {
+        # Lowered to ExternCall for pthread_join
+    }
+}

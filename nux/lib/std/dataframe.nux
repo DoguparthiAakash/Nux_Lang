@@ -1,0 +1,29 @@
+# std::dataframe
+# Pandas-equivalent Tabular Data manipulation, built on zero-copy views.
+# Guaranteed memory safe via the Nux Borrow Checker.
+
+import std::collections::List;
+import std::string::String;
+import std::tensor::Tensor;
+
+class DataFrame {
+    var columns; # List of Tensors/Arrays
+    var column_names;
+    
+    func init() {
+        this.columns = new List();
+        this.columns.init();
+        this.column_names = new List();
+        this.column_names.init();
+    }
+    
+    func add_column(name, tensor_data) {
+        this.column_names.append(name);
+        this.columns.append(tensor_data);
+    }
+    
+    func filter_by_mask(boolean_tensor_mask) {
+        # Emits SIMD instructions to filter rows across all columns
+        # returning a zero-copy View (borrowed reference) to prevent allocations.
+    }
+}

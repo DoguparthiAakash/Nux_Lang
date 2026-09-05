@@ -1,0 +1,57 @@
+# bonfort::cli
+# The Command Line Interface orchestrator for the Bonfort Package Manager
+
+import compiler::bonfort::manifest::Manifest;
+import compiler::nux_driver::driver::CompileContext;
+
+class BonfortCLI {
+    func run(args) {
+        if (args.len() < 2) {
+            print("Usage: bonfort <command> [options]");
+            print("Commands: new, build, run, add");
+            return;
+        }
+
+        var command = args.get(1);
+        
+        if (command == "new") {
+            this.cmd_new(args.get(2));
+        } else if (command == "build") {
+            this.cmd_build();
+        } else if (command == "run") {
+            this.cmd_run();
+        } else if (command == "add") {
+            this.cmd_add(args.get(2));
+        } else {
+            print("Unknown command: " + command);
+        }
+    }
+    
+    func cmd_build() {
+        print("Parsing Bonfort.toml...");
+        var manifest = new Manifest();
+        manifest.load("Bonfort.toml");
+        
+        print("Resolving dependencies...");
+        manifest.resolve_deps();
+        
+        print("Invoking Nux Compiler...");
+        var ctx = new CompileContext();
+        ctx.init();
+        # Pass resolved dependency paths to the driver
+        ctx.compile_all(); 
+    }
+    
+    func cmd_new(project_name) {
+        # Scaffold directory structure and Bonfort.toml
+    }
+    
+    func cmd_run() {
+        this.cmd_build();
+        # Execute the resulting binary or VM bytecode
+    }
+    
+    func cmd_add(package_name) {
+        # Fetch from crates.nux.io and append to Bonfort.toml
+    }
+}

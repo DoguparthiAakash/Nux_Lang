@@ -1,0 +1,17 @@
+# std::ptr
+# Raw pointers and MMIO (Volatile operations)
+
+class RawPtr {
+    var address;
+    
+    # Volatile reads bypass the CPU cache, strictly forcing a memory bus cycle.
+    # Essential for reading hardware registers.
+    func read_volatile() {
+        # Intercepted by compiler lowering to emit `VolatileRead` CIR
+    }
+    
+    # Volatile writes bypass the CPU cache, strictly forcing a memory bus cycle.
+    func write_volatile(value) {
+        # Intercepted by compiler lowering to emit `VolatileWrite` CIR
+    }
+}
