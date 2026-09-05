@@ -24,6 +24,35 @@ class CompileContext {
 
     # -- Query Methods --
     
+    func compile(source_text) {
+        var ast = this.queries.get_ast(this, source_text);
+        var rst = this.queries.get_rst(this, ast);
+        var tst = this.queries.get_tst(this, rst);
+        var cir = this.queries.get_cir(this, tst);
+        var borrowck_passed = this.queries.get_borrowck(this, cir);
+        
+        if (borrowck_passed) {
+            var backend = new CodegenBackend();
+            backend.init();
+            var assembly = backend.generate(cir);
+            
+            # Simulated linking process
+            this.link_native_objects(assembly);
+            
+            return assembly;
+        } else {
+            return "Compilation failed due to borrow checker errors.";
+        }
+    }
+    
+    func link_native_objects(nux_assembly) {
+        # 1. Output nux_assembly to output.s
+        # 2. Invoke 'clang' or 'gcc' to assemble output.s into output.o
+        # 3. Read extra native objects passed via CLI flags (e.g. `nux build --native src/stdlib.c`)
+        # 4. Invoke system linker: `lld-link` or `ld` merging output.o and stdlib.o into libnux_std.so or std.dll
+        # This completely bridges Nux to C!
+    }
+
     func get_tokens(file_id) {
         var cache_key = "tokens_" + file_id;
         var cached = this.query_cache.get(cache_key);

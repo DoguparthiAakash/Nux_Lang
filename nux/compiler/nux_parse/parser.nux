@@ -14,6 +14,14 @@ class ASTNode {
     var is_mut;        # For AstNodeBorrowExpr
     var lifetime;      # For references
     var is_unsafe;     # For function definitions or blocks
+    
+    # FFI and Native Library extensions
+    var is_extern;     # True if this is an external function
+    var abi;           # String, e.g., "C" for extern "C"
+    
+    # Extreme Resource Model Extensions
+    var bit_width;     # For arbitrary width integers (e.g., 7 for u7)
+    var is_intrinsic;  # For functions tagged with @[intrinsic]
 
     func init(node_type, node_span) {
         this.type = node_type;

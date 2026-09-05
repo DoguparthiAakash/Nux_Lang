@@ -1,0 +1,38 @@
+# Native C FFI Example
+# Demonstrates compiling and linking Nux directly against native C functions.
+
+# This declares that a native C library provides 'malloc' and 'free'.
+# The Nux linker will resolve this against libc or a custom .c file passed at build time.
+extern "C" {
+    func malloc(size) -> *mut u8;
+    func free(ptr);
+}
+
+class NuxNativeBox {
+    var raw_ptr;
+    
+    # Safe constructor wraps the unsafe C call
+    func init(size) {
+        # We MUST use an unsafe block to call extern functions
+        unsafe {
+            this.raw_ptr = malloc(size);
+        }
+    }
+    
+    # The drop equivalent, invoked automatically by Nux RAII
+    func drop() {
+        unsafe {
+            if (this.raw_ptr != 0) {
+                free(this.raw_ptr);
+            }
+        }
+    }
+}
+
+func main() {
+    # 100% safe to the user, completely built on top of native C libraries!
+    var my_box = new NuxNativeBox();
+    my_box.init(1024);
+    
+    # my_box is automatically freed here by RAII invoking the 'drop' which calls C 'free'
+}

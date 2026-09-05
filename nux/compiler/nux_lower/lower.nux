@@ -48,6 +48,34 @@ class CIRBasicBlock {
         stmt.init("Drop", local_id);
         this.statements.append(stmt);
     }
+    
+    func add_extern_call(target, function_name, args_list) {
+        var stmt = new CIRStatement();
+        stmt.init("ExternCall", target);
+        # operand 0 is the function string, the rest are arguments
+        stmt.operands.append(function_name);
+        
+        var iter = args_list.iterator();
+        while (iter.has_next()) {
+            stmt.operands.append(iter.next());
+        }
+        
+        this.statements.append(stmt);
+    }
+    
+    func add_intrinsic_call(target, intrinsic_name, args_list) {
+        var stmt = new CIRStatement();
+        stmt.init("Intrinsic", target);
+        # Maps directly to a hardware instruction, e.g. "popcnt" or "memcpy"
+        stmt.operands.append(intrinsic_name);
+        
+        var iter = args_list.iterator();
+        while (iter.has_next()) {
+            stmt.operands.append(iter.next());
+        }
+        
+        this.statements.append(stmt);
+    }
 }
 
 class CIRFunction {

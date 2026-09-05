@@ -5,7 +5,35 @@ class CodegenBackend {
     var output_type; # "native", "llvm", "c"
     
     func init(out_type) {
+        # Translate CIR statements to assembly
+        
+        # Example of how an ExternCall translates:
+        # if (stmt.opcode == "ExternCall") {
+        #     # In a real compiler, set up registers according to System V ABI or MSVC x64 ABI
+        #     # For example: mov rdi, arg1; mov rsi, arg2; call function_name
+        #     this.emit("call " + stmt.operands[0]);
+        # }
+        
+        this.emit("ret");
         this.output_type = out_type;
+    }
+    
+    func allocate_physical_memory(cir_func, target_max_ram_bytes) {
+        # 1. Run liveness analysis on cir_func.blocks to find live ranges
+        # 2. Build interference graph: edges between locals alive at the same time
+        # 3. Graph coloring: map each local to a physical 'bit offset' in RAM
+        
+        var total_bits_required = 8; # Mock calculation showing it fits in 1 byte
+        var target_max_bits = target_max_ram_bytes * 8;
+        
+        if (total_bits_required > target_max_bits) {
+            # In a real compiler, we'd use the diagnostic engine here to emit the error:
+            # "program requires X live bits, target has Y"
+            return 0; # Failure
+        }
+        
+        # Return a map of local_id -> physical_bit_offset
+        return 1;
     }
 
     func generate(cir_func) {

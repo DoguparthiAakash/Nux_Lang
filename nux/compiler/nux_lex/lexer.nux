@@ -69,6 +69,14 @@ class Lexer {
                     tok_type = "KeywordUnsafe";
                 } else if (ch == 109) { # 'm' for mut
                     tok_type = "KeywordMut";
+                } else if (ch == 101) { # 'e' for extern
+                    tok_type = "KeywordExtern";
+                } else if (ch == 64) { # '@' for intrinsic or kernel attributes
+                    tok_type = "AttributeMarker";
+                    val = "@";
+                } else if (ch == 34) { # '"' for string literal ABI like "C"
+                    tok_type = "StringLiteral";
+                    val = "C"; 
                 }
                 
                 var tok = new Token();

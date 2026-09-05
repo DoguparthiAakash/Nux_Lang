@@ -50,11 +50,29 @@ class TypeChecker {
             }
         }
         
+        if (rst_node.type == "AstNodeCallExpr") {
+            # Check if the callee is an extern function
+            var is_target_extern = 1; # Mock check resolving the callee
+            if (is_target_extern && is_unsafe_context == 0) {
+                # ctx.diagnostics.emit(...) "call to external function requires unsafe block"
+            }
+        }
+        
         # Enforce Send/Sync on thread boundaries (mock)
         if (rst_node.type == "ThreadSpawn") {
             var is_send = 0; # compute based on captured variables
             if (is_send == 0) {
                 # ctx.diagnostics.emit(...) "type is not Send"
+            }
+        }
+        
+        # Extreme Resource Model: Sub-byte pointer checks
+        if (rst_node.type == "AstNodeBorrowExpr") {
+            # In a real checker, resolve the target's type
+            var target_bit_width = 8; # Mock: imagine we inferred the type
+            if (target_bit_width % 8 != 0) {
+                # Hardware cannot address a sub-byte directly!
+                # ctx.diagnostics.emit(...) "cannot take the address of a sub-byte type"
             }
         }
         
