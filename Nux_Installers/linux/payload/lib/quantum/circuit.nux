@@ -1,0 +1,68 @@
+# quantum::circuit
+# Quantum Circuit and state simulator
+
+import std::collections::List;
+import quantum::qubit::StateVector;
+import quantum::gates::Gate2x2;
+import quantum::complex::Complex;
+
+class QuantumCircuit {
+    var state: StateVector;
+    var num_qubits: u32;
+    
+    func init(num_qubits: u32) {
+        this.num_qubits = num_qubits;
+        this.state = new StateVector();
+        this.state.init(num_qubits);
+    }
+    
+    func apply_gate(gate: Gate2x2, target_qubit: u32) {
+        var size = 1 << this.num_qubits;
+        var i = 0;
+        
+        # New amplitudes buffer
+        var new_amps = new List();
+        new_amps.init();
+        
+        while (i < size) {
+            # Dummy initialization of buffer
+            var z = new Complex(); z.init(0.0, 0.0);
+            new_amps.append(z);
+            i += 1;
+        }
+        
+        i = 0;
+        while (i < size) {
+            # Check if target qubit is 0 or 1 in this state index
+            var bit = (i >> target_qubit) & 1;
+            var paired_index = i ^ (1 << target_qubit);
+            
+            var amp0 = this.state.amplitudes.get(i & (~(1 << target_qubit)));
+            var amp1 = this.state.amplitudes.get(i | (1 << target_qubit));
+            
+            var new_amp = new Complex();
+            if (bit == 0) {
+                # new_amp = gate.m00 * amp0 + gate.m01 * amp1
+                var t1 = gate.m00.mul(amp0);
+                var t2 = gate.m01.mul(amp1);
+                new_amp = t1.add(t2);
+            } else {
+                # new_amp = gate.m10 * amp0 + gate.m11 * amp1
+                var t1 = gate.m10.mul(amp0);
+                var t2 = gate.m11.mul(amp1);
+                new_amp = t1.add(t2);
+            }
+            
+            new_amps.set(i, new_amp);
+            i += 1;
+        }
+        
+        this.state.amplitudes = new_amps;
+    }
+    
+    func measure(qubit: u32) -> u32 {
+        # Pseudo-code for measurement collapse based on get_probability
+        # Collapse state to 0 or 1
+        return 0; 
+    }
+}

@@ -1,0 +1,298 @@
+# Database Library - SQL and NoSQL support
+
+# ============= DATABASE CONNECTION =============
+
+class Database {
+    var connection_id: int;
+    var db_type: string;
+    
+    func connect(connection_string: string, db_type: string) -> Database {
+        var conn_id = syscall_db_connect(connection_string, db_type);
+        return Database {
+            connection_id: conn_id,
+            db_type: db_type
+        };
+    }
+    
+    func execute(query: string) -> QueryResult {
+        var result_id = syscall_db_execute(this.connection_id, query);
+        return QueryResult {
+            result_id: result_id,
+            rows: []
+        };
+    }
+    
+    func query(sql: string) -> QueryResult {
+        return this.execute(sql);
+    }
+    
+    func close() {
+        syscall_db_close(this.connection_id);
+    }
+}
+
+class QueryResult {
+    var result_id: int;
+    var rows: [[string]];
+    
+    func fetch_all() -> [[string]] {
+        if (this.rows.len() == 0) {
+            this.rows = syscall_db_fetch_all(this.result_id);
+        }
+        return this.rows;
+    }
+    
+    func fetch_one() -> [string] {
+        var all = this.fetch_all();
+        if (all.len() > 0) {
+            return all[0];
+        }
+        return [];
+    }
+}
+
+# ============= QUERY BUILDER =============
+
+class QueryBuilder {
+    var table: string;
+    var select_fields: [string];
+    var where_clauses: [string];
+    var order_by: string;
+    var limit_value: int;
+    
+    func from(table: string) -> QueryBuilder {
+        return QueryBuilder {
+            table: table,
+            select_fields: [],
+            where_clauses: [],
+            order_by: "",
+            limit_value: -1
+        };
+    }
+    
+    func select(fields: [string]) -> QueryBuilder {
+        this.select_fields = fields;
+        return this;
+    }
+    
+    func where(condition: string) -> QueryBuilder {
+        this.where_clauses.push(condition);
+        return this;
+    }
+    
+    func order(field: string) -> QueryBuilder {
+        this.order_by = field;
+        return this;
+    }
+    
+    func limit(n: int) -> QueryBuilder {
+        this.limit_value = n;
+        return this;
+    }
+    
+    func build() -> string {
+        var sql: string = "SELECT ";
+        
+        if (this.select_fields.len() == 0) {
+            sql += "*";
+        } else {
+            for (var i: int = 0; i < this.select_fields.len(); i++) {
+                sql += this.select_fields[i];
+                if (i < this.select_fields.len() - 1) {
+                    sql += ", ";
+                }
+            }
+        }
+        
+        sql += " FROM " + this.table;
+        
+        if (this.where_clauses.len() > 0) {
+            sql += " WHERE ";
+            for (var i: int = 0; i < this.where_clauses.len(); i++) {
+                sql += this.where_clauses[i];
+                if (i < this.where_clauses.len() - 1) {
+                    sql += " AND ";
+                }
+            }
+        }
+        
+        if (this.order_by.len() > 0) {
+            sql += " ORDER BY " + this.order_by;
+        }
+        
+        if (this.limit_value > 0) {
+            sql += " LIMIT " + json_stringify_int(this.limit_value);
+        }
+        
+        return sql;
+    }
+}
+
+# ============= ORM (SIMPLE) =============
+
+class Model {
+    var table_name: string;
+    var fields: [[string; 2]];  # [name, type]
+    
+    func create_table(db: Database) {
+        var sql = "CREATE TABLE IF NOT EXISTS " + this.table_name + " (";
+        
+        for (var i: int = 0; i < this.fields.len(); i++) {
+            sql += this.fields[i][0] + " " + this.fields[i][1];
+            if (i < this.fields.len() - 1) {
+                sql += ", ";
+            }
+        }
+        
+        sql += ")";
+        db.execute(sql);
+    }
+    
+    func insert(db: Database, values: [string]) {
+        var sql = "INSERT INTO " + this.table_name + " VALUES (";
+        
+        for (var i: int = 0; i < values.len(); i++) {
+            sql += "'" + values[i] + "'";
+            if (i < values.len() - 1) {
+                sql += ", ";
+            }
+        }
+        
+        sql += ")";
+        db.execute(sql);
+    }
+    
+    func find_all(db: Database) -> [[string]] {
+        var sql = "SELECT * FROM " + this.table_name;
+        var result = db.query(sql);
+        return result.fetch_all();
+    }
+    
+    func find_by_id(db: Database, id: int) -> [string] {
+        var sql = "SELECT * FROM " + this.table_name + " WHERE id = " + json_stringify_int(id);
+        var result = db.query(sql);
+        return result.fetch_one();
+    }
+}
+
+# ============= KEY-VALUE STORE =============
+
+class KeyValueStore {
+    var data: [[string; 2]];  # Simple in-memory store
+    var mutex: Mutex;
+    
+    func new() -> KeyValueStore {
+        return KeyValueStore {
+            data: [],
+            mutex: Mutex.new()
+        };
+    }
+    
+    func set(key: string, value: string) {
+        this.mutex.lock();
+        
+        # Update if exists
+        for (var i: int = 0; i < this.data.len(); i++) {
+            if (this.data[i][0] == key) {
+                this.data[i][1] = value;
+                this.mutex.unlock();
+                return;
+            }
+        }
+        
+        # Insert new
+        this.data.push([key, value]);
+        this.mutex.unlock();
+    }
+    
+    func get(key: string) -> string {
+        this.mutex.lock();
+        
+        for (var i: int = 0; i < this.data.len(); i++) {
+            if (this.data[i][0] == key) {
+                var value = this.data[i][1];
+                this.mutex.unlock();
+                return value;
+            }
+        }
+        
+        this.mutex.unlock();
+        return "";
+    }
+    
+    func delete(key: string) -> bool {
+        this.mutex.lock();
+        
+        for (var i: int = 0; i < this.data.len(); i++) {
+            if (this.data[i][0] == key) {
+                # Remove element
+                var new_data: [[string; 2]] = [];
+                for (var j: int = 0; j < this.data.len(); j++) {
+                    if (j != i) {
+                        new_data.push(this.data[j]);
+                    }
+                }
+                this.data = new_data;
+                this.mutex.unlock();
+                return true;
+            }
+        }
+        
+        this.mutex.unlock();
+        return false;
+    }
+    
+    func exists(key: string) -> bool {
+        return this.get(key).len() > 0;
+    }
+}
+
+# ============= EXAMPLE USAGE =============
+
+func database_example() {
+    # SQL database
+    var db = Database.connect("sqlite://test.db", "sqlite");
+    
+    # Create table
+    var user_model = Model {
+        table_name: "users",
+        fields: [
+            ["id", "INTEGER PRIMARY KEY"],
+            ["name", "TEXT"],
+            ["email", "TEXT"]
+        ]
+    };
+    
+    user_model.create_table(db);
+    
+    # Insert data
+    user_model.insert(db, ["1", "Alice", "alice@example.com"]);
+    user_model.insert(db, ["2", "Bob", "bob@example.com"]);
+    
+    # Query with builder
+    var query = QueryBuilder.from("users")
+        .select(["name", "email"])
+        .where("id > 0")
+        .order("name")
+        .limit(10)
+        .build();
+    
+    println("Query: " + query);
+    
+    var result = db.query(query);
+    var rows = result.fetch_all();
+    
+    for (var row in rows) {
+        println("User: " + row[0] + " - " + row[1]);
+    }
+    
+    db.close();
+    
+    # Key-value store
+    var kv = KeyValueStore.new();
+    kv.set("user:1:name", "Alice");
+    kv.set("user:1:email", "alice@example.com");
+    
+    println("Name: " + kv.get("user:1:name"));
+    println("Email: " + kv.get("user:1:email"));
+}

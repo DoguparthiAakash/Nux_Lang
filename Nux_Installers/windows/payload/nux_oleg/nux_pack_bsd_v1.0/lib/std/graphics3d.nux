@@ -1,0 +1,387 @@
+# Nux Standard Library - 3D Graphics and Rendering
+# 3D transformations, rendering pipeline, and graphics primitives
+
+# ===== VECTOR OPERATIONS =====
+
+func vec3_create(x, y, z) {
+    # Create 3D vector
+    return {x: x, y: y, z: z};
+}
+
+func vec3_add(v1, v2) {
+    # Vector addition
+    return vec3_create(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
+}
+
+func vec3_subtract(v1, v2) {
+    # Vector subtraction
+    return vec3_create(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
+}
+
+func vec3_scale(v, scalar) {
+    # Scalar multiplication
+    return vec3_create(v.x * scalar, v.y * scalar, v.z * scalar);
+}
+
+func vec3_dot(v1, v2) {
+    # Dot product
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+func vec3_cross(v1, v2) {
+    # Cross product
+    return vec3_create(
+        v1.y * v2.z - v1.z * v2.y,
+        v1.z * v2.x - v1.x * v2.z,
+        v1.x * v2.y - v1.y * v2.x
+    );
+}
+
+func vec3_length(v) {
+    # Vector magnitude
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+func vec3_normalize(v) {
+    # Normalize vector
+    var len = vec3_length(v);
+    return vec3_create(v.x / len, v.y / len, v.z / len);
+}
+
+func vec3_distance(v1, v2) {
+    # Distance between two points
+    return vec3_length(vec3_subtract(v2, v1));
+}
+
+# ===== MATRIX OPERATIONS =====
+
+func mat4_identity() {
+    # Create 4x4 identity matrix
+    return [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_multiply(m1, m2) {
+    # Matrix multiplication
+    var result = mat4_identity();
+    var i: int = 0;
+    
+    while (i < 4) {
+        var j: int = 0;
+        while (j < 4) {
+            var sum: int = 0;
+            var k: int = 0;
+            while (k < 4) {
+                sum = sum + m1[i][k] * m2[k][j];
+                k = k + 1;
+            }
+            result[i][j] = sum;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+func mat4_translate(x, y, z) {
+    # Create translation matrix
+    return [
+        [1, 0, 0, x],
+        [0, 1, 0, y],
+        [0, 0, 1, z],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_scale(x, y, z) {
+    # Create scale matrix
+    return [
+        [x, 0, 0, 0],
+        [0, y, 0, 0],
+        [0, 0, z, 0],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_rotateX(angle) {
+    # Rotate around X-axis
+    var c = cos(angle);
+    var s = sin(angle);
+    return [
+        [1, 0, 0, 0],
+        [0, c, -s, 0],
+        [0, s, c, 0],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_rotateY(angle) {
+    # Rotate around Y-axis
+    var c = cos(angle);
+    var s = sin(angle);
+    return [
+        [c, 0, s, 0],
+        [0, 1, 0, 0],
+        [-s, 0, c, 0],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_rotateZ(angle) {
+    # Rotate around Z-axis
+    var c = cos(angle);
+    var s = sin(angle);
+    return [
+        [c, -s, 0, 0],
+        [s, c, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ];
+}
+
+func mat4_perspective(fov, aspect, near, far) {
+    # Create perspective projection matrix
+    var f = 1 / tan(fov / 2);
+    return [
+        [f / aspect, 0, 0, 0],
+        [0, f, 0, 0],
+        [0, 0, (far + near) / (near - far), (2 * far * near) / (near - far)],
+        [0, 0, -1, 0]
+    ];
+}
+
+func mat4_lookAt(eye, target, up) {
+    # Create view matrix
+    var zAxis = vec3_normalize(vec3_subtract(eye, target));
+    var xAxis = vec3_normalize(vec3_cross(up, zAxis));
+    var yAxis = vec3_cross(zAxis, xAxis);
+    
+    return [
+        [xAxis.x, xAxis.y, xAxis.z, -vec3_dot(xAxis, eye)],
+        [yAxis.x, yAxis.y, yAxis.z, -vec3_dot(yAxis, eye)],
+        [zAxis.x, zAxis.y, zAxis.z, -vec3_dot(zAxis, eye)],
+        [0, 0, 0, 1]
+    ];
+}
+
+# ===== MESH OPERATIONS =====
+
+func mesh_create() {
+    # Create empty mesh
+    return {
+        vertices: [],
+        normals: [],
+        uvs: [],
+        indices: []
+    };
+}
+
+func mesh_addVertex(mesh, x, y, z) {
+    # Add vertex to mesh
+    arr_push(mesh.vertices, vec3_create(x, y, z));
+}
+
+func mesh_addNormal(mesh, x, y, z) {
+    # Add normal vector
+    arr_push(mesh.normals, vec3_create(x, y, z));
+}
+
+func mesh_addUV(mesh, u, v) {
+    # Add texture coordinate
+    arr_push(mesh.uvs, {u: u, v: v});
+}
+
+func mesh_addTriangle(mesh, i1, i2, i3) {
+    # Add triangle indices
+    arr_push(mesh.indices, i1);
+    arr_push(mesh.indices, i2);
+    arr_push(mesh.indices, i3);
+}
+
+func mesh_cube() {
+    # Create cube mesh
+    var mesh = mesh_create();
+    
+    # Add 8 vertices
+    mesh_addVertex(mesh, -1, -1, -1);
+    mesh_addVertex(mesh, 1, -1, -1);
+    mesh_addVertex(mesh, 1, 1, -1);
+    mesh_addVertex(mesh, -1, 1, -1);
+    mesh_addVertex(mesh, -1, -1, 1);
+    mesh_addVertex(mesh, 1, -1, 1);
+    mesh_addVertex(mesh, 1, 1, 1);
+    mesh_addVertex(mesh, -1, 1, 1);
+    
+    # Add 12 triangles (6 faces * 2 triangles)
+    mesh_addTriangle(mesh, 0, 1, 2);
+    mesh_addTriangle(mesh, 0, 2, 3);
+    # ... more triangles
+    
+    return mesh;
+}
+
+func mesh_sphere(radius, segments) {
+    # Create sphere mesh
+    var mesh = mesh_create();
+    
+    var lat: int = 0;
+    while (lat <= segments) {
+        var theta = lat * PI / segments;
+        var sinTheta = sin(theta);
+        var cosTheta = cos(theta);
+        
+        var lon: int = 0;
+        while (lon <= segments) {
+            var phi = lon * 2 * PI / segments;
+            var sinPhi = sin(phi);
+            var cosPhi = cos(phi);
+            
+            var x = cosPhi * sinTheta;
+            var y = cosTheta;
+            var z = sinPhi * sinTheta;
+            
+            mesh_addVertex(mesh, radius * x, radius * y, radius * z);
+            mesh_addNormal(mesh, x, y, z);
+            mesh_addUV(mesh, lon / segments, lat / segments);
+            
+            lon = lon + 1;
+        }
+        
+        lat = lat + 1;
+    }
+    
+    # Add indices
+    # TODO: Generate triangle indices
+    
+    return mesh;
+}
+
+# ===== LIGHTING =====
+
+func light_create(type, position, color, intensity) {
+    # Create light source
+    return {
+        type: type,  # "point", "directional", "spot"
+        position: position,
+        color: color,
+        intensity: intensity
+    };
+}
+
+func light_calculate(light, point, normal) {
+    # Calculate lighting at point
+    var lightDir = vec3_normalize(vec3_subtract(light.position, point));
+    var diffuse = max(0, vec3_dot(normal, lightDir));
+    
+    return diffuse * light.intensity;
+}
+
+# ===== CAMERA =====
+
+func camera_create(position, target, fov) {
+    # Create camera
+    return {
+        position: position,
+        target: target,
+        up: vec3_create(0, 1, 0),
+        fov: fov,
+        aspect: 16 / 9,
+        near: 0.1,
+        far: 1000
+    };
+}
+
+func camera_getViewMatrix(camera) {
+    # Get view matrix
+    return mat4_lookAt(camera.position, camera.target, camera.up);
+}
+
+func camera_getProjectionMatrix(camera) {
+    # Get projection matrix
+    return mat4_perspective(camera.fov, camera.aspect, camera.near, camera.far);
+}
+
+# ===== RENDERING =====
+
+func render_project(vertex, mvp) {
+    # Project 3D vertex to 2D screen space
+    # Apply model-view-projection matrix
+    # TODO: Implement full projection
+    return {x: vertex.x, y: vertex.y};
+}
+
+func render_triangle(v1, v2, v3, color) {
+    # Render triangle
+    # TODO: Implement rasterization
+    return;
+}
+
+func render_mesh(mesh, transform, camera) {
+    # Render entire mesh
+    var viewMatrix = camera_getViewMatrix(camera);
+    var projMatrix = camera_getProjectionMatrix(camera);
+    var mvp = mat4_multiply(mat4_multiply(projMatrix, viewMatrix), transform);
+    
+    # Render each triangle
+    var i: int = 0;
+    while (i < arr_length(mesh.indices)) {
+        var i1 = mesh.indices[i];
+        var i2 = mesh.indices[i + 1];
+        var i3 = mesh.indices[i + 2];
+        
+        var v1 = mesh.vertices[i1];
+        var v2 = mesh.vertices[i2];
+        var v3 = mesh.vertices[i3];
+        
+        # Project and render
+        var p1 = render_project(v1, mvp);
+        var p2 = render_project(v2, mvp);
+        var p3 = render_project(v3, mvp);
+        
+        render_triangle(p1, p2, p3, {r: 255, g: 255, b: 255});
+        
+        i = i + 3;
+    }
+}
+
+# ===== RAY TRACING =====
+
+func ray_create(origin, direction) {
+    # Create ray
+    return {
+        origin: origin,
+        direction: vec3_normalize(direction)
+    };
+}
+
+func ray_intersectSphere(ray, center, radius) {
+    # Ray-sphere intersection
+    var oc = vec3_subtract(ray.origin, center);
+    var a = vec3_dot(ray.direction, ray.direction);
+    var b = 2 * vec3_dot(oc, ray.direction);
+    var c = vec3_dot(oc, oc) - radius * radius;
+    var discriminant = b * b - 4 * a * c;
+    
+    if (discriminant < 0) {
+        return null;
+    }
+    
+    var t = (-b - sqrt(discriminant)) / (2 * a);
+    return t;
+}
+
+func ray_trace(ray, scene) {
+    # Trace ray through scene
+    var closestT: int = 999999;
+    var closestObject = null;
+    
+    # Check intersection with all objects
+    # TODO: Implement full ray tracing
+    
+    return closestObject;
+}

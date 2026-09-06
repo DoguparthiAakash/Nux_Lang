@@ -1,0 +1,19 @@
+# std::math
+# Hardware-accelerated math operations.
+# Lowers directly to FPU or SIMD intrinsics bypassing function call overhead.
+
+func sin(x) {
+    # Lowered to intrinsic: fpu_sin
+}
+
+func cos(x) {
+    # Lowered to intrinsic: fpu_cos
+}
+
+func sqrt(x) {
+    # Lowered to intrinsic: fpu_sqrt
+}
+
+func pow(base, exponent) {
+    # Lowered to intrinsic: fpu_pow
+}

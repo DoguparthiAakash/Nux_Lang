@@ -1,0 +1,15 @@
+func main() {
+    poke(4000, 42);
+    poke(4008, 7);
+    poke(4016, 99);
+    poke(4024, 3);
+    poke(4032, 55);
+    poke(4040, 21);
+    print("Before: ");
+    println(peek(4000));
+    println(peek(4008));
+    println(peek(4016));
+    println(peek(4024));
+    println(peek(4032));
+    println(peek(4040));
+}

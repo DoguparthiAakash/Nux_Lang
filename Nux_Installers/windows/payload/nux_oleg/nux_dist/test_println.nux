@@ -1,0 +1,5 @@
+func main() {
+    print("A");
+    println(123);
+    print("B");
+}

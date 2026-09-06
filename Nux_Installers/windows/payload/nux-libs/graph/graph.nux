@@ -1,0 +1,353 @@
+# Nux Graph Theory and Algorithms Library
+# Pure Nux implementation of standard graph representation and algorithms
+
+import "std/io";
+import "std/math";
+
+# ==========================================
+# 1. GRAPH COMPONENTS
+# ==========================================
+class GraphEdge {
+    var target: int;
+    var weight: float;
+
+    func init(t: int, w: float) {
+        this.target = t;
+        this.weight = w;
+    }
+}
+
+class Graph {
+    var num_vertices: int;
+    var is_directed: bool;
+    var adj_list: []; # Array of arrays of GraphEdge
+
+    func init(v: int, directed: bool) {
+        this.num_vertices = v;
+        this.is_directed = directed;
+        this.adj_list = [];
+        for (var i = 0; i < v; i += 1) {
+            this.adj_list.push([]);
+        }
+    }
+
+    func add_edge(&mut self, src: int, dest: int, weight = 1.0) {
+        if (src < 0 || src >= this.num_vertices || dest < 0 || dest >= this.num_vertices) {
+            println("Graph: Vertex out of bounds!");
+            return;
+        }
+        var edge = new GraphEdge(dest, weight);
+        this.adj_list[src].push(edge);
+        
+        if (!this.is_directed) {
+            var reverse_edge = new GraphEdge(src, weight);
+            this.adj_list[dest].push(reverse_edge);
+        }
+    }
+
+    func get_edges(&self, u: int) -> [] {
+        if (u < 0 || u >= this.num_vertices) {
+            return [];
+        }
+        return this.adj_list[u];
+    }
+
+    # ==========================================
+    # 2. GRAPH TRAVERSALS
+    # ==========================================
+
+    # Breadth-First Search (BFS)
+    # Returns an array of vertices in visited order
+    func bfs(&self, start: int) -> [] {
+        var visited = [];
+        var queue = [];
+        var order = [];
+        
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            visited.push(false);
+        }
+
+        visited[start] = true;
+        queue.push(start);
+
+        # Simple queue pop logic: read index
+        var q_head = 0;
+        while (q_head < queue.len()) {
+            var u = queue[q_head];
+            q_head += 1;
+            order.push(u);
+
+            var neighbors = this.get_edges(u);
+            for (var i = 0; i < neighbors.len(); i += 1) {
+                var edge = neighbors[i];
+                var v = edge.target;
+                if (!visited[v]) {
+                    visited[v] = true;
+                    queue.push(v);
+                }
+            }
+        }
+
+        return order;
+    }
+
+    # Depth-First Search (DFS)
+    # Returns an array of vertices in visited order
+    func dfs(&self, start: int) -> [] {
+        var visited = [];
+        var order = [];
+        
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            visited.push(false);
+        }
+
+        this.dfs_helper(start, &mut visited, &mut order);
+        return order;
+    }
+
+    func dfs_helper(&self, u: int, visited: &mut [], order: &mut []) {
+        visited[u] = true;
+        order.push(u);
+
+        var neighbors = this.get_edges(u);
+        for (var i = 0; i < neighbors.len(); i += 1) {
+            var edge = neighbors[i];
+            var v = edge.target;
+            if (!visited[v]) {
+                this.dfs_helper(v, visited, order);
+            }
+        }
+    }
+
+    # ==========================================
+    # 3. PATHFINDING ALGORITHMS
+    # ==========================================
+
+    # Dijkstra's Shortest Path from 'start' to 'end'
+    # Returns an array representing the path, e.g. [start, n1, n2, ..., end]
+    # and prints the path cost.
+    func dijkstra(&self, start: int, end: int) -> [] {
+        var dist = [];
+        var parent = [];
+        var visited = [];
+        
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            dist.push(1000000000.0); # infinity equivalent
+            parent.push(-1);
+            visited.push(false);
+        }
+
+        dist[start] = 0.0;
+
+        for (var count = 0; count < this.num_vertices; count += 1) {
+            # Find min distance vertex not yet processed
+            var min_dist = 1000000000.0;
+            var u = -1;
+            
+            for (var v = 0; v < this.num_vertices; v += 1) {
+                if (!visited[v] && dist[v] < min_dist) {
+                    min_dist = dist[v];
+                    u = v;
+                }
+            }
+
+            if (u == -1 || u == end) {
+                break;
+            }
+
+            visited[u] = true;
+
+            var neighbors = this.get_edges(u);
+            for (var i = 0; i < neighbors.len(); i += 1) {
+                var edge = neighbors[i];
+                var v = edge.target;
+                var weight = edge.weight;
+                
+                if (!visited[v] && dist[u] + weight < dist[v]) {
+                    dist[v] = dist[u] + weight;
+                    parent[v] = u;
+                }
+            }
+        }
+
+        # Reconstruct path
+        if (dist[end] == 1000000000.0) {
+            println("Dijkstra: No path found!");
+            return [];
+        }
+
+        var path = [];
+        var curr = end;
+        while (curr != -1) {
+            path.push(curr);
+            curr = parent[curr];
+        }
+        
+        # Reverse path in place
+        var n = path.len();
+        for (var i = 0; i < n / 2; i += 1) {
+            var temp = path[i];
+            path[i] = path[n - 1 - i];
+            path[n - 1 - i] = temp;
+        }
+
+        println("Dijkstra: Path Cost = " + float_to_str(dist[end]));
+        return path;
+    }
+
+    # A* Search from 'start' to 'end' using a coordinate heuristic
+    # coords is an array of [x, y] coordinates for each node
+    func a_star(&self, start: int, end: int, coords: []) -> [] {
+        var g_score = [];
+        var f_score = [];
+        var parent = [];
+        var closed_set = [];
+        
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            g_score.push(1000000000.0);
+            f_score.push(1000000000.0);
+            parent.push(-1);
+            closed_set.push(false);
+        }
+
+        g_score[start] = 0.0;
+        f_score[start] = this.heuristic(start, end, coords);
+
+        var open_set = [start];
+
+        while (open_set.len() > 0) {
+            # Find node in open_set with lowest f_score
+            var min_f = 1000000000.0;
+            var min_idx = -1;
+            var u = -1;
+            
+            for (var i = 0; i < open_set.len(); i += 1) {
+                var node = open_set[i];
+                if (f_score[node] < min_f) {
+                    min_f = f_score[node];
+                    min_idx = i;
+                    u = node;
+                }
+            }
+
+            if (u == end) {
+                # Found path
+                var path = [];
+                var curr = end;
+                while (curr != -1) {
+                    path.push(curr);
+                    curr = parent[curr];
+                }
+                var n = path.len();
+                for (var i = 0; i < n / 2; i += 1) {
+                    var temp = path[i];
+                    path[i] = path[n - 1 - i];
+                    path[n - 1 - i] = temp;
+                }
+                println("A* Path Cost = " + float_to_str(g_score[end]));
+                return path;
+            }
+
+            # Remove u from open_set
+            open_set.remove(min_idx);
+            closed_set[u] = true;
+
+            var neighbors = this.get_edges(u);
+            for (var i = 0; i < neighbors.len(); i += 1) {
+                var edge = neighbors[i];
+                var v = edge.target;
+                var weight = edge.weight;
+                
+                if (closed_set[v]) {
+                    continue;
+                }
+
+                var tentative_g = g_score[u] + weight;
+                if (tentative_g < g_score[v]) {
+                    parent[v] = u;
+                    g_score[v] = tentative_g;
+                    f_score[v] = tentative_g + this.heuristic(v, end, coords);
+                    
+                    # Add to open_set if not present
+                    var present = false;
+                    for (var j = 0; j < open_set.len(); j += 1) {
+                        if (open_set[j] == v) {
+                            present = true;
+                        }
+                    }
+                    if (!present) {
+                        open_set.push(v);
+                    }
+                }
+            }
+        }
+
+        println("A*: No path found!");
+        return [];
+    }
+
+    # Euclidean distance heuristic
+    func heuristic(&self, u: int, v: int, coords: []) -> float {
+        var u_coord = coords[u];
+        var v_coord = coords[v];
+        var dx = u_coord[0] - v_coord[0];
+        var dy = u_coord[1] - v_coord[1];
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    # ==========================================
+    # 4. DEPENDENCY RESOLUTION
+    # ==========================================
+
+    # Topological Sort using Kahn's algorithm
+    # Returns a topologically sorted array of vertices or empty if cycle exists
+    func topological_sort(&self) -> [] {
+        var in_degree = [];
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            in_degree.push(0);
+        }
+
+        # Calculate indegrees
+        for (var u = 0; u < this.num_vertices; u += 1) {
+            var edges = this.get_edges(u);
+            for (var i = 0; i < edges.len(); i += 1) {
+                var edge = edges[i];
+                in_degree[edge.target] += 1;
+            }
+        }
+
+        # Enqueue vertices with indegree 0
+        var queue = [];
+        for (var i = 0; i < this.num_vertices; i += 1) {
+            if (in_degree[i] == 0) {
+                queue.push(i);
+            }
+        }
+
+        var order = [];
+        var q_head = 0;
+        while (q_head < queue.len()) {
+            var u = queue[q_head];
+            q_head += 1;
+            order.push(u);
+
+            var neighbors = this.get_edges(u);
+            for (var i = 0; i < neighbors.len(); i += 1) {
+                var edge = neighbors[i];
+                var v = edge.target;
+                in_degree[v] -= 1;
+                if (in_degree[v] == 0) {
+                    queue.push(v);
+                }
+            }
+        }
+
+        # Cycle check
+        if (order.len() != this.num_vertices) {
+            println("TopologicalSort: Graph contains a cycle!");
+            return [];
+        }
+
+        return order;
+    }
+}

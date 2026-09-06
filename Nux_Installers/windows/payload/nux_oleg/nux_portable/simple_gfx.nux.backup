@@ -1,0 +1,21 @@
+# Simple Graphics Demo
+# Simpler test to verify img_draw works
+
+func main() {
+    print("Graphics Demo Starting...");
+    
+    # Create a small screen
+    var screen = img_alloc(80, 40);
+    
+    print("Clearing screen to blue...");
+    gfx_clear(screen, 255);  # Blue
+    
+    print("Drawing some shapes...");
+    gfx_line(screen, 10, 10, 70, 10, 16777215);  # White line
+    gfx_circle(screen, 40, 20, 10, 16711680);    # Red circle
+    
+    print("Displaying...");
+    img_draw(screen, 0, 0);
+    
+    print("Done!");
+}

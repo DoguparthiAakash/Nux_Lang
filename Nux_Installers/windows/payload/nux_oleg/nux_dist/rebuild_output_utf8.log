@@ -1,0 +1,7 @@
+﻿python : Updated 1 path from the index
+At line:1 char:1
++ python rebuild.py > rebuild_output.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Updated 1 path from the index:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

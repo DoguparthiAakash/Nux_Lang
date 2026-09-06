@@ -1,0 +1,190 @@
+# Test Suite for Advanced Data Structures
+
+# ============= BST TESTS =============
+
+func test_bst_insert_search() {
+    var bst = BST<int>.new();
+    
+    bst.insert(5);
+    bst.insert(3);
+    bst.insert(7);
+    bst.insert(1);
+    bst.insert(9);
+    
+    assert(bst.contains(5) == true, "BST should contain 5");
+    assert(bst.contains(3) == true, "BST should contain 3");
+    assert(bst.contains(10) == false, "BST should not contain 10");
+    assert(bst.size == 5, "BST size should be 5");
+    
+    println("✓ test_bst_insert_search passed");
+}
+
+func test_bst_inorder() {
+    var bst = BST<int>.new();
+    
+    bst.insert(5);
+    bst.insert(3);
+    bst.insert(7);
+    bst.insert(1);
+    bst.insert(9);
+    
+    var result = bst.inorder();
+    assert(result.len() == 5, "Inorder should return 5 elements");
+    assert(result[0] == 1, "First element should be 1");
+    assert(result[4] == 9, "Last element should be 9");
+    
+    println("✓ test_bst_inorder passed");
+}
+
+# ============= PRIORITY QUEUE TESTS =============
+
+func test_priority_queue() {
+    var pq = PriorityQueue<int>.new();
+    
+    pq.push(5);
+    pq.push(2);
+    pq.push(8);
+    pq.push(1);
+    pq.push(9);
+    
+    assert(pq.peek() == 1, "Min should be 1");
+    assert(pq.pop() == 1, "Pop should return 1");
+    assert(pq.pop() == 2, "Pop should return 2");
+    assert(pq.pop() == 5, "Pop should return 5");
+    
+    println("✓ test_priority_queue passed");
+}
+
+# ============= GRAPH TESTS =============
+
+func test_graph_bfs() {
+    var g = Graph.new(5);
+    
+    g.add_edge(0, 1);
+    g.add_edge(0, 2);
+    g.add_edge(1, 3);
+    g.add_edge(2, 4);
+    
+    var result = g.bfs(0);
+    assert(result.len() == 5, "BFS should visit all nodes");
+    assert(result[0] == 0, "BFS should start at 0");
+    
+    println("✓ test_graph_bfs passed");
+}
+
+func test_graph_dfs() {
+    var g = Graph.new(5);
+    
+    g.add_edge(0, 1);
+    g.add_edge(0, 2);
+    g.add_edge(1, 3);
+    g.add_edge(2, 4);
+    
+    var result = g.dfs(0);
+    assert(result.len() == 5, "DFS should visit all nodes");
+    assert(result[0] == 0, "DFS should start at 0");
+    
+    println("✓ test_graph_dfs passed");
+}
+
+func test_graph_shortest_path() {
+    var g = Graph.new(5);
+    
+    g.add_edge_undirected(0, 1);
+    g.add_edge_undirected(0, 2);
+    g.add_edge_undirected(1, 3);
+    g.add_edge_undirected(2, 4);
+    g.add_edge_undirected(3, 4);
+    
+    var path = g.shortest_path(0, 4);
+    assert(path.len() > 0, "Path should exist");
+    assert(path[0] == 0, "Path should start at 0");
+    assert(path[path.len() - 1] == 4, "Path should end at 4");
+    
+    println("✓ test_graph_shortest_path passed");
+}
+
+# ============= TRIE TESTS =============
+
+func test_trie_insert_search() {
+    var trie = Trie.new();
+    
+    trie.insert("hello");
+    trie.insert("world");
+    trie.insert("help");
+    
+    assert(trie.search("hello") == true, "Trie should contain 'hello'");
+    assert(trie.search("world") == true, "Trie should contain 'world'");
+    assert(trie.search("help") == true, "Trie should contain 'help'");
+    assert(trie.search("hell") == false, "Trie should not contain 'hell'");
+    
+    println("✓ test_trie_insert_search passed");
+}
+
+func test_trie_prefix() {
+    var trie = Trie.new();
+    
+    trie.insert("hello");
+    trie.insert("help");
+    
+    assert(trie.starts_with("hel") == true, "Trie should have prefix 'hel'");
+    assert(trie.starts_with("wor") == false, "Trie should not have prefix 'wor'");
+    
+    println("✓ test_trie_prefix passed");
+}
+
+# ============= DISJOINT SET TESTS =============
+
+func test_disjoint_set() {
+    var ds = DisjointSet.new(5);
+    
+    ds.union(0, 1);
+    ds.union(2, 3);
+    
+    assert(ds.connected(0, 1) == true, "0 and 1 should be connected");
+    assert(ds.connected(2, 3) == true, "2 and 3 should be connected");
+    assert(ds.connected(0, 2) == false, "0 and 2 should not be connected");
+    
+    ds.union(1, 2);
+    assert(ds.connected(0, 3) == true, "0 and 3 should now be connected");
+    
+    println("✓ test_disjoint_set passed");
+}
+
+# ============= TEST RUNNER =============
+
+func run_advanced_tests() {
+    println("=== Running Advanced Data Structure Tests ===\n");
+    
+    println("BST Tests:");
+    test_bst_insert_search();
+    test_bst_inorder();
+    
+    println("\nPriority Queue Tests:");
+    test_priority_queue();
+    
+    println("\nGraph Tests:");
+    test_graph_bfs();
+    test_graph_dfs();
+    test_graph_shortest_path();
+    
+    println("\nTrie Tests:");
+    test_trie_insert_search();
+    test_trie_prefix();
+    
+    println("\nDisjoint Set Tests:");
+    test_disjoint_set();
+    
+    println("\n=== All Advanced Tests Passed! ===");
+}
+
+# Helper assertion function
+func assert(condition: bool, message: string) {
+    if (!condition) {
+        println("✗ FAILED: " + message);
+        exit(1);
+    }
+}
+
+# Run tests
+run_advanced_tests();

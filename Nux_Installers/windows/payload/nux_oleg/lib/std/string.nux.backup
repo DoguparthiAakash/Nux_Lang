@@ -1,0 +1,262 @@
+// Simplified String Library - Working Version
+
+// ============= STRING BUILDER =============
+
+class StringBuilder {
+    var buffer: [byte];
+    var length: int;
+    
+    func new() -> StringBuilder {
+        return StringBuilder {
+            buffer: [],
+            length: 0
+        };
+    }
+    
+    func append(s: string) -> StringBuilder {
+        for (var i = 0; i < s.len(); i++) {
+            this.buffer[this.length] = s[i];
+            this.length++;
+        }
+        return this;
+    }
+    
+    func append_char(c: char) -> StringBuilder {
+        this.buffer[this.length] = c;
+        this.length++;
+        return this;
+    }
+    
+    func to_string() -> string {
+        var result = "";
+        for (var i = 0; i < this.length; i++) {
+            result += this.buffer[i];
+        }
+        return result;
+    }
+    
+    func clear() {
+        this.length = 0;
+    }
+}
+
+// ============= STRING UTILITIES =============
+
+func str_split(s: string, delimiter: string) -> [string] {
+    var result: [string] = [];
+    var current = "";
+    var i = 0;
+    
+    while (i < s.len()) {
+        var found = true;
+        for (var j = 0; j < delimiter.len(); j++) {
+            if (i + j >= s.len() || s[i + j] != delimiter[j]) {
+                found = false;
+                break;
+            }
+        }
+        
+        if (found) {
+            result.push(current);
+            current = "";
+            i += delimiter.len();
+        } else {
+            current += s[i];
+            i++;
+        }
+    }
+    
+    result.push(current);
+    return result;
+}
+
+func str_trim(s: string) -> string {
+    var start = 0;
+    var end = s.len() - 1;
+    
+    while (start < s.len() && is_whitespace(s[start])) {
+        start++;
+    }
+    
+    while (end >= start && is_whitespace(s[end])) {
+        end--;
+    }
+    
+    return str_substring(s, start, end + 1);
+}
+
+func str_replace(s: string, from: string, to: string) -> string {
+    var result = "";
+    var i = 0;
+    
+    while (i < s.len()) {
+        var found = true;
+        for (var j = 0; j < from.len(); j++) {
+            if (i + j >= s.len() || s[i + j] != from[j]) {
+                found = false;
+                break;
+            }
+        }
+        
+        if (found) {
+            result += to;
+            i += from.len();
+        } else {
+            result += s[i];
+            i++;
+        }
+    }
+    
+    return result;
+}
+
+func str_starts_with(s: string, prefix: string) -> bool {
+    if (prefix.len() > s.len()) {
+        return false;
+    }
+    
+    for (var i = 0; i < prefix.len(); i++) {
+        if (s[i] != prefix[i]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+func str_ends_with(s: string, suffix: string) -> bool {
+    if (suffix.len() > s.len()) {
+        return false;
+    }
+    
+    var offset = s.len() - suffix.len();
+    for (var i = 0; i < suffix.len(); i++) {
+        if (s[offset + i] != suffix[i]) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+func str_to_lowercase(s: string) -> string {
+    var result = "";
+    
+    for (var i = 0; i < s.len(); i++) {
+        var c = s[i];
+        if (c >= 'A' && c <= 'Z') {
+            c = c + 32;
+        }
+        result += c;
+    }
+    
+    return result;
+}
+
+func str_to_uppercase(s: string) -> string {
+    var result = "";
+    
+    for (var i = 0; i < s.len(); i++) {
+        var c = s[i];
+        if (c >= 'a' && c <= 'z') {
+            c = c - 32;
+        }
+        result += c;
+    }
+    
+    return result;
+}
+
+func str_contains(s: string, substring: string) -> bool {
+    return str_find(s, substring) >= 0;
+}
+
+func str_find(s: string, substring: string) -> int {
+    for (var i = 0; i <= s.len() - substring.len(); i++) {
+        var match = true;
+        for (var j = 0; j < substring.len(); j++) {
+            if (s[i + j] != substring[j]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+func str_substring(s: string, start: int, end: int) -> string {
+    var result = "";
+    for (var i = start; i < end && i < s.len(); i++) {
+        result += s[i];
+    }
+    return result;
+}
+
+func is_whitespace(c: char) -> bool {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+// ============= SIMPLE JSON =============
+
+func json_parse_int(s: string) -> int {
+    var result = 0;
+    var negative = false;
+    var i = 0;
+    
+    if (s[0] == '-') {
+        negative = true;
+        i = 1;
+    }
+    
+    while (i < s.len()) {
+        if (s[i] >= '0' && s[i] <= '9') {
+            result = result * 10 + (s[i] - '0');
+        }
+        i++;
+    }
+    
+    return if (negative) -result else result;
+}
+
+func json_parse_float(s: string) -> float {
+    // Simple float parsing
+    var parts = str_split(s, ".");
+    var whole = json_parse_int(parts[0]);
+    
+    if (parts.len() > 1) {
+        var frac = json_parse_int(parts[1]);
+        var divisor = 1.0;
+        for (var i = 0; i < parts[1].len(); i++) {
+            divisor *= 10.0;
+        }
+        return whole + (frac / divisor);
+    }
+    
+    return whole;
+}
+
+func json_stringify_string(s: string) -> string {
+    return "\"" + s + "\"";
+}
+
+func json_stringify_int(n: int) -> string {
+    if (n == 0) {
+        return "0";
+    }
+    
+    var result = "";
+    var negative = n < 0;
+    if (negative) {
+        n = -n;
+    }
+    
+    while (n > 0) {
+        result = (n % 10 + '0') + result;
+        n = n / 10;
+    }
+    
+    return if (negative) "-" + result else result;
+}

@@ -1,0 +1,185 @@
+// Nux OS Library
+// System programming and OS interaction
+
+import "std/io";
+import "std/memory";
+
+// Process management
+class Process {
+    var pid;
+    
+    func spawn(command, args) {
+        var proc = new Process();
+        proc.pid = ffi_call("nux_os_spawn", command, args);
+        return proc;
+    }
+    
+    func wait() {
+        return ffi_call("nux_os_wait", this.pid);
+    }
+    
+    func kill() {
+        ffi_call("nux_os_kill", this.pid);
+    }
+    
+    func is_running() {
+        return ffi_call("nux_os_is_running", this.pid);
+    }
+}
+
+// File system operations
+class FileSystem {
+    func read_file(path) {
+        return ffi_call("nux_os_read_file", path);
+    }
+    
+    func write_file(path, content) {
+        ffi_call("nux_os_write_file", path, content);
+    }
+    
+    func exists(path) {
+        return ffi_call("nux_os_exists", path);
+    }
+    
+    func list_dir(path) {
+        return ffi_call("nux_os_list_dir", path);
+    }
+    
+    func create_dir(path) {
+        ffi_call("nux_os_create_dir", path);
+    }
+    
+    func remove(path) {
+        ffi_call("nux_os_remove", path);
+    }
+}
+
+// Network operations
+class Socket {
+    var handle;
+    
+    func init(type) {
+        this.handle = ffi_call("nux_os_socket_create", type);
+    }
+    
+    func bind(address, port) {
+        ffi_call("nux_os_socket_bind", this.handle, address, port);
+    }
+    
+    func listen(backlog) {
+        ffi_call("nux_os_socket_listen", this.handle, backlog);
+    }
+    
+    func accept() {
+        var client = new Socket(null);
+        client.handle = ffi_call("nux_os_socket_accept", this.handle);
+        return client;
+    }
+    
+    func connect(address, port) {
+        ffi_call("nux_os_socket_connect", this.handle, address, port);
+    }
+    
+    func send(data) {
+        ffi_call("nux_os_socket_send", this.handle, data);
+    }
+    
+    func recv(size) {
+        return ffi_call("nux_os_socket_recv", this.handle, size);
+    }
+    
+    func close() {
+        ffi_call("nux_os_socket_close", this.handle);
+    }
+}
+
+// Thread management
+class Thread {
+    var handle;
+    
+    func spawn(func) {
+        var t = new Thread();
+        t.handle = ffi_call("nux_os_thread_spawn", func);
+        return t;
+    }
+    
+    func join() {
+        ffi_call("nux_os_thread_join", this.handle);
+    }
+}
+
+// Mutex for synchronization
+class Mutex {
+    var handle;
+    
+    func init() {
+        this.handle = ffi_call("nux_os_mutex_create");
+    }
+    
+    func lock() {
+        ffi_call("nux_os_mutex_lock", this.handle);
+    }
+    
+    func unlock() {
+        ffi_call("nux_os_mutex_unlock", this.handle);
+    }
+}
+
+// Example: HTTP Server
+func create_http_server(port) {
+    var server = new Socket("tcp");
+    server.bind("0.0.0.0", port);
+    server.listen(10);
+    
+    println("Server listening on port " + port);
+    
+    while (true) {
+        var client = server.accept();
+        
+        // Spawn thread to handle client
+        Thread.spawn(func() {
+            var request = client.recv(4096);
+            println("Request: " + request);
+            
+            var response = "HTTP/1.1 200 OK\r\n";
+            response += "Content-Type: text/html\r\n\r\n";
+            response += "<h1>Hello from Nux!</h1>";
+            
+            client.send(response);
+            client.close();
+        });
+    }
+}
+
+// Example: File watcher
+func watch_directory(path) {
+    var fs = new FileSystem();
+    var last_files = fs.list_dir(path);
+    
+    while (true) {
+        sleep(1000);  // Wait 1 second
+        
+        var current_files = fs.list_dir(path);
+        
+        // Check for new files
+        for (var i = 0; i < current_files.length; i++) {
+            var found = false;
+            for (var j = 0; j < last_files.length; j++) {
+                if (current_files[i] == last_files[j]) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                println("New file: " + current_files[i]);
+            }
+        }
+        
+        last_files = current_files;
+    }
+}
+
+func main() {
+    create_http_server(8080);
+}

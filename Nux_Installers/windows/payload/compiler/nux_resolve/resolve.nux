@@ -1,0 +1,80 @@
+# Nux Name Resolution
+# Transforms AST into RST (Resolved Syntax Tree) where all names are uniquely identified.
+
+class RSTNode {
+    var type;
+    var span;
+    var def_id; # Unique identifier for variables/functions instead of string names
+    var children;
+
+    func init(node_type, node_span) {
+        this.type = node_type;
+        this.span = node_span;
+        this.def_id = 0;
+        this.children = new List();
+        this.children.init();
+    }
+}
+
+class Scope {
+    var bindings;
+    var lifetimes; # Track in-scope lifetimes like 'a
+    var is_unsafe; # Is this scope inside an unsafe { ... } block?
+    var parent;
+
+    func init(p) {
+        this.bindings = new Map();
+        this.bindings.init();
+        this.lifetimes = new Map();
+        this.lifetimes.init();
+        this.is_unsafe = 0;
+        this.parent = p;
+    }
+
+    func bind(name, def_id) {
+        this.bindings.put(name, def_id);
+    }
+    
+    func bind_lifetime(name, def_id) {
+        this.lifetimes.put(name, def_id);
+    }
+
+    func resolve(name) {
+        var id = this.bindings.get(name);
+        if (id != 0) {
+            return id;
+        }
+        if (this.parent != 0) {
+            return this.parent.resolve(name);
+        }
+        return 0;
+    }
+}
+
+class Resolver {
+    var next_def_id;
+    var current_scope;
+    var diagnostics;
+
+    func init(diag_engine) {
+        this.next_def_id = 1;
+        this.current_scope = new Scope();
+        this.current_scope.init(0);
+        this.diagnostics = diag_engine;
+    }
+
+    func next_id() {
+        var id = this.next_def_id;
+        this.next_def_id = this.next_def_id + 1;
+        return id;
+    }
+
+    func resolve_tree(ast_root) {
+        # Traverses the AST and builds the RST
+        var rst_root = new RSTNode();
+        rst_root.init("Module", ast_root.span);
+        
+        # simplified mapping logic
+        return rst_root;
+    }
+}

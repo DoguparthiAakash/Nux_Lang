@@ -1,0 +1,82 @@
+import "alloc"
+import "ml"
+import "dl"
+import "quantum"
+
+func main() {
+    print("=== Nux Math/AI Suite Test ===\n");
+    alloc_init(10000, 5000);
+    
+    # --- 1. ML Matrix Multiplication ---
+    print("\n--- ML Matrix Math ---\n");
+    var matA = alloc(4 * 8); # 2x2
+    var matB = alloc(4 * 8); # 2x2
+    var matRes = alloc(4 * 8); # 2x2
+    
+    # A = [1.0, 2.0]
+    #     [3.0, 4.0]
+    poke(matA, 1000); poke(matA + 8, 2000);
+    poke(matA + 16, 3000); poke(matA + 24, 4000);
+    
+    # B = [2.0, 0.0]
+    #     [1.0, 2.0]
+    poke(matB, 2000); poke(matB + 8, 0);
+    poke(matB + 16, 1000); poke(matB + 24, 2000);
+    
+    ml_mat_mul(matA, matB, matRes, 2, 2, 2);
+    
+    print("Result Matrix [0, 0] (Expect 4.0 -> 4000): ");
+    println(peek(matRes));
+    print("Result Matrix [0, 1] (Expect 4.0 -> 4000): ");
+    println(peek(matRes + 8));
+    print("Result Matrix [1, 0] (Expect 10.0 -> 10000): ");
+    println(peek(matRes + 16));
+    
+    # --- 2. DL Neural Network Layer ---
+    print("\n--- DL Neural Network Forward Pass ---\n");
+    var inputs = alloc(2 * 8); # 2x1
+    var weights = alloc(2 * 8); # 1x2
+    var biases = alloc(1 * 8); # 1x1
+    var outputs = alloc(1 * 8); # 1x1
+    
+    poke(inputs, 500); # 0.5
+    poke(inputs + 8, 0 - 800); # -0.8
+    
+    poke(weights, 2000); # 2.0
+    poke(weights + 8, 0 - 1000); # -1.0
+    
+    poke(biases, 500); # 0.5
+    
+    # Forward pass: W*I + B = (2.0*0.5) + (-1.0*-0.8) + 0.5 = 1.0 + 0.8 + 0.5 = 2.3 = 2300
+    # ReLU of 2.3 = 2.3 (2300)
+    dl_layer_forward(inputs, weights, biases, outputs, 2, 1, 1); # activation = 1 (ReLU)
+    
+    print("DL Layer Output (Expect 2300): ");
+    println(peek(outputs));
+    
+    # --- 3. Quantum Simulation ---
+    print("\n--- Quantum Simulation ---\n");
+    var state = alloc(2 * 8);
+    var gate = alloc(4 * 8);
+    
+    # Start in |0> state (alpha=1.0, beta=0.0)
+    poke(state, 1000);
+    poke(state + 8, 0);
+    
+    print("Applying Hadamard Gate...\n");
+    q_hadamard(state, gate);
+    
+    print("State |0> Amplitude (Expect ~707): ");
+    println(peek(state));
+    print("State |1> Amplitude (Expect ~707): ");
+    println(peek(state + 8));
+    
+    print("Measuring Qubit... Result: ");
+    var result = q_measure(state);
+    println(result);
+    
+    print("Post-measurement State |0> Amplitude: ");
+    println(peek(state));
+    
+    print("\n=== All AI/ML/Quantum Tests Finished ===\n");
+}

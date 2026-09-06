@@ -1,0 +1,119 @@
+# synapse::autograd
+# Dynamic computation graph and backpropagation engine
+
+import std::collections::List;
+import synapse::tensor;
+
+class Edge {
+    var node_id: u32;
+    var grad_fn: u8; # identifier for the backward operation (e.g., 1=Add, 2=MatMul)
+    var is_left: bool; # For binary ops, track if this was the left or right operand
+    
+    func init(id: u32, grad_fn: u8, is_left: bool) {
+        this.node_id = id;
+        this.grad_fn = grad_fn;
+        this.is_left = is_left;
+    }
+}
+
+class Node {
+    var id: u32;
+    var edges: List;
+    var saved_tensors: List; # e.g. the inputs saved for backprop
+    
+    func init(id: u32) {
+        this.id = id;
+        this.edges = new List();
+        this.edges.init();
+        
+        this.saved_tensors = new List();
+        this.saved_tensors.init();
+    }
+    
+    func add_edge(e: Edge) {
+        this.edges.append(e);
+    }
+    
+    func save_tensor(t: tensor::Tensor) {
+        this.saved_tensors.append(t);
+    }
+}
+
+class Graph {
+    var nodes: List;
+    var next_id: u32;
+    
+    func init() {
+        this.nodes = new List();
+        this.nodes.init();
+        # 0 is reserved for 'No Node'
+        this.nodes.append(0); 
+        this.next_id = 1;
+    }
+    
+    func create_node() -> Node {
+        var n = new Node();
+        n.init(this.next_id);
+        this.nodes.append(n);
+        this.next_id += 1;
+        return n;
+    }
+    
+    func get_node(id: u32) -> Node {
+        return this.nodes.get(id);
+    }
+}
+
+var COMP_GRAPH = new Graph();
+
+func init() {
+    COMP_GRAPH.init();
+}
+
+# The backward engine. Triggers chain rule on the computation graph
+func backward(out_tensor: tensor::Tensor) {
+    if (!out_tensor.requires_grad) {
+        return;
+    }
+    
+    # Initialize out_tensor's grad to 1.0 (assuming it's a scalar loss)
+    # We use our add/mul or manual memory write for this
+    # For now, pseudo code to write 1.0
+    var size = out_tensor.size;
+    var grad_ptr = out_tensor.grad;
+    # TODO: write 1.0 to grad_ptr[0..size]
+    
+    # Backprop loop (BFS/Topological sort would be here)
+    # For a minimal framework, we'll recursively walk the graph backwards.
+    # A robust engine would do topological sort.
+    
+    if (out_tensor.creator_node != 0) {
+        var root = COMP_GRAPH.get_node(out_tensor.creator_node);
+        _backward_recursive(root, out_tensor.grad);
+    }
+}
+
+func _backward_recursive(node: Node, grad_in: *f32) {
+    var num_edges = node.edges.len();
+    var i = 0;
+    while (i < num_edges) {
+        var edge = node.edges.get(i);
+        var child = COMP_GRAPH.get_node(edge.node_id);
+        
+        # Determine gradient based on op
+        # 1 = Add (grad flows equally)
+        if (edge.grad_fn == 1) {
+            # In add, child.grad += grad_in
+            # Pseudo: child.tensor.grad = add(child.tensor.grad, grad_in)
+        }
+        # 2 = MatMul (d(AB)/dA = dC * B.T, d(AB)/dB = A.T * dC)
+        if (edge.grad_fn == 2) {
+            # if is_left: grad = matmul(grad_in, saved_B^T)
+            # if !is_left: grad = matmul(saved_A^T, grad_in)
+        }
+        
+        # Propagate further
+        _backward_recursive(child, grad_in);
+        i += 1;
+    }
+}

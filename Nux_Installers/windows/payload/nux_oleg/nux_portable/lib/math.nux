@@ -1,0 +1,41 @@
+// Nux Standard Library: Math
+// Core mathematical functions for Nux
+
+func abs(x) {
+    if (x < 0) {
+        return 0 - x;
+    }
+    return x;
+}
+
+func min(a, b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+func max(a, b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+func pow(base, exp) {
+    let result = 1;
+    while (exp > 0) {
+        result = result * base;
+        exp = exp - 1;
+    }
+    return result;
+}
+
+func factorial(n) {
+    let result = 1;
+    while (n > 1) {
+        result = result * n;
+        n = n - 1;
+    }
+    return result;
+}

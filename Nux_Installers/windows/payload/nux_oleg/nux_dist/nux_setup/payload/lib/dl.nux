@@ -1,0 +1,51 @@
+# dl.nux - Deep Learning Library
+# Neural Networks and Perceptrons (Inference only for now)
+# Depends on ml.nux
+
+@priority(41)
+
+import "ml"
+
+# Applies ReLU activation to an entire vector in memory
+func dl_apply_relu(addr, length) {
+    for (var i = 0; i < length; i = i + 1) {
+        var offset = i * 8;
+        var val = peek(addr + offset);
+        poke(addr + offset, ml_relu(val));
+    }
+    return 0;
+}
+
+# Applies Sigmoid approximation to an entire vector in memory
+func dl_apply_sigmoid(addr, length) {
+    for (var i = 0; i < length; i = i + 1) {
+        var offset = i * 8;
+        var val = peek(addr + offset);
+        poke(addr + offset, ml_sigmoid(val));
+    }
+    return 0;
+}
+
+# Neural Network Fully Connected Layer Forward Pass
+# weights: [out_size x in_size]
+# inputs: [in_size x 1]
+# biases: [out_size x 1]
+# outputs: [out_size x 1]
+func dl_layer_forward(inputs_addr, weights_addr, biases_addr, outputs_addr, in_size, out_size, activation_type) {
+    # 1. Multiply weights and inputs: res = W * I
+    # W is out_size x in_size. I is in_size x 1. Result is out_size x 1.
+    ml_mat_mul(weights_addr, inputs_addr, outputs_addr, out_size, in_size, 1);
+    
+    # 2. Add biases: res = res + B
+    ml_vec_add(outputs_addr, biases_addr, outputs_addr, out_size);
+    
+    # 3. Apply activation function
+    # 0 = Linear (None), 1 = ReLU, 2 = Sigmoid
+    if (activation_type == 1) {
+        dl_apply_relu(outputs_addr, out_size);
+    }
+    if (activation_type == 2) {
+        dl_apply_sigmoid(outputs_addr, out_size);
+    }
+    return 0;
+}

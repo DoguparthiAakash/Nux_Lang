@@ -1,0 +1,8 @@
+import "crypto"
+
+func main() {
+    poke(300, 72);
+    println(peek(300));  # 72
+    xor_cipher(300, 1, 42);
+    println(peek(300));  # should be 98
+}

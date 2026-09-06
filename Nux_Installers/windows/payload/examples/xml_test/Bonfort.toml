@@ -1,0 +1,5 @@
+[package]
+name = "xml-test"
+version = "0.1.0"
+package-id = "com.example.xml-test"
+imports = "imports.xml"

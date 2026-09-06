@@ -1,0 +1,23 @@
+# std::interop::python
+# Zero-cost FFI to call existing Python/SciPy code instantly.
+# This prevents scientists from having to rewrite their whole stack to try Nux.
+
+@[intrinsic]
+func __py_eval(script_str) {
+    # Uses Native C FFI to bind to libpython.
+    # Initializes CPython interpreter embedding in the background.
+}
+
+class PyModule {
+    var module_name;
+    
+    func init(name) {
+        this.module_name = name;
+        __py_eval("import " + name);
+    }
+    
+    func call(function_name, args_tuple) {
+        # Dynamically calls a Python function, mapping Nux native types
+        # to PyObject* and executing the CPython runtime API.
+    }
+}

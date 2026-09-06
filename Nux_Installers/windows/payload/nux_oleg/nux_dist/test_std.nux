@@ -1,0 +1,49 @@
+import "std";
+import "os";
+import "fs";
+import "time";
+import "math";
+
+func main() {
+    print_str("--- Testing OS Module ---\n");
+    var os = new Os;
+    print_str("CWD: ");
+    var cwd = os.cwd(os);
+    print_str(cwd);
+    print_str("\n");
+    
+    print_str("--- Testing FS Module ---\n");
+    var fs = new Fs;
+    var fpath = "test_fs.txt";
+    fs.write(fs, fpath, "Hello from Nux FS!");
+    print_str("File written.\n");
+    
+    var exists = fs.exists(fs, fpath);
+    if (exists == 1) {
+        print_str("File exists.\n");
+        var content = fs.read(fs, fpath);
+        print_str("Content: ");
+        print_str(content);
+        print_str("\n");
+    }
+    
+    print_str("--- Testing Time Module ---\n");
+    var time = new Time;
+    print_str("Now: ");
+    print_val(time.now(time));
+    print_str("\nSleeping for 500ms...\n");
+    time.sleep(time, 500);
+    print_str("Now: ");
+    print_val(time.now(time));
+    print_str("\n");
+    
+    print_str("--- Testing Math Module ---\n");
+    var math = new Math;
+    var x = 2.0;
+    var result = math.m_sin(math, x);
+    print_str("sin(2.0) = ");
+    print_val(result);
+    print_str("\n");
+}
+
+main();

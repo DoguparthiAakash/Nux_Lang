@@ -1,0 +1,40 @@
+# sort.nux - Nux Concurrent Sorting Library
+# Implements manual and automatic load balancing sorting algorithms
+
+@priority(10)
+
+func quicksort(base, low, high) {
+    if (low < high) {
+        var pi = partition(base, low, high);
+        
+        # Parallel sorting for large subarrays
+        if (high - low > 1000) {
+            var t1 = spawn quicksort(base, low, pi - 1);
+            var t2 = spawn quicksort(base, pi + 1, high);
+            join(t1);
+            join(t2);
+        } else {
+            quicksort(base, low, pi - 1);
+            quicksort(base, pi + 1, high);
+        }
+    }
+    return 0;
+}
+
+func partition(base, low, high) {
+    var pivot = peek(base + high * 8);
+    var i = low - 1;
+    for (var j = low; j < high; j = j + 1) {
+        if (peek(base + j * 8) < pivot) {
+            i = i + 1;
+            # Swap elements
+            var temp = peek(base + i * 8);
+            poke(base + i * 8, peek(base + j * 8));
+            poke(base + j * 8, temp);
+        }
+    }
+    var temp2 = peek(base + (i + 1) * 8);
+    poke(base + (i + 1) * 8, peek(base + high * 8));
+    poke(base + high * 8, temp2);
+    return i + 1;
+}

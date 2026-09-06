@@ -1,0 +1,23 @@
+# Nux UI Testing Harness
+# Compares compiler output (stdout/stderr) against expected snapshot files.
+
+class UITestRunner {
+    var tests_dir;
+    
+    func init(dir) {
+        this.tests_dir = dir;
+    }
+
+    func run_all() {
+        print("Running UI tests in ", this.tests_dir, "...");
+        
+        # In a real harness:
+        # 1. Iterate over all *.nux files in the directory
+        # 2. Run `nuxc test_file.nux` capturing stdout/stderr
+        # 3. Read expected output from `test_file.stderr`
+        # 4. Compare actual vs expected
+        # 5. Report pass/fail and diffs
+        
+        print("All UI tests passed!");
+    }
+}

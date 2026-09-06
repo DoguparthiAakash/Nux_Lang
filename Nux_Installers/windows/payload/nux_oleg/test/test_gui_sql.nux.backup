@@ -1,0 +1,54 @@
+# Nux GUI + SQL Test
+# Scenario: Multiple Libraries, Single File
+# Verifies integration of GUI and SQL
+
+import "external.gui.gui";
+import "external.data.sql";
+
+# Mock FB
+class MockFB {
+    var width; 
+    var height;
+    func init(w, h) { this.width = w; this.height = h; }
+    func fill_rect(x, y, w, h, c) {}
+    func draw_line(x1, y1, x2, y2, c) {}
+}
+
+func main() {
+    print("Running GUI + SQL Integration Test...");
+    
+    # 1. Setup Database
+    var conn = new Connection();
+    conn.init("app_db");
+    conn.execute("CREATE TABLE users (id, name)");
+    conn.execute("INSERT INTO users VALUES {\"id\":1, \"name\":\"User1\"}");
+    conn.execute("INSERT INTO users VALUES {\"id\":2, \"name\":\"User2\"}");
+    
+    # 2. Setup GUI
+    var fb = new MockFB();
+    fb.init(800, 600);
+    var gui = new Gui();
+    gui.init(fb);
+    
+    var win = new Window();
+    win.init(100, 100, 300, 400, "User List");
+    
+    # 3. Populate GUI from DB
+    var rs = conn.execute("SELECT * FROM users");
+    var y_offset = 20;
+    
+    while (rs.next()) {
+        var name = rs.get("name");
+        var label = new Label();
+        label.init(10, y_offset, name);
+        win.add_child(label);
+        y_offset = y_offset + 20;
+    }
+    
+    gui.add_window(win);
+    gui.render();
+    
+    print("GUI+SQL Test Passed.");
+}
+
+main();

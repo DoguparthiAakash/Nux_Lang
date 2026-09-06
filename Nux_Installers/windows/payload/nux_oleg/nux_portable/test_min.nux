@@ -1,0 +1,12 @@
+import "std/math.nuxel";
+import "std/algo.nuxel";
+import "std/ds.nuxel";
+import "std/mem.nuxel";
+import "std/io.nuxel";
+import "std/crypto.nuxel";
+
+func main() {
+    log("Hello, world!");
+}
+
+main();

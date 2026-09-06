@@ -1,0 +1,400 @@
+# Design Patterns - Software engineering best practices
+
+# ============= CREATIONAL PATTERNS =============
+
+# Singleton Pattern
+class Singleton {
+    static var instance: Option<Singleton> = None;
+    
+    private func new() -> Singleton {
+        return Singleton {};
+    }
+    
+    static func get_instance() -> Singleton {
+        if (Singleton.instance == None) {
+            Singleton.instance = Some(Singleton.new());
+        }
+        return Singleton.instance.unwrap();
+    }
+}
+
+# Factory Pattern
+interface Shape {
+    func draw() -> void;
+}
+
+class Circle implements Shape {
+    func draw() {
+        println("Drawing Circle");
+    }
+}
+
+class Rectangle implements Shape {
+    func draw() {
+        println("Drawing Rectangle");
+    }
+}
+
+class ShapeFactory {
+    static func create_shape(type: string) -> Shape {
+        match (type) {
+            "circle" => Circle.new(),
+            "rectangle" => Rectangle.new(),
+            _ => throw Error("Unknown shape type")
+        }
+    }
+}
+
+# Builder Pattern
+class Pizza {
+    var size: string;
+    var cheese: bool = false;
+    var pepperoni: bool = false;
+    var mushrooms: bool = false;
+}
+
+class PizzaBuilder {
+    var pizza: Pizza;
+    
+    func new(size: string) -> PizzaBuilder {
+        return PizzaBuilder {
+            pizza: Pizza { size: size }
+        };
+    }
+    
+    func with_cheese() -> PizzaBuilder {
+        this.pizza.cheese = true;
+        return this;
+    }
+    
+    func with_pepperoni() -> PizzaBuilder {
+        this.pizza.pepperoni = true;
+        return this;
+    }
+    
+    func with_mushrooms() -> PizzaBuilder {
+        this.pizza.mushrooms = true;
+        return this;
+    }
+    
+    func build() -> Pizza {
+        return this.pizza;
+    }
+}
+
+# Prototype Pattern
+interface Cloneable {
+    func clone() -> Self;
+}
+
+class Document implements Cloneable {
+    var title: string;
+    var content: string;
+    
+    func clone() -> Document {
+        return Document {
+            title: this.title,
+            content: this.content
+        };
+    }
+}
+
+# ============= STRUCTURAL PATTERNS =============
+
+# Adapter Pattern
+interface MediaPlayer {
+    func play(file: string) -> void;
+}
+
+class MP3Player {
+    func play_mp3(file: string) {
+        println("Playing MP3: " + file);
+    }
+}
+
+class MediaAdapter implements MediaPlayer {
+    var mp3_player: MP3Player;
+    
+    func new() -> MediaAdapter {
+        return MediaAdapter {
+            mp3_player: MP3Player.new()
+        };
+    }
+    
+    func play(file: string) {
+        if (file.ends_with(".mp3")) {
+            this.mp3_player.play_mp3(file);
+        }
+    }
+}
+
+# Decorator Pattern
+interface Coffee {
+    func cost() -> float;
+    func description() -> string;
+}
+
+class SimpleCoffee implements Coffee {
+    func cost() -> float { return 1.0; }
+    func description() -> string { return "Simple coffee"; }
+}
+
+class MilkDecorator implements Coffee {
+    var coffee: Coffee;
+    
+    func new(coffee: Coffee) -> MilkDecorator {
+        return MilkDecorator { coffee: coffee };
+    }
+    
+    func cost() -> float {
+        return this.coffee.cost() + 0.5;
+    }
+    
+    func description() -> string {
+        return this.coffee.description() + ", milk";
+    }
+}
+
+# Facade Pattern
+class CPU {
+    func freeze() { println("CPU freeze"); }
+    func jump(position: int) { println("CPU jump"); }
+    func execute() { println("CPU execute"); }
+}
+
+class Memory {
+    func load(position: int, data: [byte]) {
+        println("Memory load");
+    }
+}
+
+class HardDrive {
+    func read(lba: int, size: int) -> [byte] {
+        println("HardDrive read");
+        return [];
+    }
+}
+
+class ComputerFacade {
+    var cpu: CPU;
+    var memory: Memory;
+    var hard_drive: HardDrive;
+    
+    func new() -> ComputerFacade {
+        return ComputerFacade {
+            cpu: CPU.new(),
+            memory: Memory.new(),
+            hard_drive: HardDrive.new()
+        };
+    }
+    
+    func start() {
+        this.cpu.freeze();
+        this.memory.load(0, this.hard_drive.read(0, 1024));
+        this.cpu.jump(0);
+        this.cpu.execute();
+    }
+}
+
+# Proxy Pattern
+interface Image {
+    func display() -> void;
+}
+
+class RealImage implements Image {
+    var filename: string;
+    
+    func new(filename: string) -> RealImage {
+        println("Loading image: " + filename);
+        return RealImage { filename: filename };
+    }
+    
+    func display() {
+        println("Displaying: " + this.filename);
+    }
+}
+
+class ProxyImage implements Image {
+    var filename: string;
+    var real_image: Option<RealImage> = None;
+    
+    func new(filename: string) -> ProxyImage {
+        return ProxyImage { filename: filename };
+    }
+    
+    func display() {
+        if (this.real_image == None) {
+            this.real_image = Some(RealImage.new(this.filename));
+        }
+        this.real_image.unwrap().display();
+    }
+}
+
+# ============= BEHAVIORAL PATTERNS =============
+
+# Observer Pattern
+interface Observer {
+    func update(data: any) -> void;
+}
+
+class Subject {
+    var observers: [Observer] = [];
+    
+    func attach(observer: Observer) {
+        this.observers.push(observer);
+    }
+    
+    func detach(observer: Observer) {
+        # Remove observer
+    }
+    
+    func notify(data: any) {
+        for (var observer in this.observers) {
+            observer.update(data);
+        }
+    }
+}
+
+# Strategy Pattern
+interface SortStrategy {
+    func sort<T>(arr: [T]) -> [T] where T: Ord;
+}
+
+class QuickSortStrategy implements SortStrategy {
+    func sort<T>(arr: [T]) -> [T] where T: Ord {
+        return quick_sort(arr);
+    }
+}
+
+class MergeSortStrategy implements SortStrategy {
+    func sort<T>(arr: [T]) -> [T] where T: Ord {
+        return merge_sort(arr);
+    }
+}
+
+class Sorter {
+    var strategy: SortStrategy;
+    
+    func new(strategy: SortStrategy) -> Sorter {
+        return Sorter { strategy: strategy };
+    }
+    
+    func sort<T>(arr: [T]) -> [T] where T: Ord {
+        return this.strategy.sort(arr);
+    }
+}
+
+# Command Pattern
+interface Command {
+    func execute() -> void;
+    func undo() -> void;
+}
+
+class Light {
+    func turn_on() { println("Light ON"); }
+    func turn_off() { println("Light OFF"); }
+}
+
+class LightOnCommand implements Command {
+    var light: Light;
+    
+    func new(light: Light) -> LightOnCommand {
+        return LightOnCommand { light: light };
+    }
+    
+    func execute() {
+        this.light.turn_on();
+    }
+    
+    func undo() {
+        this.light.turn_off();
+    }
+}
+
+class RemoteControl {
+    var command: Option<Command> = None;
+    
+    func set_command(command: Command) {
+        this.command = Some(command);
+    }
+    
+    func press_button() {
+        if (this.command != None) {
+            this.command.unwrap().execute();
+        }
+    }
+    
+    func press_undo() {
+        if (this.command != None) {
+            this.command.unwrap().undo();
+        }
+    }
+}
+
+# State Pattern
+interface State {
+    func handle(context: Context) -> void;
+}
+
+class Context {
+    var state: State;
+    
+    func new(state: State) -> Context {
+        return Context { state: state };
+    }
+    
+    func set_state(state: State) {
+        this.state = state;
+    }
+    
+    func request() {
+        this.state.handle(this);
+    }
+}
+
+# Template Method Pattern
+abstract class DataProcessor {
+    func process() {
+        this.read_data();
+        this.process_data();
+        this.write_data();
+    }
+    
+    abstract func read_data() -> void;
+    abstract func process_data() -> void;
+    abstract func write_data() -> void;
+}
+
+class CSVProcessor extends DataProcessor {
+    func read_data() {
+        println("Reading CSV");
+    }
+    
+    func process_data() {
+        println("Processing CSV");
+    }
+    
+    func write_data() {
+        println("Writing CSV");
+    }
+}
+
+# Chain of Responsibility Pattern
+abstract class Handler {
+    var next: Option<Handler> = None;
+    
+    func set_next(handler: Handler) {
+        this.next = Some(handler);
+    }
+    
+    func handle_request(request: string) {
+        if (this.can_handle(request)) {
+            this.process(request);
+        } else if (this.next != None) {
+            this.next.unwrap().handle_request(request);
+        }
+    }
+    
+    abstract func can_handle(request: string) -> bool;
+    abstract func process(request: string) -> void;
+}

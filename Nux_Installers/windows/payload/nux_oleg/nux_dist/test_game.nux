@@ -1,0 +1,53 @@
+import "ui";
+
+func main() {
+    var width = 800;
+    var height = 600;
+    
+    # Initialize 800x600 window
+    vbe_set_mode(width, height, 32);
+    
+    var fb = vbe_get_fb();
+    
+    var x = 100;
+    var y = 100;
+    var player_w = 50;
+    var player_h = 50;
+    
+    var is_running = 1;
+    var frames = 0;
+    
+    while (is_running == 1) {
+        frames = frames + 1;
+        println(frames);
+        if (frames > 50) {
+            is_running = 0;
+            break;
+        }
+        
+        # Check ESC key (27) - Actually vbe_get_key does not return ESC cleanly, 
+        # but window will close on ESC automatically in minifb loop.
+        
+        # W = 87, A = 65, S = 83, D = 68
+        if (vbe_get_key(87) == 1) {
+            y = y - 5;
+        }
+        if (vbe_get_key(83) == 1) {
+            y = y + 5;
+        }
+        if (vbe_get_key(65) == 1) {
+            x = x - 5;
+        }
+        if (vbe_get_key(68) == 1) {
+            x = x + 5;
+        }
+        
+        # Clear Screen (Black)
+        clear_screen(fb, width, height, 0x000000);
+        
+        # Draw Player (Green)
+        draw_rect(fb, width, height, x, y, player_w, player_h, 0x00FF00);
+        
+        vbe_update();
+    }
+}

@@ -1,0 +1,84 @@
+# dataframe.nux - Pandas-like DataFrames for Nux
+# Builds on top of tensor.nux for high-performance columns
+
+import "std/tensor.nux";
+
+class DataFrame {
+    var columns;
+    var column_names;
+    var num_rows;
+    var num_cols;
+    
+    func init() {
+        this.columns = arr_new(32); # support up to 32 columns initially
+        this.column_names = arr_new(32);
+        this.num_rows = 0;
+        this.num_cols = 0;
+    }
+    
+    # Add a column to the dataframe
+    func add_column(name, tensor_1d) {
+        if (this.num_cols == 0) {
+            this.num_rows = tensor_size(tensor_1d);
+        } else {
+            if (tensor_size(tensor_1d) != this.num_rows) {
+                print("Error: Column size mismatch\n");
+                return 0;
+            }
+        }
+        
+        arr_set(this.columns, this.num_cols, tensor_1d);
+        arr_set(this.column_names, this.num_cols, name);
+        this.num_cols = this.num_cols + 1;
+        return 1;
+    }
+    
+    # Get a column by name
+    func get_column(name) {
+        for (var i = 0; i < this.num_cols; i = i + 1) {
+            if (arr_get(this.column_names, i) == name) {
+                return arr_get(this.columns, i);
+            }
+        }
+        print("Column not found: ");
+        print(name);
+        print("\n");
+        return 0;
+    }
+    
+    # Print the first n rows
+    func head(n) {
+        var rows_to_print = n;
+        if (rows_to_print > this.num_rows) { 
+            rows_to_print = this.num_rows; 
+        }
+        
+        # Header
+        for (var i = 0; i < this.num_cols; i = i + 1) {
+            print(arr_get(this.column_names, i));
+            print("  |  ");
+        }
+        print("\n------------------------\n");
+        
+        # Rows
+        for (var row = 0; row < rows_to_print; row = row + 1) {
+            for (var col = 0; col < this.num_cols; col = col + 1) {
+                var t = arr_get(this.columns, col);
+                var val = tensor_get_1d(t, row);
+                print(val);
+                print("  |  ");
+            }
+            print("\n");
+        }
+    }
+    
+    # Calculate simple stats for a column
+    func column_mean(name) {
+        var col = this.get_column(name);
+        if (col == 0) { return 0; }
+        
+        var total = tensor_sum(col);
+        if (this.num_rows == 0) { return 0; }
+        return total / this.num_rows;
+    }
+}

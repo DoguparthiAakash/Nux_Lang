@@ -1,0 +1,79 @@
+import "gfx"
+import "math3d"
+import "ui"
+
+func main() {
+    var gfx: Graphics = new Graphics();
+    gfx.init(640, 480);
+
+    var engine3d: Engine3D = new Engine3D();
+    engine3d.init(640, 480, 256); # 256 FOV scaler
+
+    var btn: Button = new Button();
+    btn.init(20, 20, 150, 40, 4210752, 8421504, 16711680); # Gray, Light Gray, Red
+    
+    # Simple 3D cube vertices (Z axis moved 200 units away so it's visible)
+    var v0: Vector3 = new Vector3(); v0.init(-50, -50, 150);
+    var v1: Vector3 = new Vector3(); v1.init(50, -50, 150);
+    var v2: Vector3 = new Vector3(); v2.init(50, 50, 150);
+    var v3: Vector3 = new Vector3(); v3.init(-50, 50, 150);
+    var v4: Vector3 = new Vector3(); v4.init(-50, -50, 250);
+    var v5: Vector3 = new Vector3(); v5.init(50, -50, 250);
+    var v6: Vector3 = new Vector3(); v6.init(50, 50, 250);
+    var v7: Vector3 = new Vector3(); v7.init(-50, 50, 250);
+
+    var angle: int = 0;
+    var running: int = 1;
+
+    while (running == 1) {
+        # Clear screen (black)
+        gfx.clear(0);
+        
+        # --- 3D RENDER ---
+        # Quick sin/cos approximations scaled by 100
+        # Nux has built in `sin` but let's just make it simple if we rotate manually
+        # We will just do a tiny 2D projection rotation for fun
+        
+        # For simplicity in this demo, let's just rotate the X coordinates slightly
+        # over time by moving the X offsets
+        var offset: int = angle % 100;
+        if (offset > 50) { offset = 100 - offset; }
+        offset = offset - 25; # swing from -25 to +25
+        
+        v0.x = -50 + offset; v1.x = 50 + offset;
+        v2.x = 50 + offset; v3.x = -50 + offset;
+        
+        # Draw back face
+        engine3d.draw_line3d(gfx, v4, v5, 16776960);
+        engine3d.draw_line3d(gfx, v5, v6, 16776960);
+        engine3d.draw_line3d(gfx, v6, v7, 16776960);
+        engine3d.draw_line3d(gfx, v7, v4, 16776960);
+        
+        # Draw front face
+        engine3d.draw_line3d(gfx, v0, v1, 65280);
+        engine3d.draw_line3d(gfx, v1, v2, 65280);
+        engine3d.draw_line3d(gfx, v2, v3, 65280);
+        engine3d.draw_line3d(gfx, v3, v0, 65280);
+        
+        # Draw connecting edges
+        engine3d.draw_line3d(gfx, v0, v4, 16711935);
+        engine3d.draw_line3d(gfx, v1, v5, 16711935);
+        engine3d.draw_line3d(gfx, v2, v6, 16711935);
+        engine3d.draw_line3d(gfx, v3, v7, 16711935);
+        
+        # --- UI RENDER ---
+        btn.update();
+        if (btn.is_clicked() == 1) {
+            # Change FOV when clicked as an interactive test
+            engine3d.fov = engine3d.fov + 10;
+        }
+        btn.draw(gfx);
+        
+        gfx.update();
+        
+        angle = angle + 1;
+        sleep(10);
+    }
+}
+
+main();

@@ -1,0 +1,32 @@
+# Nux LAG Example — semicolon syntax (updated)
+
+import nux.lag.python.3.13.7;
+from python import os;
+
+nux.lag python.3.13.7 = v1;
+
+var path = "/etc/hosts";
+
+var = new var;
+var1 = new var;
+
+var.v1{
+    import os
+    path = '/etc/hosts'
+    if os.path.exists(path):
+        print("Path exists!")
+}
+
+var1.v1{
+    import os
+    path = '/etc/hosts'
+    if os.path.isfile(path):
+        print("It is a file.")
+}
+
+if(var==true){
+    print(var);
+}
+else{
+    print(var1);
+}

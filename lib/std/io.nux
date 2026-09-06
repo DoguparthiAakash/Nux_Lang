@@ -1,0 +1,299 @@
+/// std::io — Nux I/O Standard Library
+///
+/// Provides platform-independent print/read operations for both
+/// bare-metal (VGA text mode) and user-space (Linux/Windows stdout).
+///
+/// On bare metal (Navi OS): writes to VGA text buffer at 0xB8000.
+/// On user-space: the native compiler backend maps to write(1,...).
+///
+/// Usage:
+///   import std::io;
+///   io::print("Hello, World!\n");
+///   io::print_u32(42);
+
+@[no_std]
+import std::hw;
+import std::string;
+
+# ─── VGA Color Attributes ─────────────────────────────────────────────────────
+
+var COLOR_BLACK:        u8 = 0;
+var COLOR_BLUE:         u8 = 1;
+var COLOR_GREEN:        u8 = 2;
+var COLOR_CYAN:         u8 = 3;
+var COLOR_RED:          u8 = 4;
+var COLOR_MAGENTA:      u8 = 5;
+var COLOR_BROWN:        u8 = 6;
+var COLOR_LIGHT_GREY:   u8 = 7;
+var COLOR_DARK_GREY:    u8 = 8;
+var COLOR_LIGHT_BLUE:   u8 = 9;
+var COLOR_LIGHT_GREEN:  u8 = 10;
+var COLOR_LIGHT_CYAN:   u8 = 11;
+var COLOR_LIGHT_RED:    u8 = 12;
+var COLOR_LIGHT_MAGENTA:u8 = 13;
+var COLOR_LIGHT_BROWN:  u8 = 14;
+var COLOR_YELLOW:       u8 = 14;  # alias for LIGHT_BROWN
+var COLOR_WHITE:        u8 = 15;
+
+# ─── VGA State ────────────────────────────────────────────────────────────────
+
+var vga_col:   u32 = 0;
+var vga_row:   u32 = 0;
+var vga_color: u8  = 0x0F;  # white on black
+
+func make_vga_color(fg: u8, bg: u8) -> u8 {
+    return fg | (bg << 4);
+}
+
+func set_color(fg: u8, bg: u8) {
+    vga_color = make_vga_color(fg, bg);
+}
+
+# ─── VGA Core ─────────────────────────────────────────────────────────────────
+
+func vga_put_at(ch: u8, col: u32, row: u32) {
+    var idx: u32 = row * hw::VGA_WIDTH + col;
+    var entry: u16 = ch as u16 | (vga_color as u16 << 8);
+    asm("mov %0, %%eax\n\t"
+        "mov %1, %%ecx\n\t"
+        "lea (%%eax, %%ecx, 2), %%eax\n\t"
+        "movw %2, (%%eax)\n\t"
+        : : "r"(hw::VGA_BUFFER), "r"(idx), "r"(entry) : "%eax", "%ecx");
+}
+
+func scroll_up() {
+    # Move all rows up by one
+    var row: u32 = 1;
+    while (row < hw::VGA_HEIGHT) {
+        var col: u32 = 0;
+        while (col < hw::VGA_WIDTH) {
+            var src_idx: u32 = row * hw::VGA_WIDTH + col;
+            var dst_idx: u32 = (row - 1) * hw::VGA_WIDTH + col;
+            var entry: u16 = 0;
+            asm("mov %1, %%eax\n\t"
+                "lea (%%eax, %2, 2), %%eax\n\t"
+                "movw (%%eax), %0\n\t"
+                : "=r"(entry) : "r"(hw::VGA_BUFFER), "r"(src_idx) : "%eax");
+            asm("mov %0, %%eax\n\t"
+                "lea (%%eax, %1, 2), %%eax\n\t"
+                "movw %2, (%%eax)\n\t"
+                : : "r"(hw::VGA_BUFFER), "r"(dst_idx), "r"(entry) : "%eax");
+            col += 1;
+        }
+        row += 1;
+    }
+    # Clear the last row
+    var col: u32 = 0;
+    var blank: u16 = 0x20 | (vga_color as u16 << 8);
+    while (col < hw::VGA_WIDTH) {
+        var idx: u32 = (hw::VGA_HEIGHT - 1) * hw::VGA_WIDTH + col;
+        asm("mov %0, %%eax\n\t"
+            "lea (%%eax, %1, 2), %%eax\n\t"
+            "movw %2, (%%eax)\n\t"
+            : : "r"(hw::VGA_BUFFER), "r"(idx), "r"(blank) : "%eax");
+        col += 1;
+    }
+}
+
+/// Clear the entire screen (fill with spaces using current color).
+func clear() {
+    vga_col = 0;
+    vga_row = 0;
+    var row: u32 = 0;
+    while (row < hw::VGA_HEIGHT) {
+        var col: u32 = 0;
+        while (col < hw::VGA_WIDTH) {
+            vga_put_at(0x20, col, row);
+            col += 1;
+        }
+        row += 1;
+    }
+}
+
+# ─── Character Output ─────────────────────────────────────────────────────────
+
+/// Print a single character.
+func print_char(ch: u8) {
+    if (ch == 10) {   # '\n' newline
+        vga_col = 0;
+        vga_row += 1;
+    } else if (ch == 13) {  # '\r' carriage return
+        vga_col = 0;
+    } else if (ch == 8) {   # '\b' backspace
+        if (vga_col > 0) {
+            vga_col -= 1;
+            vga_put_at(0x20, vga_col, vga_row);
+        }
+    } else if (ch == 9) {   # '\t' tab (align to 8)
+        vga_col = (vga_col + 8) & -(8 as u32);
+    } else {
+        vga_put_at(ch, vga_col, vga_row);
+        vga_col += 1;
+    }
+
+    # Wrap at end of line
+    if (vga_col >= hw::VGA_WIDTH) {
+        vga_col = 0;
+        vga_row += 1;
+    }
+
+    # Scroll if past last row
+    if (vga_row >= hw::VGA_HEIGHT) {
+        scroll_up();
+        vga_row = hw::VGA_HEIGHT - 1;
+    }
+}
+
+# ─── String Output ────────────────────────────────────────────────────────────
+
+/// Print a null-terminated string.
+func print(str: *u8) {
+    var i: u32 = 0;
+    while (true) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(str), "r"(i) : "%eax", "%ecx");
+        if (c == 0) { break; }
+        print_char(c);
+        i += 1;
+    }
+}
+
+/// Print a null-terminated string followed by a newline.
+func println(s: *u8) {
+    print(s);
+    print_char(10);
+}
+
+/// Print an unsigned 32-bit integer in decimal.
+func print_u32(val: u32) {
+    var buf: *u8 = 0x00300000;  # scratch buffer in low memory
+    string::u32_to_str(val, buf);
+    print(buf);
+}
+
+/// Print an unsigned 32-bit integer in hexadecimal (with "0x" prefix).
+func print_hex(val: u32) {
+    print("0x");
+    var digits = "0123456789ABCDEF";
+    var shift: u32 = 28;
+    var started = false;
+    while (true) {
+        var nibble: u32 = (val >> shift) & 0xF;
+        if (nibble != 0 || started || shift == 0) {
+            var digit: u8 = 0;
+            asm("mov %1, %%eax\n\t"
+                "add %2, %%eax\n\t"
+                "movb (%%eax), %%cl\n\t"
+                "mov %%cl, %0\n\t"
+                : "=r"(digit) : "r"(digits), "r"(nibble) : "%eax", "%ecx");
+            print_char(digit);
+            started = true;
+        }
+        if (shift == 0) { break; }
+        shift -= 4;
+    }
+}
+
+/// Print an unsigned 32-bit integer in binary (with "0b" prefix).
+func print_bin(val: u32) {
+    print("0b");
+    var i: u32 = 31;
+    var started = false;
+    while (true) {
+        var bit: u32 = (val >> i) & 1;
+        if (bit != 0 || started || i == 0) {
+            if (bit == 0) {
+                print_char(48);  # '0'
+            } else {
+                print_char(49);  # '1'
+            }
+            started = true;
+        }
+        if (i == 0) { break; }
+        i -= 1;
+    }
+}
+
+/// Print a panic message and halt the CPU forever.
+func panic(msg: *u8) {
+    set_color(COLOR_WHITE, COLOR_RED);
+    print("\n[KERNEL PANIC] ");
+    println(msg);
+    hw::halt_forever();
+}
+
+# ─── Positioned Output (for editor / file manager) ────────────────────────────
+
+/// Write a single character directly to VGA buffer at (col, row).
+func print_char_at(ch: u8, col: u32, row: u32) {
+    vga_put_at(ch, col, row);
+}
+
+/// Print a null-terminated string starting at (col, row).
+/// Does not wrap — caller must clip.
+func print_at(s: *u8, col: u32, row: u32) {
+    var i: u32 = 0;
+    var c_col = col;
+    while (c_col < hw::VGA_WIDTH) {
+        var c: u8 = 0;
+        asm("movzbl (%1,%2,1), %%eax\n\t" "movb %%al, %b0\n\t"
+            : "=q"(c) : "r"(s), "r"(i) : "%eax");
+        if (c == 0) { break; }
+        vga_put_at(c, c_col, row);
+        c_col += 1;
+        i += 1;
+    }
+}
+
+/// Print a u32 at (col, row) using scratch memory at 0x00310000.
+func print_u32_at(val: u32, col: u32, row: u32) {
+    var buf: *u8 = 0x00310000;
+    string::u32_to_str(val, buf);
+    print_at(buf, col, row);
+}
+
+/// Fill an entire row with spaces (using the current VGA color attribute).
+func clear_row(row: u32) {
+    var col: u32 = 0;
+    while (col < hw::VGA_WIDTH) {
+        vga_put_at(0x20, col, row);
+        col += 1;
+    }
+}
+
+/// Fill columns [start_col, start_col+len) on the given row with spaces.
+func clear_cols(start_col: u32, len: u32, row: u32) {
+    var col = start_col;
+    var end_col = start_col + len;
+    while (col < end_col && col < hw::VGA_WIDTH) {
+        vga_put_at(0x20, col, row);
+        col += 1;
+    }
+}
+
+/// Move the hardware text cursor to (col, row) via VGA port I/O.
+func set_cursor(col: u32, row: u32) {
+    var pos: u32 = row * hw::VGA_WIDTH + col;
+    # High byte of position → register 14
+    var hi: u8 = 0;
+    asm("movl %1, %%eax\n\t"
+        "shrl $8, %%eax\n\t"
+        "andl $0xFF, %%eax\n\t"
+        "movb %%al, %b0\n\t"
+        : "=q"(hi) : "r"(pos) : "%eax");
+    hw::outb(0x3D4, 14);
+    hw::outb(0x3D5, hi);
+    # Low byte of position → register 15
+    var lo: u8 = 0;
+    asm("movl %1, %%eax\n\t"
+        "andl $0xFF, %%eax\n\t"
+        "movb %%al, %b0\n\t"
+        : "=q"(lo) : "r"(pos) : "%eax");
+    hw::outb(0x3D4, 15);
+    hw::outb(0x3D5, lo);
+}
+

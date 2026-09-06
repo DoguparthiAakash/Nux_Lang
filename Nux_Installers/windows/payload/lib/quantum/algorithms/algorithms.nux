@@ -1,0 +1,320 @@
+# Nux Quantum Algorithms — Grover, Shor, QAOA, QFT, QPE, BB84
+
+# ===== QFT — Quantum Fourier Transform =====
+class QFT {
+    func build(circuit: &mut QuantumCircuit, qubits: &[usize]) {
+        var n = qubits.len;
+        for (var i = 0; i < n; i += 1) {
+            circuit.h(qubits[i]);
+            for (var j = i + 1; j < n; j += 1) {
+                var angle = PI / pow_f64(2.0, (j - i) as f64);
+                circuit.cp(qubits[j], qubits[i], angle);  # controlled phase
+            }
+        }
+        # Reverse qubit order
+        for (var i = 0; i < n / 2; i += 1) {
+            circuit.swap(qubits[i], qubits[n - 1 - i]);
+        }
+    }
+    func inverse(circuit: &mut QuantumCircuit, qubits: &[usize]) {
+        var n = qubits.len;
+        for (var i = 0; i < n / 2; i += 1) {
+            circuit.swap(qubits[i], qubits[n - 1 - i]);
+        }
+        for (var i = n - 1; i >= 0; i -= 1) {
+            for (var j = n - 1; j > i; j -= 1) {
+                var angle = -PI / pow_f64(2.0, (j - i) as f64);
+                circuit.cp(qubits[j], qubits[i], angle);
+            }
+            circuit.h(qubits[i]);
+        }
+    }
+}
+
+# ===== QPE — Quantum Phase Estimation =====
+class QPE {
+    var n_counting: usize;    # counting qubits
+    var n_target: usize;      # target qubits
+
+    func new(n_counting: usize, n_target: usize) -> @own QPE {
+        return QPE { n_counting: n_counting, n_target: n_target };
+    }
+
+    # Build QPE circuit for unitary U
+    # circuit: preallocated circuit with n_counting + n_target qubits
+    func build(&self, circuit: &mut QuantumCircuit) {
+        var total = self.n_counting + self.n_target;
+        var counting = Vec.new();
+        for (var i = 0; i < self.n_counting; i += 1) { counting.push(i); }
+        var target = Vec.new();
+        for (var i = self.n_counting; i < total; i += 1) { target.push(i); }
+
+        # Hadamard on counting qubits
+        for (var i = 0; i < counting.len; i += 1) { circuit.h(counting.get(i).unwrap()); }
+        # Target init: |1>
+        circuit.x(target.get(0).unwrap());
+
+        # Controlled-U^(2^j) for each counting qubit
+        for (var j = 0; j < self.n_counting; j += 1) {
+            var reps = 1 << j;
+            for (var r = 0; r < reps; r += 1) {
+                circuit.cu(counting.get(j).unwrap(), target.get(0).unwrap(), 0.0, 0.0, PI / 4.0);
+            }
+        }
+
+        # Inverse QFT on counting qubits
+        var qft = QFT {};
+        var count_arr = counting.as_slice();
+        qft.inverse(circuit, count_arr);
+    }
+
+    func estimate_phase(sim: &QuantumSimulator, circuit: &QuantumCircuit, shots: i32) -> f64 {
+        var counts = sim.run(circuit, shots);
+        var best = counts.most_frequent();
+        var n = self.n_counting;
+        # Convert bitstring to integer
+        var val: u64 = 0;
+        for (var i = 0; i < n; i += 1) {
+            if (best.bit(i)) { val = val | (1 << (n - 1 - i)); }
+        }
+        return (val as f64) / pow_f64(2.0, n as f64);
+    }
+}
+
+# ===== GROVER'S ALGORITHM =====
+class Grover {
+    var target: Vec[bool];   # oracle target bitstring
+
+    func new(target: Vec[bool]) -> @own Grover { return Grover { target: target }; }
+
+    func n_qubits(&self) -> usize { return self.target.len; }
+
+    func optimal_iterations(&self) -> i32 {
+        var n = self.n_qubits();
+        var n_items = 1 << n;
+        return floor_f32(PI / 4.0 * sqrt_f32(n_items as f32)) as i32;
+    }
+
+    # Build Grover circuit
+    func build(&self, circuit: &mut QuantumCircuit) {
+        var n = self.n_qubits();
+        var qs = Vec.new();
+        for (var i = 0; i < n; i += 1) { qs.push(i); }
+
+        # Superposition
+        for (var i = 0; i < n; i += 1) { circuit.h(i); }
+
+        var iters = self.optimal_iterations();
+        for (var it = 0; it < iters; it += 1) {
+            self.oracle(circuit, &qs);
+            self.diffuser(circuit, &qs);
+        }
+
+        # Measure all
+        for (var i = 0; i < n; i += 1) { circuit.measure(i); }
+    }
+
+    # Phase oracle: flip phase of target state
+    func oracle(&self, circuit: &mut QuantumCircuit, qs: &Vec[usize]) {
+        var n = qs.len;
+        # Flip qubits that are 0 in target
+        for (var i = 0; i < n; i += 1) {
+            if (!self.target.get(i).unwrap()) { circuit.x(qs.get(i).unwrap()); }
+        }
+        # Multi-controlled Z
+        circuit.mcz(qs);
+        # Unflip
+        for (var i = 0; i < n; i += 1) {
+            if (!self.target.get(i).unwrap()) { circuit.x(qs.get(i).unwrap()); }
+        }
+    }
+
+    # Grover diffuser: 2|ψ><ψ| - I
+    func diffuser(&self, circuit: &mut QuantumCircuit, qs: &Vec[usize]) {
+        var n = qs.len;
+        for (var i = 0; i < n; i += 1) { circuit.h(qs.get(i).unwrap()); }
+        for (var i = 0; i < n; i += 1) { circuit.x(qs.get(i).unwrap()); }
+        circuit.mcz(qs);
+        for (var i = 0; i < n; i += 1) { circuit.x(qs.get(i).unwrap()); }
+        for (var i = 0; i < n; i += 1) { circuit.h(qs.get(i).unwrap()); }
+    }
+
+    func run_and_find(sim: &QuantumSimulator, shots: i32) -> String {
+        var n = self.n_qubits();
+        var circuit = QuantumCircuit.new(n);
+        self.build(&mut circuit);
+        var counts = sim.run(&circuit, shots);
+        return counts.most_frequent();
+    }
+}
+
+# ===== SHOR'S ALGORITHM (Classical wrapper + QPE core) =====
+class Shor {
+    func factor(N: u64) -> (u64, u64) {
+        # Classical part
+        if (N % 2 == 0) { return (2, N / 2); }
+        # Try random a
+        var a = rand_u64_range(2, N - 1);
+        var g = gcd(a, N);
+        if (g > 1) { return (g, N / g); }
+        # Quantum period finding (QPE-based)
+        var r = Shor.find_period(a, N);
+        if (r % 2 == 1) { return (0, N); }  # retry
+        var p = pow_u64(a, r / 2) + 1;
+        var q = pow_u64(a, r / 2) - 1;
+        var f1 = gcd(p % N, N);
+        var f2 = gcd(q % N, N);
+        if (f1 > 1 && f1 < N) { return (f1, N / f1); }
+        if (f2 > 1 && f2 < N) { return (f2, N / f2); }
+        return (0, N); # failed, retry with different a
+    }
+
+    func find_period(a: u64, N: u64) -> u64 {
+        # n_counting = 2 * log2(N), n_target = log2(N)
+        var n_bits = ceil_log2(N);
+        var n_counting = 2 * n_bits;
+        var qpe = QPE.new(n_counting as usize, n_bits as usize);
+        var sim = QuantumSimulator.new();
+        var circuit = QuantumCircuit.new(n_counting + n_bits);
+        qpe.build(&mut circuit);
+        var phase = qpe.estimate_phase(&sim, &circuit, 1024);
+        # Convert phase to period via continued fractions
+        return continued_fraction_period(phase, N as f64);
+    }
+}
+
+# ===== QAOA — Quantum Approximate Optimization Algorithm =====
+class QAOALayer {
+    var gamma: f32;   # problem unitary angle
+    var beta: f32;    # mixer unitary angle
+}
+
+class QAOA {
+    var n_qubits: usize;
+    var p: usize;     # circuit depth
+    var layers: Vec[QAOALayer];
+    var problem_edges: Vec[(usize, usize, f32)]; # (i,j,weight)
+
+    func new(n: usize, p: usize, edges: Vec[(usize, usize, f32)]) -> @own QAOA {
+        var layers = Vec.new();
+        for (var i = 0; i < p; i += 1) {
+            layers.push(QAOALayer { gamma: rand_f32_range(0.0, PI), beta: rand_f32_range(0.0, PI) });
+        }
+        return QAOA { n_qubits: n, p: p, layers: layers, problem_edges: edges };
+    }
+
+    func build(&self, circuit: &mut QuantumCircuit) {
+        var n = self.n_qubits;
+        # Init superposition
+        for (var i = 0; i < n; i += 1) { circuit.h(i); }
+        for (var d = 0; d < self.p; d += 1) {
+            var gamma = self.layers.get(d).unwrap().gamma;
+            var beta  = self.layers.get(d).unwrap().beta;
+            # Problem unitary: e^{-i*gamma*H_C}
+            for (var e = 0; e < self.problem_edges.len; e += 1) {
+                var (qi, qj, w) = self.problem_edges.get(e).unwrap();
+                circuit.cx(qi, qj);
+                circuit.rz(qj, gamma * w);
+                circuit.cx(qi, qj);
+            }
+            # Mixer unitary: e^{-i*beta*H_B}
+            for (var i = 0; i < n; i += 1) { circuit.rx(i, 2.0 * beta); }
+        }
+        for (var i = 0; i < n; i += 1) { circuit.measure(i); }
+    }
+
+    func optimize(&mut self, sim: &QuantumSimulator, shots: i32, iterations: i32) -> Vec[f32] {
+        # Classical optimization of gamma/beta (gradient-free: COBYLA)
+        for (var iter = 0; iter < iterations; iter += 1) {
+            var cost = self.evaluate(sim, shots);
+            # Simple gradient-free update (parameter shift can be added)
+            for (var d = 0; d < self.p; d += 1) {
+                self.layers.get(d).unwrap().gamma += rand_f32_range(-0.05, 0.05);
+                self.layers.get(d).unwrap().beta  += rand_f32_range(-0.05, 0.05);
+            }
+        }
+        return self.best_params();
+    }
+
+    func evaluate(&self, sim: &QuantumSimulator, shots: i32) -> f32 {
+        var c = QuantumCircuit.new(self.n_qubits);
+        self.build(&mut c);
+        var counts = sim.run(&c, shots);
+        # Compute expected cut value
+        var total: f32 = 0.0;
+        var total_shots: f32 = 0.0;
+        for (var s = 0; s < counts.states.len; s += 1) {
+            var state = counts.states.get(s).unwrap();
+            var cnt   = counts.counts.get(s).unwrap();
+            var cut   = self.cut_value(&state);
+            total += cut * cnt as f32;
+            total_shots += cnt as f32;
+        }
+        return total / total_shots;
+    }
+
+    func cut_value(&self, bitstring: &String) -> f32 {
+        var cut: f32 = 0.0;
+        for (var e = 0; e < self.problem_edges.len; e += 1) {
+            var (qi, qj, w) = self.problem_edges.get(e).unwrap();
+            var bi = bitstring.char_at(qi) == '1';
+            var bj = bitstring.char_at(qj) == '1';
+            if (bi != bj) { cut += w; }
+        }
+        return cut;
+    }
+
+    func best_params(&self) -> Vec[f32] {
+        var p = Vec.new();
+        for (var d = 0; d < self.p; d += 1) {
+            var l = self.layers.get(d).unwrap();
+            p.push(l.gamma); p.push(l.beta);
+        }
+        return p;
+    }
+}
+
+# ===== BB84 — Quantum Key Distribution =====
+class BB84 {
+    func generate_key(n_bits: usize) -> (Vec[u8], Vec[u8]) {
+        # Alice: random bits + random bases (0=rectilinear, 1=diagonal)
+        var alice_bits  = random_bits(n_bits);
+        var alice_bases = random_bits(n_bits);
+        # Bob: random measurement bases
+        var bob_bases   = random_bits(n_bits);
+        # Simulate quantum channel
+        var bob_bits = Vec.new();
+        for (var i = 0; i < n_bits; i += 1) {
+            var ab = alice_bits.get(i).unwrap();
+            var abase = alice_bases.get(i).unwrap();
+            var bbase = bob_bases.get(i).unwrap();
+            if (abase == bbase) {
+                bob_bits.push(ab);   # bases match: correct bit
+            } else {
+                bob_bits.push(rand_u8() & 1); # random bit
+            }
+        }
+        # Sifting: keep only matching bases
+        var alice_key = Vec.new();
+        var bob_key   = Vec.new();
+        for (var i = 0; i < n_bits; i += 1) {
+            if (alice_bases.get(i).unwrap() == bob_bases.get(i).unwrap()) {
+                alice_key.push(alice_bits.get(i).unwrap());
+                bob_key.push(bob_bits.get(i).unwrap());
+            }
+        }
+        return (alice_key, bob_key);
+    }
+    func error_rate(a: &Vec[u8], b: &Vec[u8]) -> f32 {
+        var err: i32 = 0;
+        for (var i = 0; i < a.len; i += 1) {
+            if (a.get(i).unwrap() != b.get(i).unwrap()) { err += 1; }
+        }
+        return err as f32 / a.len as f32;
+    }
+    func is_secure(a: &Vec[u8], b: &Vec[u8]) -> bool {
+        return BB84.error_rate(a, b) < 0.11; # QBER threshold
+    }
+}
+
+println("Nux Quantum Algorithms loaded.");

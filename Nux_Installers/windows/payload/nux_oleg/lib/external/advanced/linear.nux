@@ -1,0 +1,359 @@
+# Nux Linear Types
+# Resource management with linear types (use-once semantics)
+
+# ===== LINEAR TYPE SYSTEM =====
+
+# Linear types ensure resources are used exactly once
+# Prevents: double-free, use-after-free, resource leaks
+
+class Linear<T> {
+    func constructor(value) {
+        this.value = value;
+        this.consumed = false;
+    }
+    
+    func use(): T {
+        if (this.consumed) {
+            throw new Error("Linear resource already consumed");
+        }
+        this.consumed = true;
+        return this.value;
+    }
+}
+
+# ===== FILE HANDLES (LINEAR) =====
+
+class FileHandle {
+    func constructor(path, mode) {
+        this.path = path;
+        this.fd = file_open(path, mode);
+        this.closed = false;
+    }
+    
+    # Must be called exactly once
+    func close(): void {
+        if (this.closed) {
+            throw new Error("File already closed");
+        }
+        file_close(this.fd);
+        this.closed = true;
+    }
+    
+    func read(): string {
+        if (this.closed) {
+            throw new Error("Cannot read from closed file");
+        }
+        return file_read(this.fd);
+    }
+}
+
+# Type-safe file operations
+func with_file<T>(path: string, func: (FileHandle) -> T): T {
+    var handle = new FileHandle(path, "r");
+    try {
+        return func(handle);
+    } finally {
+        handle.close();  # Guaranteed to be called
+    }
+}
+
+# ===== AFFINE TYPES =====
+
+# Affine types: use at most once (0 or 1 times)
+
+class Affine<T> {
+    func constructor(value) {
+        this.value = value;
+        this.used = false;
+    }
+    
+    func use(): Option<T> {
+        if (this.used) {
+            return Option.none();
+        }
+        this.used = true;
+        return Option.some(this.value);
+    }
+}
+
+# ===== UNIQUE REFERENCES =====
+
+# Unique references: exactly one reference to a value
+
+class Unique<T> {
+    func constructor(value) {
+        this.value = value;
+    }
+    
+    # Transfer ownership
+    func move(): Unique<T> {
+        var moved = new Unique(this.value);
+        this.value = null;  # Original is now invalid
+        return moved;
+    }
+    
+    # Borrow immutably (multiple borrows allowed)
+    func borrow(): Borrowed<T> {
+        return new Borrowed(this.value);
+    }
+    
+    # Borrow mutably (exclusive borrow)
+    func borrow_mut(): BorrowedMut<T> {
+        return new BorrowedMut(this.value);
+    }
+}
+
+class Borrowed<T> {
+    func constructor(value) {
+        this.value = value;
+    }
+    
+    func get(): T {
+        return this.value;
+    }
+}
+
+class BorrowedMut<T> {
+    func constructor(value) {
+        this.value = value;
+    }
+    
+    func get(): T {
+        return this.value;
+    }
+    
+    func set(newValue: T): void {
+        this.value = newValue;
+    }
+}
+
+# ===== OWNERSHIP SYSTEM =====
+
+class Owned<T> {
+    func constructor(value) {
+        this.value = value;
+        this.owner = true;
+    }
+    
+    func transfer(): Owned<T> {
+        if (!this.owner) {
+            throw new Error("Cannot transfer non-owned value");
+        }
+        this.owner = false;
+        return new Owned(this.value);
+    }
+    
+    func drop(): void {
+        if (this.owner) {
+            # Clean up resources
+            this.value = null;
+            this.owner = false;
+        }
+    }
+}
+
+# ===== REGION-BASED MEMORY =====
+
+class Region {
+    func constructor() {
+        this.allocations = [];
+    }
+    
+    func allocate<T>(value: T): Ref<T> {
+        var ref = new Ref(value, this);
+        arr_push(this.allocations, ref);
+        return ref;
+    }
+    
+    func free(): void {
+        # Free all allocations in this region
+        arr_forEach(this.allocations, func(ref) {
+            ref.invalidate();
+        });
+        this.allocations = [];
+    }
+}
+
+class Ref<T> {
+    func constructor(value, region) {
+        this.value = value;
+        this.region = region;
+        this.valid = true;
+    }
+    
+    func get(): T {
+        if (!this.valid) {
+            throw new Error("Reference to freed memory");
+        }
+        return this.value;
+    }
+    
+    func invalidate(): void {
+        this.valid = false;
+        this.value = null;
+    }
+}
+
+func with_region<T>(func: (Region) -> T): T {
+    var region = new Region();
+    try {
+        return func(region);
+    } finally {
+        region.free();
+    }
+}
+
+# ===== CAPABILITY-BASED SECURITY =====
+
+class Capability<T> {
+    func constructor(resource, permissions) {
+        this.resource = resource;
+        this.permissions = permissions;  # read, write, execute
+    }
+    
+    func can_read(): Bool {
+        return arr_contains(this.permissions, "read");
+    }
+    
+    func can_write(): Bool {
+        return arr_contains(this.permissions, "write");
+    }
+    
+    func read(): T {
+        if (!this.can_read()) {
+            throw new Error("No read permission");
+        }
+        return this.resource;
+    }
+    
+    func write(value: T): void {
+        if (!this.can_write()) {
+            throw new Error("No write permission");
+        }
+        this.resource = value;
+    }
+    
+    # Attenuate capability (remove permissions)
+    func attenuate(permissions): Capability<T> {
+        var newPerms = arr_filter(this.permissions, func(p) {
+            return arr_contains(permissions, p);
+        });
+        return new Capability(this.resource, newPerms);
+    }
+}
+
+# ===== SESSION TYPES =====
+
+# Protocol specification at type level
+
+class Session {
+    func constructor(protocol) {
+        this.protocol = protocol;
+        this.state = 0;
+    }
+    
+    func send<T>(value: T): Session {
+        if (this.protocol[this.state].action != "send") {
+            throw new Error("Protocol violation: expected " + this.protocol[this.state].action);
+        }
+        
+        # Send value
+        this.state = this.state + 1;
+        return this;
+    }
+    
+    func receive<T>(): T {
+        if (this.protocol[this.state].action != "receive") {
+            throw new Error("Protocol violation: expected " + this.protocol[this.state].action);
+        }
+        
+        # Receive value
+        this.state = this.state + 1;
+        return null;  # Placeholder
+    }
+    
+    func close(): void {
+        if (this.state != arr_length(this.protocol)) {
+            throw new Error("Protocol not completed");
+        }
+    }
+}
+
+# Example: HTTP protocol
+var httpProtocol = [
+    {action: "send", type: "Request"},
+    {action: "receive", type: "Response"},
+    {action: "close"}
+];
+
+# ===== FRACTIONAL PERMISSIONS =====
+
+class FractionalPerm<T> {
+    func constructor(value, fraction) {
+        this.value = value;
+        this.fraction = fraction;  # 0.0 to 1.0
+    }
+    
+    func can_read(): Bool {
+        return this.fraction > 0;
+    }
+    
+    func can_write(): Bool {
+        return this.fraction == 1.0;
+    }
+    
+    func split(f: float): [FractionalPerm<T>, FractionalPerm<T>] {
+        if (f < 0 || f > this.fraction) {
+            throw new Error("Invalid split fraction");
+        }
+        
+        return [
+            new FractionalPerm(this.value, f),
+            new FractionalPerm(this.value, this.fraction - f)
+        ];
+    }
+    
+    func merge(other: FractionalPerm<T>): FractionalPerm<T> {
+        return new FractionalPerm(this.value, this.fraction + other.fraction);
+    }
+}
+
+# ===== SEPARATION LOGIC =====
+
+class SeparationLogic {
+    # Heap assertions
+    func emp(): Heap {
+        return new Heap({});
+    }
+    
+    func points_to(loc, value): Heap {
+        var heap = {};
+        heap[loc] = value;
+        return new Heap(heap);
+    }
+    
+    func sep_conj(h1: Heap, h2: Heap): Heap {
+        # Separating conjunction: h1 * h2
+        # Heaps must be disjoint
+        var combined = {};
+        
+        obj_forEach(h1.data, func(k, v) {
+            if (h2.data[k] != null) {
+                throw new Error("Heaps not disjoint");
+            }
+            combined[k] = v;
+        });
+        
+        obj_forEach(h2.data, func(k, v) {
+            combined[k] = v;
+        });
+        
+        return new Heap(combined);
+    }
+}
+
+class Heap {
+    func constructor(data) {
+        this.data = data;
+    }
+}

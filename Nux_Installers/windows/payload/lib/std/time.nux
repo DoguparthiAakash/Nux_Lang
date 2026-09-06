@@ -1,0 +1,19 @@
+# std::time
+# Precision timing, clocks, and durations.
+
+class Instant {
+    var timestamp_ns;
+    
+    func now() {
+        # Lowered to OS syscall (e.g., clock_gettime)
+    }
+    
+    func elapsed() {
+        # Returns Duration since this Instant
+    }
+}
+
+class Duration {
+    var seconds;
+    var nanos;
+}

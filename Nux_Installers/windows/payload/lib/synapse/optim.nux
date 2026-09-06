@@ -1,0 +1,26 @@
+# synapse::optim
+# Gradient descent optimizers.
+
+class SGD {
+    var parameters;
+    var learning_rate;
+    
+    func init(params, lr) {
+        this.parameters = params;
+        this.learning_rate = lr;
+    }
+    
+    func step() {
+        # for p in params:
+        #   p.data -= p.grad * lr
+    }
+    
+    func zero_grad() {
+        # for p in params:
+        #   p.grad = 0
+    }
+}
+
+class Adam {
+    # Implements Adam optimization (momentum + RMSprop)
+}

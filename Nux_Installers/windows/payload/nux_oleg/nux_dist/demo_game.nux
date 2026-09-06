@@ -1,0 +1,47 @@
+import "ui";
+import "io";
+
+func main() {
+    print("Nux Demo Game Initializing...\n");
+    
+    var w = 320;
+    var h = 240;
+    
+    # 1. Create a native Window
+    window("Nux Native Render", w, h);
+    
+    # 2. Get FrameBuffer pointer
+    var fb = get_fb();
+    
+    var frame = 0;
+    
+    # Simple procedural loop
+    # We will simulate an interactive loop drawing a shifting pattern and a moving rectangle.
+    while (frame < 255) {
+        
+        # Clear background with a color gradient
+        for (var y = 0; y < h; y = y + 1) {
+            for (var x = 0; x < w; x = x + 1) {
+                var r = (x + frame) % 255;
+                var g = (y + frame) % 255;
+                var b = (x * y / 255) % 255;
+                draw_pixel(fb, x, y, w, r, g, b);
+            }
+        }
+        
+        # Draw a moving square
+        var rect_x = frame % w;
+        var rect_y = (frame * 2) % h;
+        
+        draw_rect(fb, rect_x, rect_y, 40, 40, w, 255, 0, 0); # Red Box
+        
+        # Render the frame to screen natively
+        render_ui();
+        
+        frame = frame + 1;
+    }
+    
+    print("Demo execution finished successfully!\n");
+}
+
+main();

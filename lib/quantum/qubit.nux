@@ -1,0 +1,36 @@
+# quantum::qubit
+# Quantum bit state vector abstraction
+
+import std::collections::List;
+import quantum::complex::Complex;
+
+class StateVector {
+    var num_qubits: u32;
+    var amplitudes: List; # List of Complex numbers, size 2^num_qubits
+    
+    func init(num_qubits: u32) {
+        this.num_qubits = num_qubits;
+        this.amplitudes = new List();
+        this.amplitudes.init();
+        
+        # Initialize |0...0> state
+        var size = 1 << num_qubits;
+        
+        var first = new Complex();
+        first.init(1.0, 0.0);
+        this.amplitudes.append(first);
+        
+        var i = 1;
+        while (i < size) {
+            var zero = new Complex();
+            zero.init(0.0, 0.0);
+            this.amplitudes.append(zero);
+            i += 1;
+        }
+    }
+    
+    func get_probability(state_index: u32) -> f32 {
+        var amp = this.amplitudes.get(state_index); # typeof Complex
+        return amp.magnitude_squared();
+    }
+}

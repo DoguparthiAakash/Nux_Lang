@@ -1,0 +1,885 @@
+var TK_EOF = 0;
+var TK_PRINT = 1;
+var TK_PRINTLN = 2;
+var TK_INPUT = 3;
+var TK_CLASS = 4;
+var TK_ENUM = 5;
+var TK_TRAIT = 6;
+var TK_FUNC = 7;
+var TK_FN = 8;
+var TK_VAR = 9;
+var TK_LET = 10;
+var TK_CONST = 11;
+var TK_RETURN = 12;
+var TK_NEW = 13;
+var TK_THIS = 14;
+var TK_IF = 15;
+var TK_ELSE = 16;
+var TK_WHILE = 17;
+var TK_FOR = 18;
+var TK_DO = 19;
+var TK_DEFER = 20;
+var TK_MATCH = 21;
+var TK_ASM = 22;
+var TK_UNSAFE = 23;
+var TK_SPAWN = 24;
+var TK_JOIN = 25;
+var TK_PARALLEL = 26;
+var TK_ASYNC = 27;
+var TK_LOCK = 28;
+var TK_UNLOCK = 29;
+var TK_IMPORT = 30;
+var TK_FROM = 31;
+var TK_USE = 32;
+var TK_PEEK = 33;
+var TK_PEEK32 = 34;
+var TK_POKE = 35;
+var TK_POKE32 = 36;
+var TK_BREAK = 37;
+var TK_CONTINUE = 38;
+var TK_TRY = 39;
+var TK_CATCH = 40;
+var TK_THROW = 41;
+var TK_IDENTIFIER = 42;
+var TK_STRING = 43;
+var TK_FLOAT = 44;
+var TK_NUMBER = 45;
+var TK_KW_INT = 46;
+var TK_KW_FLOAT = 47;
+var TK_KW_BYTE = 48;
+var TK_KW_SHORT = 49;
+var TK_KW_LONG = 50;
+var TK_KW_CHAR = 51;
+var TK_KW_STRING = 52;
+var TK_TRUE = 53;
+var TK_FALSE = 54;
+var TK_NOT = 55;
+var TK_IMG_ALLOC = 56;
+var TK_IMG_FREE = 57;
+var TK_IMG_DRAW = 58;
+var TK_CAM_CAPTURE = 59;
+var TK_IMG_FILTER = 60;
+var TK_IMG_GET = 61;
+var TK_IMG_SET = 62;
+var TK_IMG_FILL = 63;
+var TK_IMG_RESIZE = 64;
+var TK_IMG_CROP = 65;
+var TK_IMG_GRAYSCALE = 66;
+var TK_SIN = 67;
+var TK_COS = 68;
+var TK_SQRT = 69;
+var TK_SYS_PLATFORM = 70;
+var TK_CAM_COUNT = 71;
+var TK_IS_KEY_DOWN = 72;
+var TK_UPPER_CASE = 73;
+var TK_LOWER_CASE = 74;
+var TK_LPAREN = 75;
+var TK_RPAREN = 76;
+var TK_LBRACE = 77;
+var TK_RBRACE = 78;
+var TK_LBRACKET = 79;
+var TK_RBRACKET = 80;
+var TK_SLASH = 81;
+var TK_SLASH_SLASH = 82;
+var TK_STAR = 83;
+var TK_STAR_STAR = 84;
+var TK_PERCENT = 85;
+var TK_EQ = 86;
+var TK_EQ_EQ = 87;
+var TK_FAT_ARROW = 88;
+var TK_NOT_EQ = 89;
+var TK_LT = 90;
+var TK_GT = 91;
+var TK_LT_EQ = 92;
+var TK_GT_EQ = 93;
+var TK_AND = 94;
+var TK_OR = 95;
+var TK_XOR = 96;
+var TK_XAND = 97;
+var TK_XNOT = 98;
+var TK_SEMICOLON = 99;
+var TK_COLON = 100;
+var TK_COLON_COLON = 101;
+var TK_COLON_EQ = 102;
+var TK_DOT = 103;
+var TK_COMMA = 104;
+var TK_PLUS = 105;
+var TK_MINUS = 106;
+var TK_AT = 107;
+var TK_LSHIFT = 108;
+var TK_RSHIFT = 109;
+var TK_CARET = 110;
+var TK_AMPERSAND = 111;
+var TK_PIPE = 112;
+var TK_TILDE = 113;
+func lex_is_digit(c) {
+    if (c >= '0') {
+        if (c <= '9') {
+            return 1;
+        }
+    }
+    return 0;
+}
+func lex_is_alpha(c) {
+    if (c >= 'a') {
+        if (c <= 'z') { return 1; }
+    }
+    if (c >= 'A') {
+        if (c <= 'Z') { return 1; }
+    }
+    if (c == '_') { return 1; }
+    return 0;
+}
+func lex_is_alnum(c) {
+    if (lex_is_digit(c) == 1) { return 1; }
+    if (lex_is_alpha(c) == 1) { return 1; }
+    return 0;
+}
+
+func lex_is_hex(c) {
+    if (lex_is_digit(c) == 1) { return 1; }
+    if (c >= 'a') {
+        if (c <= 'f') { return 1; }
+    }
+    if (c >= 'A') {
+        if (c <= 'F') { return 1; }
+    return 0;
+}
+
+func lex_is_ws(c) {
+    if (c == ' ') { return 1; }
+    if (c == 9) { return 1; }
+    if (c == 13) { return 1; }
+    if (c == 10) { return 1; }
+    return 0;
+}
+
+func lex_triggers_asi(kind) {
+    if (kind == TK_IDENTIFIER) { return 1; }
+    if (kind == TK_NUMBER) { return 1; }
+    if (kind == TK_FLOAT) { return 1; }
+    if (kind == TK_STRING) { return 1; }
+    if (kind == TK_RBRACE) { return 1; }
+    if (kind == TK_RPAREN) { return 1; }
+    if (kind == TK_RETURN) { return 1; }
+    if (kind == TK_BREAK) { return 1; }
+    if (kind == TK_CONTINUE) { return 1; }
+    if (kind == TK_TRUE) { return 1; }
+    if (kind == TK_FALSE) { return 1; }
+    if (kind == TK_THIS) { return 1; }
+    return 0;
+}
+
+func lex_match_kw(src, s, len) {
+    if (len == 2) {
+        var c0 = str_char(src, s);
+        var c1 = str_char(src, s + 1);
+        if (c0 == 'i') { if (c1 == 'f') { return TK_IF; } }
+        if (c0 == 'f') { if (c1 == 'n') { return TK_FN; } }
+        if (c0 == 'd') { if (c1 == 'o') { return TK_DO; } }
+        if (c0 == 'o') { if (c1 == 'r') { return TK_OR; } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 3) {
+        var c0 = str_char(src, s);
+        var c1 = str_char(src, s + 1);
+        var c2 = str_char(src, s + 2);
+        if (c0 == 'v') { if (c1 == 'a') { if (c2 == 'r') { return TK_VAR; } } }
+        if (c0 == 'l') { if (c1 == 'e') { if (c2 == 't') { return TK_LET; } } }
+        if (c0 == 'f') { if (c1 == 'o') { if (c2 == 'r') { return TK_FOR; } } }
+        if (c0 == 'n') { if (c1 == 'e') { if (c2 == 'w') { return TK_NEW; } } }
+        if (c0 == 'a') { if (c1 == 's') { if (c2 == 'm') { return TK_ASM; } } }
+        if (c0 == 't') { if (c1 == 'r') { if (c2 == 'y') { return TK_TRY; } } }
+        if (c0 == 'n') { if (c1 == 'o') { if (c2 == 't') { return TK_NOT; } } }
+        if (c0 == 'a') { if (c1 == 'n') { if (c2 == 'd') { return TK_AND; } } }
+        if (c0 == 'x') { if (c1 == 'o') { if (c2 == 'r') { return TK_XOR; } } }
+        if (c0 == 's') { if (c1 == 'i') { if (c2 == 'n') { return TK_SIN; } } }
+        if (c0 == 'c') { if (c1 == 'o') { if (c2 == 's') { return TK_COS; } } }
+        if (c0 == 'u') { if (c1 == 's') { if (c2 == 'e') { return TK_USE; } } }
+        if (c0 == 'i') { if (c1 == 'n') { if (c2 == 't') { return TK_KW_INT; } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 4) {
+        var c0 = str_char(src, s);
+        var c1 = str_char(src, s + 1);
+        var c2 = str_char(src, s + 2);
+        var c3 = str_char(src, s + 3);
+        if (c0 == 'f') { if (c1 == 'u') { if (c2 == 'n') { if (c3 == 'c') { return TK_FUNC; } } } }
+        if (c0 == 'e') { if (c1 == 'l') { if (c2 == 's') { if (c3 == 'e') { return TK_ELSE; } } } }
+        if (c0 == 't') { if (c1 == 'h') { if (c2 == 'i') { if (c3 == 's') { return TK_THIS; } } } }
+        if (c0 == 'e') { if (c1 == 'n') { if (c2 == 'u') { if (c3 == 'm') { return TK_ENUM; } } } }
+        if (c0 == 'f') { if (c1 == 'r') { if (c2 == 'o') { if (c3 == 'm') { return TK_FROM; } } } }
+        if (c0 == 't') { if (c1 == 'r') { if (c2 == 'u') { if (c3 == 'e') { return TK_TRUE; } } } }
+        if (c0 == 'p') { if (c1 == 'o') { if (c2 == 'k') { if (c3 == 'e') { return TK_POKE; } } } }
+        if (c0 == 'p') { if (c1 == 'e') { if (c2 == 'e') { if (c3 == 'k') { return TK_PEEK; } } } }
+        if (c0 == 'l') { if (c1 == 'o') { if (c2 == 'c') { if (c3 == 'k') { return TK_LOCK; } } } }
+        if (c0 == 'j') { if (c1 == 'o') { if (c2 == 'i') { if (c3 == 'n') { return TK_JOIN; } } } }
+        if (c0 == 'l') { if (c1 == 'o') { if (c2 == 'n') { if (c3 == 'g') { return TK_KW_LONG; } } } }
+        if (c0 == 'b') { if (c1 == 'y') { if (c2 == 't') { if (c3 == 'e') { return TK_KW_BYTE; } } } }
+        if (c0 == 'c') { if (c1 == 'h') { if (c2 == 'a') { if (c3 == 'r') { return TK_KW_CHAR; } } } }
+        if (c0 == 'x') { if (c1 == 'a') { if (c2 == 'n') { if (c3 == 'd') { return TK_XAND; } } } }
+        if (c0 == 'x') { if (c1 == 'n') { if (c2 == 'o') { if (c3 == 't') { return TK_XNOT; } } } }
+        if (c0 == 's') { if (c1 == 'q') { if (c2 == 'r') { if (c3 == 't') { return TK_SQRT; } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 5) {
+        var c0 = str_char(src, s);
+        var c1 = str_char(src, s + 1);
+        var c2 = str_char(src, s + 2);
+        var c3 = str_char(src, s + 3);
+        var c4 = str_char(src, s + 4);
+        if (c0 == 'w') { if (c1 == 'h') { if (c2 == 'i') { if (c3 == 'l') { if (c4 == 'e') { return TK_WHILE; } } } } }
+        if (c0 == 'm') { if (c1 == 'a') { if (c2 == 't') { if (c3 == 'c') { if (c4 == 'h') { return TK_MATCH; } } } } }
+        if (c0 == 'c') { if (c1 == 'o') { if (c2 == 'n') { if (c3 == 's') { if (c4 == 't') { return TK_CONST; } } } } }
+        if (c0 == 'b') { if (c1 == 'r') { if (c2 == 'e') { if (c3 == 'a') { if (c4 == 'k') { return TK_BREAK; } } } } }
+        if (c0 == 't') { if (c1 == 'r') { if (c2 == 'a') { if (c3 == 'i') { if (c4 == 't') { return TK_TRAIT; } } } } }
+        if (c0 == 'c') { if (c1 == 'l') { if (c2 == 'a') { if (c3 == 's') { if (c4 == 's') { return TK_CLASS; } } } } }
+        if (c0 == 'p') { if (c1 == 'r') { if (c2 == 'i') { if (c3 == 'n') { if (c4 == 't') { return TK_PRINT; } } } } }
+        if (c0 == 'i') { if (c1 == 'n') { if (c2 == 'p') { if (c3 == 'u') { if (c4 == 't') { return TK_INPUT; } } } } }
+        if (c0 == 's') { if (c1 == 'p') { if (c2 == 'a') { if (c3 == 'w') { if (c4 == 'n') { return TK_SPAWN; } } } } }
+        if (c0 == 'a') { if (c1 == 's') { if (c2 == 'y') { if (c3 == 'n') { if (c4 == 'c') { return TK_ASYNC; } } } } }
+        if (c0 == 't') { if (c1 == 'h') { if (c2 == 'r') { if (c3 == 'o') { if (c4 == 'w') { return TK_THROW; } } } } }
+        if (c0 == 'c') { if (c1 == 'a') { if (c2 == 't') { if (c3 == 'c') { if (c4 == 'h') { return TK_CATCH; } } } } }
+        if (c0 == 'f') { if (c1 == 'l') { if (c2 == 'o') { if (c3 == 'a') { if (c4 == 't') { return TK_KW_FLOAT; } } } } }
+        if (c0 == 's') { if (c1 == 'h') { if (c2 == 'o') { if (c3 == 'r') { if (c4 == 't') { return TK_KW_SHORT; } } } } }
+        if (c0 == 'f') { if (c1 == 'a') { if (c2 == 'l') { if (c3 == 's') { if (c4 == 'e') { return TK_FALSE; } } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 6) {
+        var c0 = str_char(src, s);
+        var c1 = str_char(src, s + 1);
+        if (c0 == 'r') { if (c1 == 'e') { if (str_char(src, s+2) == 't') { if (str_char(src, s+3) == 'u') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'n') { return TK_RETURN; } } } } } }
+        if (c0 == 'u') {
+            if (c1 == 'n') {
+                if (str_char(src, s+2) == 's') { if (str_char(src, s+3) == 'a') { if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'e') { return TK_UNSAFE; } } } }
+                if (str_char(src, s+2) == 'l') { if (str_char(src, s+3) == 'o') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'k') { return TK_UNLOCK; } } } }
+            }
+        }
+        if (c0 == 'i') { if (c1 == 'm') { if (str_char(src, s+2) == 'p') { if (str_char(src, s+3) == 'o') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 't') { return TK_IMPORT; } } } } } }
+        if (c0 == 'p') { if (c1 == 'e') { if (str_char(src, s+2) == 'e') { if (str_char(src, s+3) == 'k') { if (str_char(src, s+4) == '3') { if (str_char(src, s+5) == '2') { return TK_PEEK32; } } } } } }
+        if (c0 == 'p') { if (c1 == 'o') { if (str_char(src, s+2) == 'k') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == '3') { if (str_char(src, s+5) == '2') { return TK_POKE32; } } } } } }
+        if (c0 == 's') { if (c1 == 't') { if (str_char(src, s+2) == 'r') { if (str_char(src, s+3) == 'i') { if (str_char(src, s+4) == 'n') { if (str_char(src, s+5) == 'g') { return TK_KW_STRING; } } } } } }
+        if (c0 == 'd') { if (c1 == 'e') { if (str_char(src, s+2) == 'f') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { return TK_DEFER; } } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 7) {
+        var c0 = str_char(src, s);
+        if (c0 == 'p') { if (str_char(src, s+1) == 'r') { if (str_char(src, s+2) == 'i') { if (str_char(src, s+3) == 'n') { if (str_char(src, s+4) == 't') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'n') { return TK_PRINTLN; } } } } } } }
+        if (c0 == 'i') {
+            if (str_char(src, s+1) == 'm') {
+                if (str_char(src, s+2) == 'g') {
+                    if (str_char(src, s+3) == '_') {
+                        if (str_char(src, s+4) == 'g') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 't') { return TK_IMG_GET; } } }
+                        if (str_char(src, s+4) == 's') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 't') { return TK_IMG_SET; } } }
+                    }
+                }
+            }
+        }
+        return TK_IDENTIFIER;
+    }
+    if (len == 8) {
+        var c0 = str_char(src, s);
+        if (c0 == 'c') { if (str_char(src, s+1) == 'o') { if (str_char(src, s+2) == 'n') { if (str_char(src, s+3) == 't') { if (str_char(src, s+4) == 'i') { if (str_char(src, s+5) == 'n') { if (str_char(src, s+6) == 'u') { if (str_char(src, s+7) == 'e') { return TK_CONTINUE; } } } } } } } }
+        if (c0 == 'p') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'r') { if (str_char(src, s+3) == 'a') { if (str_char(src, s+4) == 'l') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'e') { if (str_char(src, s+7) == 'l') { return TK_PARALLEL; } } } } } } } }
+        if (c0 == 'i') {
+            if (str_char(src, s+1) == 'm') {
+                if (str_char(src, s+2) == 'g') {
+                    if (str_char(src, s+3) == '_') {
+                        if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'e') { if (str_char(src, s+7) == 'e') { return TK_IMG_FREE; } } } }
+                        if (str_char(src, s+4) == 'd') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 'w') { return TK_IMG_DRAW; } } } }
+                        if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'i') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 'l') { return TK_IMG_FILL; } } } }
+                        if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'o') { if (str_char(src, s+7) == 'p') { return TK_IMG_CROP; } } } }
+                    }
+                }
+            }
+        }
+        return TK_IDENTIFIER;
+    }
+    if (len == 9) {
+        var c0 = str_char(src, s);
+        if (c0 == 'i') { if (str_char(src, s+1) == 'm') { if (str_char(src, s+2) == 'g') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'a') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 'o') { if (str_char(src, s+8) == 'c') { return TK_IMG_ALLOC; } } } } } } } } }
+        if (c0 == 'U') { if (str_char(src, s+1) == 'p') { if (str_char(src, s+2) == 'p') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'C') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 's') { if (str_char(src, s+8) == 'e') { return TK_UPPER_CASE; } } } } } } } } }
+        if (c0 == 'L') { if (str_char(src, s+1) == 'o') { if (str_char(src, s+2) == 'w') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'C') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 's') { if (str_char(src, s+8) == 'e') { return TK_LOWER_CASE; } } } } } } } } }
+        if (c0 == 'c') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'm') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'o') { if (str_char(src, s+6) == 'u') { if (str_char(src, s+7) == 'n') { if (str_char(src, s+8) == 't') { return TK_CAM_COUNT; } } } } } } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 10) {
+        var c0 = str_char(src, s);
+        if (c0 == 'i') {
+            if (str_char(src, s+1) == 'm') {
+                if (str_char(src, s+2) == 'g') {
+                    if (str_char(src, s+3) == '_') {
+                        if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'i') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'e') { if (str_char(src, s+9) == 'r') { return TK_IMG_FILTER; } } } } } }
+                        if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 's') { if (str_char(src, s+7) == 'i') { if (str_char(src, s+8) == 'z') { if (str_char(src, s+9) == 'e') { return TK_IMG_RESIZE; } } } } } }
+                    }
+                }
+            }
+        }
+        return TK_IDENTIFIER;
+    }
+    if (len == 11) {
+        var c0 = str_char(src, s);
+        if (c0 == 'c') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'm') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'a') { if (str_char(src, s+6) == 'p') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'u') { if (str_char(src, s+9) == 'r') { if (str_char(src, s+10) == 'e') { return TK_CAM_CAPTURE; } } } } } } } } } } }
+        if (c0 == 'i') { if (str_char(src, s+1) == 's') { if (str_char(src, s+2) == '_') { if (str_char(src, s+3) == 'k') { if (str_char(src, s+4) == 'e') { if (str_char(src, s+5) == 'y') { if (str_char(src, s+6) == '_') { if (str_char(src, s+7) == 'd') { if (str_char(src, s+8) == 'o') { if (str_char(src, s+9) == 'w') { if (str_char(src, s+10) == 'n') { return TK_IS_KEY_DOWN; } } } } } } } } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 12) {
+        if (str_char(src, s) == 's') { if (str_char(src, s+1) == 'y') { if (str_char(src, s+2) == 's') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'p') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'f') { if (str_char(src, s+9) == 'o') { if (str_char(src, s+10) == 'r') { if (str_char(src, s+11) == 'm') { return TK_SYS_PLATFORM; } } } } } } } } } } } }
+        return TK_IDENTIFIER;
+    }
+    if (len == 13) {
+        if (str_char(src, s) == 'i') { if (str_char(src, s+1) == 'm') { if (str_char(src, s+2) == 'g') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'g') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 'y') { if (str_char(src, s+8) == 's') { if (str_char(src, s+9) == 'c') { if (str_char(src, s+10) == 'a') { if (str_char(src, s+11) == 'l') { if (str_char(src, s+12) == 'e') { return TK_IMG_GRAYSCALE; } } } } } } } } } } } } }
+        return TK_IDENTIFIER;
+    }
+    return TK_IDENTIFIER;
+}
+
+func lex_hex_val(c) {
+    if (c >= '0') {
+        if (c <= '9') { return c - '0'; }
+    }
+    if (c >= 'a') {
+        if (c <= 'f') { return c - 'a' + 10; }
+    }
+    if (c >= 'A') {
+        if (c <= 'F') { return c - 'A' + 10; }
+    }
+    return 0;
+    var line;
+    var col;
+    var tk_kind;
+    var tk_line;
+    var tk_col;
+    var tk_start;
+    var tk_end;
+    var tk_ival;
+    var tk_fval;
+    var last_kind;
+    var pending_semi;
+    func init(src) {
+        self.source = src;
+        self.pos = 0;
+        self.length = str_len(src);
+        self.line = 1;
+        self.col = 1;
+        self.tk_kind = TK_EOF;
+        self.tk_line = 1;
+        self.tk_col = 1;
+        self.tk_start = 0;
+        self.tk_end = 0;
+        self.tk_ival = 0;
+        self.tk_fval = 0;
+        self.last_kind = 0;
+        self.pending_semi = 0;
+    func advance_pos() {
+        if (self.pos < self.length) {
+            var c = str_char(self.source, self.pos);
+            self.pos = self.pos + 1;
+            if (c == 10) {
+                self.line = self.line + 1;
+                self.col = 1;
+            } else {
+                self.col = self.col + 1;
+            }
+    func cur() {
+        if (self.pos >= self.length) { return 0; }
+        return str_char(self.source, self.pos);
+    func peek_next() {
+        if (self.pos + 1 >= self.length) { return 0; }
+        return str_char(self.source, self.pos + 1);
+    func set_tk(kind) {
+        self.tk_kind = kind;
+        self.tk_end = self.pos;
+        self.last_kind = kind;
+    }
+
+    func skip_ws() {
+        var hit_nl = 0;
+        while (self.pos < self.length) {
+            var c = str_char(self.source, self.pos);
+            print("skip_ws checking char at "); print(self.pos); print(": "); println(c);
+            var is_ws = lex_is_ws(c);
+            if (is_ws == 0) {
+                print("Not ws, breaking\n");
+                break;
+            }
+            if (c == 10) {
+                hit_nl = 1;
+            }
+            self.advance_pos();
+        return hit_nl;
+    func lex_number() {
+        var start = self.pos;
+        var first = self.cur();
+        self.advance_pos();
+
+        var parsed_prefix = 0;
+        if (first == '0') {
+            if (self.pos < self.length) {
+                var nx = self.cur();
+                var is_hex = 0;
+                if (nx == 'x') { is_hex = 1; }
+                if (nx == 'X') { is_hex = 1; }
+                
+                if (is_hex == 1) {
+                    self.advance_pos();
+                    var val = 0;
+                    while (self.pos < self.length) {
+                        var c = self.cur();
+                        var ok = lex_is_hex(c);
+                        if (c == '_') { ok = 1; }
+                        if (ok == 0) { break; }
+                        if (c != '_') {
+                            val = val * 16 + lex_hex_val(c);
+                        }
+                        self.advance_pos();
+                    }
+                    self.tk_ival = val;
+                    self.set_tk(TK_NUMBER);
+                    parsed_prefix = 1;
+                } else {
+                    var is_bin = 0;
+                    if (nx == 'b') { is_bin = 1; }
+                    if (nx == 'B') { is_bin = 1; }
+                    if (is_bin == 1) {
+                        self.advance_pos();
+                        var val = 0;
+                        while (self.pos < self.length) {
+                            var c = self.cur();
+                            var ok = 0;
+                            if (c == '0') { ok = 1; }
+                            if (c == '1') { ok = 1; }
+                            if (c == '_') { ok = 1; }
+                            if (ok == 0) { break; }
+                            if (c != '_') {
+                                val = val * 2 + (c - '0');
+                            }
+                            self.advance_pos();
+                        }
+                        self.tk_ival = val;
+                        self.set_tk(TK_NUMBER);
+                        parsed_prefix = 1;
+                    }
+                }
+        
+        if (parsed_prefix == 1) {
+            return 0;
+        }
+
+        var is_float = 0;
+        while (self.pos < self.length) {
+            var c = self.cur();
+            if (lex_is_digit(c) == 1) {
+                self.advance_pos();
+            } else {
+                if (c == '_') {
+                    self.advance_pos();
+                } else {
+                    if (c == '.') {
+                        if (is_float == 0) {
+                            if (self.pos + 1 < self.length) {
+                                if (lex_is_digit(self.peek_next()) == 1) {
+                                    is_float = 1;
+                                    self.advance_pos();
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (is_float == 1) {
+            var int_part = 0;
+            var frac_part = 0;
+            var frac_div = 1;
+            var in_frac = 0;
+            var i = start;
+            while (i < self.pos) {
+                var d = str_char(self.source, i);
+                if (d == '.') {
+                    in_frac = 1;
+                } else {
+                    if (d != '_') {
+                        var digit = d - '0';
+                        if (in_frac == 0) {
+                            int_part = int_part * 10 + digit;
+                        } else {
+                            frac_part = frac_part * 10 + digit;
+                            frac_div = frac_div * 10;
+                        }
+                    }
+                }
+                i = i + 1;
+            }
+            var fval = float(int_part) + float(frac_part) / float(frac_div);
+            self.tk_fval = fval;
+            self.set_tk(TK_FLOAT);
+        } else {
+            var val = 0;
+            var i = start;
+            while (i < self.pos) {
+                var d = str_char(self.source, i);
+                if (d != '_') {
+                    val = val * 10 + (d - '0');
+                }
+                i = i + 1;
+            }
+            self.tk_ival = val;
+            self.set_tk(TK_NUMBER);
+        }
+        return 0;
+    }
+
+    func lex_identifier() {
+        var start = self.pos;
+        while (self.pos < self.length) {
+            if (lex_is_alnum(self.cur()) == 0) {
+                break;
+            }
+            self.advance_pos();
+        }
+        var len = self.pos - start;
+        var kind = lex_match_kw(self.source, start, len);
+        self.set_tk(kind);
+        return 0;
+    func lex_string() {
+        self.advance_pos();
+        self.tk_start = self.pos;
+        while (self.pos < self.length) {
+            var c = self.cur();
+            if (c == '"') {
+                break;
+            }
+            if (c == 92) {
+                self.advance_pos();
+            }
+            self.advance_pos();
+        }
+        self.tk_end = self.pos;
+        self.advance_pos();
+        self.set_tk(TK_STRING);
+    func lex_operator() {
+        var c = self.cur();
+        self.advance_pos();
+        if (self.pos < self.length) {
+            var nx = self.cur();
+            var matched = 0;
+            if (c == '=') { if (nx == '=') { self.advance_pos(); self.set_tk(TK_EQ_EQ); matched = 1; } }
+            if (c == '!') { if (nx == '=') { self.advance_pos(); self.set_tk(TK_NOT_EQ); matched = 1; } }
+            if (c == '<') { if (nx == '=') { self.advance_pos(); self.set_tk(TK_LT_EQ); matched = 1; } }
+            if (c == '>') { if (nx == '=') { self.advance_pos(); self.set_tk(TK_GT_EQ); matched = 1; } }
+            if (c == '&') { if (nx == '&') { self.advance_pos(); self.set_tk(TK_AND); matched = 1; } }
+            if (c == '|') { if (nx == '|') { self.advance_pos(); self.set_tk(TK_OR); matched = 1; } }
+            if (c == '<') { if (nx == '<') { self.advance_pos(); self.set_tk(TK_LSHIFT); matched = 1; } }
+            if (c == '>') { if (nx == '>') { self.advance_pos(); self.set_tk(TK_RSHIFT); matched = 1; } }
+            
+            if (matched == 1) { return 0; }
+        }
+        
+        if (c == '=') { self.set_tk(TK_EQ); return 0; }
+        if (c == '<') { self.set_tk(TK_LT); return 0; }
+        if (c == '>') { self.set_tk(TK_GT); return 0; }
+        if (c == '&') { self.set_tk(TK_AMPERSAND); return 0; }
+        if (c == '|') { self.set_tk(TK_PIPE); return 0; }
+        if (c == '^') { self.set_tk(TK_CARET); return 0; }
+        if (c == '~') { self.set_tk(TK_TILDE); return 0; }
+        self.set_tk(TK_IDENTIFIER);
+        if (self.pending_semi == 1) {
+            self.pending_semi = 0;
+            self.tk_kind = TK_SEMICOLON;
+            self.tk_line = self.line;
+            self.tk_col = self.col;
+            self.last_kind = TK_SEMICOLON;
+            return 0;
+        }
+
+        var pre_line = self.line;
+        var pre_col = self.col;
+        var hit_nl = self.skip_ws();
+        if (hit_nl == 1) {
+            if (lex_triggers_asi(self.last_kind) == 1) {
+                self.tk_kind = TK_SEMICOLON;
+                self.tk_line = pre_line;
+                self.tk_col = pre_col;
+                self.last_kind = TK_SEMICOLON;
+                return 0;
+            }
+        }
+
+        self.tk_line = self.line;
+        self.tk_col = self.col;
+        self.tk_start = self.pos;
+
+        if (self.pos >= self.length) {
+            self.tk_kind = TK_EOF;
+            return 0;
+        }
+
+        var c = self.cur();
+
+        if (c == '+') { self.advance_pos(); self.set_tk(TK_PLUS); return 0; }
+        if (c == '-') { self.advance_pos(); self.set_tk(TK_MINUS); return 0; }
+        if (c == '%') { self.advance_pos(); self.set_tk(TK_PERCENT); return 0; }
+        if (c == '(') { self.advance_pos(); self.set_tk(TK_LPAREN); return 0; }
+        if (c == ')') { self.advance_pos(); self.set_tk(TK_RPAREN); return 0; }
+        if (c == '[') { self.advance_pos(); self.set_tk(TK_LBRACKET); return 0; }
+        if (c == ']') { self.advance_pos(); self.set_tk(TK_RBRACKET); return 0; }
+        if (c == '{') { self.advance_pos(); self.set_tk(TK_LBRACE); return 0; }
+        if (c == '}') { self.advance_pos(); self.set_tk(TK_RBRACE); return 0; }
+        if (c == ';') { self.advance_pos(); self.set_tk(TK_SEMICOLON); return 0; }
+        if (c == '.') { self.advance_pos(); self.set_tk(TK_DOT); return 0; }
+        if (c == ',') { self.advance_pos(); self.set_tk(TK_COMMA); return 0; }
+        if (c == '@') { self.advance_pos(); self.set_tk(TK_AT); return 0; }
+
+        if (c == '*') {
+            self.advance_pos();
+            if (self.cur() == '*') {
+                self.advance_pos();
+                self.set_tk(TK_STAR_STAR);
+            } else {
+                self.set_tk(TK_STAR);
+            }
+            return 0;
+        }
+        if (c == '=') {
+            self.advance_pos();
+            if (self.cur() == '=') { self.advance_pos(); self.set_tk(TK_EQ_EQ); return 0; }
+            if (self.cur() == '>') { self.advance_pos(); self.set_tk(TK_FAT_ARROW); return 0; }
+            self.set_tk(TK_EQ);
+            return 0;
+        if (c == ':') {
+            self.advance_pos();
+            if (self.cur() == '=') { self.advance_pos(); self.set_tk(TK_COLON_EQ); return 0; }
+            if (self.cur() == ':') { self.advance_pos(); self.set_tk(TK_COLON_COLON); return 0; }
+            self.set_tk(TK_COLON);
+            return 0;
+        }
+        if (c == '/') {
+            self.advance_pos();
+            if (self.cur() == '/') {
+                self.advance_pos();
+                var nc = self.cur();
+                var is_comment = 0;
+                if (self.pos >= self.length) { is_comment = 1; }
+                if (nc == ' ') { is_comment = 1; }
+                if (nc == 9) { is_comment = 1; }
+                if (nc == 13) { is_comment = 1; }
+                if (nc == 10) { is_comment = 1; }
+                if (lex_is_alpha(nc) == 1) { is_comment = 1; }
+                if (nc == '/') { is_comment = 1; }
+                if (nc == '!') { is_comment = 1; }
+                if (nc == '*') { is_comment = 1; }
+                
+                if (is_comment == 1) {
+                    while (self.pos < self.length) {
+                        if (self.cur() == 10) { break; }
+                        self.advance_pos();
+                    }
+                    self.next_token();
+                    return 0;
+                } else {
+                    self.set_tk(TK_SLASH_SLASH);
+                    return 0;
+                }
+            self.set_tk(TK_SLASH);
+            return 0;
+        if (c == '#') {
+            self.advance_pos();
+            if (self.cur() == '*') {
+                self.advance_pos();
+                var depth = 1;
+                while (self.pos < self.length) {
+                    if (depth == 0) { break; }
+                    if (self.cur() == '#') {
+                        self.advance_pos();
+                        if (self.pos < self.length) {
+                            if (self.cur() == '*') {
+                                depth = depth + 1;
+                                self.advance_pos();
+                            }
+                        }
+                    } else {
+                        if (self.cur() == '*') {
+                            self.advance_pos();
+                            if (self.pos < self.length) {
+                                if (self.cur() == '#') {
+                                    depth = depth - 1;
+                                    self.advance_pos();
+                                }
+                            }
+                        } else {
+                            self.advance_pos();
+                        }
+                    }
+                }
+                self.next_token();
+                return 0;
+            } else {
+                while (self.pos < self.length) {
+                    if (self.cur() == 10) { break; }
+                    self.advance_pos();
+                }
+                self.next_token();
+                return 0;
+        var is_op = 0;
+        if (c == '!') { is_op = 1; }
+        if (c == '<') { is_op = 1; }
+        if (c == '>') { is_op = 1; }
+        if (c == '&') { is_op = 1; }
+        if (c == '|') { is_op = 1; }
+        if (c == '^') { is_op = 1; }
+        if (c == '~') { is_op = 1; }
+        if (is_op == 1) {
+            self.lex_operator();
+            return 0;
+        }
+
+        if (c == 39) {
+            self.advance_pos();
+            if (self.pos < self.length) {
+                var ch = self.cur();
+                self.advance_pos();
+                if (self.pos < self.length) {
+                    if (self.cur() == 39) {
+                        self.advance_pos();
+                        self.tk_ival = ch;
+                        self.set_tk(TK_NUMBER);
+                    } else {
+                        self.set_tk(TK_IDENTIFIER);
+                    }
+                } else {
+                    self.set_tk(TK_IDENTIFIER);
+                }
+            } else {
+                self.set_tk(TK_IDENTIFIER);
+            return 0;
+        }
+
+        if (c == '"') {
+            self.lex_string();
+            return 0;
+        }
+
+        if (lex_is_digit(c) == 1) {
+            self.lex_number();
+            return 0;
+        if (lex_is_alpha(c) == 1) {
+            self.lex_identifier();
+            return 0;
+        }
+
+        self.advance_pos();
+        self.set_tk(TK_IDENTIFIER);
+        return 0;
+    }
+}
+
+func print_tk_name(kind) {
+    if (kind == TK_EOF) { print("EOF"); return 0; }
+    if (kind == TK_PRINT) { print("PRINT"); return 0; }
+    if (kind == TK_PRINTLN) { print("PRINTLN"); return 0; }
+    if (kind == TK_INPUT) { print("INPUT"); return 0; }
+    if (kind == TK_CLASS) { print("CLASS"); return 0; }
+    if (kind == TK_ENUM) { print("ENUM"); return 0; }
+    if (kind == TK_TRAIT) { print("TRAIT"); return 0; }
+    if (kind == TK_FUNC) { print("FUNC"); return 0; }
+    if (kind == TK_FN) { print("FN"); return 0; }
+    if (kind == TK_VAR) { print("VAR"); return 0; }
+    if (kind == TK_LET) { print("LET"); return 0; }
+    if (kind == TK_CONST) { print("CONST"); return 0; }
+    if (kind == TK_RETURN) { print("RETURN"); return 0; }
+    if (kind == TK_NEW) { print("NEW"); return 0; }
+    if (kind == TK_THIS) { print("THIS"); return 0; }
+    if (kind == TK_IF) { print("IF"); return 0; }
+    if (kind == TK_ELSE) { print("ELSE"); return 0; }
+    if (kind == TK_WHILE) { print("WHILE"); return 0; }
+    if (kind == TK_FOR) { print("FOR"); return 0; }
+    if (kind == TK_DO) { print("DO"); return 0; }
+    if (kind == TK_DEFER) { print("DEFER"); return 0; }
+    if (kind == TK_MATCH) { print("MATCH"); return 0; }
+    if (kind == TK_ASM) { print("ASM"); return 0; }
+    if (kind == TK_UNSAFE) { print("UNSAFE"); return 0; }
+    if (kind == TK_SPAWN) { print("SPAWN"); return 0; }
+    if (kind == TK_JOIN) { print("JOIN"); return 0; }
+    if (kind == TK_PARALLEL) { print("PARALLEL"); return 0; }
+    if (kind == TK_ASYNC) { print("ASYNC"); return 0; }
+    if (kind == TK_LOCK) { print("LOCK"); return 0; }
+    if (kind == TK_UNLOCK) { print("UNLOCK"); return 0; }
+    if (kind == TK_IMPORT) { print("IMPORT"); return 0; }
+    if (kind == TK_FROM) { print("FROM"); return 0; }
+    if (kind == TK_USE) { print("USE"); return 0; }
+    if (kind == TK_PEEK) { print("PEEK"); return 0; }
+    if (kind == TK_PEEK32) { print("PEEK32"); return 0; }
+    if (kind == TK_POKE) { print("POKE"); return 0; }
+    if (kind == TK_POKE32) { print("POKE32"); return 0; }
+    if (kind == TK_BREAK) { print("BREAK"); return 0; }
+    if (kind == TK_CONTINUE) { print("CONTINUE"); return 0; }
+    if (kind == TK_TRY) { print("TRY"); return 0; }
+    if (kind == TK_CATCH) { print("CATCH"); return 0; }
+    if (kind == TK_THROW) { print("THROW"); return 0; }
+    if (kind == TK_IDENTIFIER) { print("IDENT"); return 0; }
+    if (kind == TK_STRING) { print("STRING"); return 0; }
+    if (kind == TK_FLOAT) { print("FLOAT"); return 0; }
+    if (kind == TK_NUMBER) { print("NUMBER"); return 0; }
+    if (kind == TK_KW_INT) { print("KW_INT"); return 0; }
+    if (kind == TK_KW_FLOAT) { print("KW_FLOAT"); return 0; }
+    if (kind == TK_KW_BYTE) { print("KW_BYTE"); return 0; }
+    if (kind == TK_KW_SHORT) { print("KW_SHORT"); return 0; }
+    if (kind == TK_KW_LONG) { print("KW_LONG"); return 0; }
+    if (kind == TK_KW_CHAR) { print("KW_CHAR"); return 0; }
+    if (kind == TK_KW_STRING) { print("KW_STRING"); return 0; }
+    if (kind == TK_TRUE) { print("TRUE"); return 0; }
+    if (kind == TK_FALSE) { print("FALSE"); return 0; }
+    if (kind == TK_NOT) { print("NOT"); return 0; }
+    if (kind == TK_SEMICOLON) { print("SEMI"); return 0; }
+    if (kind == TK_COLON) { print("COLON"); return 0; }
+    if (kind == TK_COLON_COLON) { print("COLON2"); return 0; }
+    if (kind == TK_COLON_EQ) { print("COLON_EQ"); return 0; }
+    if (kind == TK_DOT) { print("DOT"); return 0; }
+    if (kind == TK_COMMA) { print("COMMA"); return 0; }
+    if (kind == TK_PLUS) { print("PLUS"); return 0; }
+    if (kind == TK_MINUS) { print("MINUS"); return 0; }
+    if (kind == TK_STAR) { print("STAR"); return 0; }
+    if (kind == TK_STAR_STAR) { print("STAR2"); return 0; }
+    if (kind == TK_SLASH) { print("SLASH"); return 0; }
+    if (kind == TK_SLASH_SLASH) { print("SLASH2"); return 0; }
+    if (kind == TK_PERCENT) { print("PERCENT"); return 0; }
+    if (kind == TK_EQ) { print("EQ"); return 0; }
+    if (kind == TK_EQ_EQ) { print("EQ_EQ"); return 0; }
+    if (kind == TK_FAT_ARROW) { print("FAT_ARROW"); return 0; }
+    if (kind == TK_NOT_EQ) { print("NOT_EQ"); return 0; }
+    if (kind == TK_LT) { print("LT"); return 0; }
+    if (kind == TK_GT) { print("GT"); return 0; }
+    if (kind == TK_LT_EQ) { print("LT_EQ"); return 0; }
+    if (kind == TK_GT_EQ) { print("GT_EQ"); return 0; }
+    if (kind == TK_AND) { print("AND"); return 0; }
+    if (kind == TK_OR) { print("OR"); return 0; }
+    if (kind == TK_XOR) { print("XOR"); return 0; }
+    if (kind == TK_XAND) { print("XAND"); return 0; }
+    if (kind == TK_XNOT) { print("XNOT"); return 0; }
+    if (kind == TK_LPAREN) { print("LPAREN"); return 0; }
+    if (kind == TK_RPAREN) { print("RPAREN"); return 0; }
+    if (kind == TK_LBRACE) { print("LBRACE"); return 0; }
+    if (kind == TK_RBRACE) { print("RBRACE"); return 0; }
+    if (kind == TK_LBRACKET) { print("LBRACKET"); return 0; }
+    if (kind == TK_RBRACKET) { print("RBRACKET"); return 0; }
+    if (kind == TK_AT) { print("AT"); return 0; }
+    if (kind == TK_LSHIFT) { print("LSHIFT"); return 0; }
+    if (kind == TK_RSHIFT) { print("RSHIFT"); return 0; }
+    if (kind == TK_CARET) { print("CARET"); return 0; }
+    if (kind == TK_AMPERSAND) { print("AMPERSAND"); return 0; }
+    if (kind == TK_PIPE) { print("PIPE"); return 0; }
+    if (kind == TK_TILDE) { print("TILDE"); return 0; }
+    print("?");
+    print(kind);
+    return 0;
+}

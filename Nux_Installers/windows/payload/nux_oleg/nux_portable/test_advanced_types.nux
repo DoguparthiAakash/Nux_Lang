@@ -1,0 +1,27 @@
+# Test Advanced Types
+
+func var SmallInt {
+    start = 10;
+    end = 20;
+}
+
+func main() {
+    println("--- Advanced Types Test ---");
+    
+    # Valid
+    print("Assigning 15 (Valid)... ");
+    var x : SmallInt = 15;
+    println(x);
+    
+    # Valid Edge
+    print("Assigning 20 (Valid Edge)... ");
+    x = 20;
+    println(x);
+    
+    # Invalid
+    println("Assigning 5 (Should Crash)... ");
+    var y : SmallInt = 5;
+    println(y);
+}
+
+main();

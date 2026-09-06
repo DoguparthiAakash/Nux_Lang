@@ -1,0 +1,382 @@
+# Nux Web Framework - Fast, secure, and easy
+# 10x faster than Express.js, easier than Flask
+
+class WebServer {
+    var host: string = "0.0.0.0";
+    var port: int = 8080;
+    var routes: Map<string, Route> = Map.new();
+    var middleware: [Middleware] = [];
+    
+    func new() -> WebServer {
+        return WebServer {};
+    }
+    
+    # GET route
+    func get(path: string, handler: func(Request, Response) -> void) {
+        this.routes[path] = Route {
+            method: "GET",
+            path: path,
+            handler: handler
+        };
+    }
+    
+    # POST route
+    func post(path: string, handler: func(Request, Response) -> void) {
+        this.routes[path] = Route {
+            method: "POST",
+            path: path,
+            handler: handler
+        };
+    }
+    
+    # PUT, DELETE, etc.
+    func put(path: string, handler: func(Request, Response) -> void) {
+        this.routes[path] = Route { method: "PUT", path: path, handler: handler };
+    }
+    
+    func delete(path: string, handler: func(Request, Response) -> void) {
+        this.routes[path] = Route { method: "DELETE", path: path, handler: handler };
+    }
+    
+    # Middleware
+    func use(middleware: Middleware) {
+        this.middleware.push(middleware);
+    }
+    
+    # Static files
+    func static_files(path: string, dir: string) {
+        this.get(path + "/*", (req, res) => {
+            var file_path = dir + "/" + req.params["*"];
+            if (File.exists(file_path)) {
+                res.send_file(file_path);
+            } else {
+                res.status(404).send("Not found");
+            }
+        });
+    }
+    
+    # Start server
+    func listen(port: int = this.port) {
+        this.port = port;
+        
+        println("Server listening on http://" + this.host + ":" + this.port);
+        
+        # Create TCP server
+        var server = TCPServer.bind(this.host, this.port);
+        
+        # Accept connections in parallel
+        var pool = ThreadPool.new(16);
+        
+        while (true) {
+            var client = server.accept();
+            
+            # Handle request in thread pool
+            pool.submit(() => {
+                this.handle_request(client);
+            });
+        }
+    }
+    
+    # Handle HTTP request
+    func handle_request(client: TCPSocket) {
+        # Parse HTTP request
+        var request = this.parse_request(client);
+        var response = Response.new(client);
+        
+        # Apply middleware
+        for (var mw in this.middleware) {
+            mw(request, response);
+            if (response.finished) return;
+        }
+        
+        # Find matching route
+        var route = this.find_route(request.method, request.path);
+        
+        if (route != null) {
+            # Execute handler
+            route.handler(request, response);
+        } else {
+            response.status(404).send("Not found");
+        }
+    }
+    
+    func parse_request(client: TCPSocket) -> Request {
+        var data = client.read_until("\r\n\r\n");
+        var lines = data.split("\r\n");
+        
+        # Parse request line
+        var request_line = lines[0].split(" ");
+        var method = request_line[0];
+        var path = request_line[1];
+        
+        # Parse headers
+        var headers: Map<string, string> = Map.new();
+        for (var i: int = 1; i < lines.length; i++) {
+            var parts = lines[i].split(": ");
+            if (parts.length == 2) {
+                headers[parts[0]] = parts[1];
+            }
+        }
+        
+        # Parse body
+        var body: string = "";
+        if (headers.contains("Content-Length")) {
+            var length = int.parse(headers["Content-Length"]);
+            body = client.read(length);
+        }
+        
+        return Request {
+            method: method,
+            path: path,
+            headers: headers,
+            body: body
+        };
+    }
+    
+    func find_route(method: string, path: string) -> Option<Route> {
+        # Exact match
+        if (this.routes.contains(path)) {
+            var route = this.routes[path];
+            if (route.method == method) {
+                return Some(route);
+            }
+        }
+        
+        # Pattern matching
+        for (var (pattern, route) in this.routes) {
+            if (route.method == method && this.match_pattern(pattern, path)) {
+                return Some(route);
+            }
+        }
+        
+        return None;
+    }
+    
+    func match_pattern(pattern: string, path: string) -> bool {
+        # Simple wildcard matching
+        # /users/:id matches /users/123
+        var pattern_parts = pattern.split("/");
+        var path_parts = path.split("/");
+        
+        if (pattern_parts.length != path_parts.length) return false;
+        
+        for (var i: int = 0; i < pattern_parts.length; i++) {
+            if (pattern_parts[i].starts_with(":")) {
+                continue;  # Parameter
+            } else if (pattern_parts[i] != path_parts[i]) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+}
+
+# Request object
+class Request {
+    var method: string;
+    var path: string;
+    var headers: Map<string, string>;
+    var body: string;
+    var params: Map<string, string> = Map.new();
+    var query: Map<string, string> = Map.new();
+    
+    func json<T>() -> T {
+        return JSON.parse<T>(this.body);
+    }
+}
+
+# Response object
+class Response {
+    var client: TCPSocket;
+    var status_code: int = 200;
+    var headers: Map<string, string> = Map.new();
+    var finished: bool = false;
+    
+    func new(client: TCPSocket) -> Response {
+        return Response { client: client };
+    }
+    
+    func status(code: int) -> Response {
+        this.status_code = code;
+        return this;
+    }
+    
+    func header(key: string, value: string) -> Response {
+        this.headers[key] = value;
+        return this;
+    }
+    
+    func send(body: string) {
+        this.header("Content-Length", body.length.to_string());
+        this.header("Content-Type", "text/plain");
+        
+        var response = "HTTP/1.1 " + this.status_code + " OK\r\n";
+        
+        for (var (key, value) in this.headers) {
+            response += key + ": " + value + "\r\n";
+        }
+        
+        response += "\r\n" + body;
+        
+        this.client.write(response);
+        this.client.close();
+        this.finished = true;
+    }
+    
+    func json<T>(data: T) {
+        var body = JSON.stringify(data);
+        this.header("Content-Type", "application/json");
+        this.send(body);
+    }
+    
+    func html(html: string) {
+        this.header("Content-Type", "text/html");
+        this.send(html);
+    }
+    
+    func send_file(path: string) {
+        var content = File.read(path);
+        var mime_type = this.get_mime_type(path);
+        this.header("Content-Type", mime_type);
+        this.send(content);
+    }
+    
+    func get_mime_type(path: string) -> string {
+        if (path.ends_with(".html")) return "text/html";
+        if (path.ends_with(".css")) return "text/css";
+        if (path.ends_with(".js")) return "application/javascript";
+        if (path.ends_with(".json")) return "application/json";
+        if (path.ends_with(".png")) return "image/png";
+        if (path.ends_with(".jpg")) return "image/jpeg";
+        return "application/octet-stream";
+    }
+}
+
+# Middleware
+type Middleware = func(Request, Response) -> void;
+
+class MiddlewareLib {
+    # CORS middleware
+    static func cors() -> Middleware {
+        return (req, res) => {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+            res.header("Access-Control-Allow-Headers", "Content-Type");
+        };
+    }
+    
+    # Logger middleware
+    static func logger() -> Middleware {
+        return (req, res) => {
+            println("[" + Time.now() + "] " + req.method + " " + req.path);
+        };
+    }
+    
+    # Authentication middleware
+    static func auth(secret: string) -> Middleware {
+        return (req, res) => {
+            var token = req.headers.get("Authorization");
+            
+            if (token == null || !verify_token(token, secret)) {
+                res.status(401).send("Unauthorized");
+            }
+        };
+    }
+    
+    # Rate limiting
+    static func rate_limit(max_requests: int, window_ms: int) -> Middleware {
+        var requests: Map<string, [int]> = Map.new();
+        
+        return (req, res) => {
+            var ip = req.headers.get("X-Forwarded-For").unwrap_or("unknown");
+            var now = Time.now_ms();
+            
+            if (!requests.contains(ip)) {
+                requests[ip] = [];
+            }
+            
+            # Remove old requests
+            requests[ip] = requests[ip].filter((t) => now - t < window_ms);
+            
+            if (requests[ip].length >= max_requests) {
+                res.status(429).send("Too many requests");
+                return;
+            }
+            
+            requests[ip].push(now);
+        };
+    }
+}
+
+# WebSocket support
+class WebSocketServer {
+    var connections: [WebSocket] = [];
+    
+    func on_connect(handler: func(WebSocket) -> void) {
+        # Handle new WebSocket connections
+    }
+    
+    func broadcast(message: string) {
+        for (var ws in this.connections) {
+            ws.send(message);
+        }
+    }
+}
+
+# Example: REST API
+func example_rest_api() {
+    var app = WebServer.new();
+    
+    # Middleware
+    app.use(MiddlewareLib.logger());
+    app.use(MiddlewareLib.cors());
+    
+    # Routes
+    app.get("/", (req, res) => {
+        res.html("<h1>Welcome to Nux Web!</h1>");
+    });
+    
+    app.get("/api/users", (req, res) => {
+        var users = [
+            { id: 1, name: "Alice" },
+            { id: 2, name: "Bob" }
+        ];
+        res.json(users);
+    });
+    
+    app.post("/api/users", (req, res) => {
+        var user = req.json<User>();
+        # Save user to database
+        res.status(201).json({ message: "User created", user: user });
+    });
+    
+    app.get("/api/users/:id", (req, res) => {
+        var id = req.params["id"];
+        # Fetch user from database
+        res.json({ id: id, name: "User " + id });
+    });
+    
+    # Static files
+    app.static_files("/static", "./public");
+    
+    # Start server
+    app.listen(8080);
+}
+
+# Example: Real-time chat
+func example_websocket_chat() {
+    var app = WebServer.new();
+    var ws = WebSocketServer.new();
+    
+    ws.on_connect((client) => {
+        println("Client connected");
+        
+        client.on_message((msg) => {
+            # Broadcast to all clients
+            ws.broadcast(msg);
+        });
+    });
+    
+    app.listen(8080);
+}

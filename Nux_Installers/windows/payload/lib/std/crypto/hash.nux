@@ -1,0 +1,25 @@
+# std::crypto::hash
+# Cryptographic hashing module bound securely to vetted Native FFI.
+
+class Sha256 {
+    var state_ptr;
+    
+    func init() {
+        # Lowered to ExternCall initializing a libsodium crypto_hash_sha256 state
+    }
+    
+    func update(data_bytes) {
+        # Appends data to the hash state
+    }
+    
+    func finalize() {
+        # Returns the 32-byte digest
+    }
+}
+
+func hash_sha256(data_bytes) {
+    var hasher = new Sha256();
+    hasher.init();
+    hasher.update(data_bytes);
+    return hasher.finalize();
+}

@@ -1,0 +1,50 @@
+# graphics3d.nux
+# Nux Standard Library: 3D Graphics and Projections
+
+import "lib/graphics2d.nux";
+import "lib/gpu.nux";
+
+class Vector3 {
+    var x;
+    var y;
+    var z;
+    
+    func init(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+    }
+}
+
+class Camera3D {
+    var fov;
+    var aspect;
+    var z_near;
+    var z_far;
+    
+    func init(fov, aspect) {
+        this.fov = fov;
+        this.aspect = aspect;
+        this.z_near = 0.1;
+        this.z_far = 1000.0;
+        return this;
+    }
+    
+    # Simple perspective projection (orthogonal/perspective hybrid placeholder)
+    func project(v: Vector3) -> Vector2 {
+        var p: Vector2 = new Vector2;
+        p.init(0, 0);
+        
+        # Prevent div by zero
+        var z = v.z;
+        if (z < 1) { z = 1; }
+        
+        # Simple projection math
+        var f = this.fov / z;
+        p.x = v.x * f * this.aspect;
+        p.y = v.y * f;
+        
+        return p;
+    }
+}

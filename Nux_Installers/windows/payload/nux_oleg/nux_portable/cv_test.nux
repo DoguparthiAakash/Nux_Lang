@@ -1,0 +1,73 @@
+import "graphics2d.nux";
+
+func test_func(val) -> int {
+    return val + 1;
+}
+
+pub func public_test() {
+    print(8888);
+}
+
+print(1000); # START
+
+# Declare Globals (reserves space)
+# Values will be corrupted by broken compiler default init.
+var w;   # Addr 0
+var h;   # Addr 8
+var img; # Addr 16
+
+# Fix Assignments and Alloc
+asm {
+    # 1. w = 40 (Addr 0)
+    "PUSH 40"; "PUSH 0"; "POKE";
+    
+    # 2. h = 20 (Addr 8)
+    "PUSH 20"; "PUSH 8"; "POKE";
+    
+    # 3. img = img_alloc(w, h)
+    "PUSH 0"; "PEEK";
+    "PUSH 8"; "PEEK";
+    "OP_IMG_ALLOC";
+    
+    # 4. Store img (Addr 16). Stack: [handle]
+    # We want POKE(16, handle). Stack: [handle, 16]. Top is 16.
+    "PUSH 16"; "POKE";
+}
+
+# Verify Alloc
+# Cannot rely on 'print(w)' because getter might be broken? 
+# No, Getter uses PUSH addr; PEEK. Works fine.
+var w_check = w;
+print(2000);
+print(w_check); # Expect 40
+
+# Setup Image contents (Assignments to properties not supported easily without vars)
+# gfx_clear uses img.
+# args: (img, color) -> (PEEK 16, 16777215). Works.
+gfx_clear(img, 16777215);
+gfx_rect_fill(img, 10, 5, 10, 10, 0);
+
+# Verify Pixels Directly (Avoid assignment bug)
+print(2001); # BG
+print(img_get(img, 0, 0)); # Expect 16777215
+
+print(2002); # Square
+print(img_get(img, 15, 8)); # Expect 0
+
+# Run Vision
+print(3000);
+asm {
+    "PUSH 0";
+    "PUSH 16"; "PEEK";
+    "PUSH 2";
+    "OP_VISION_DETECT";
+}
+
+# Verify Vision
+print(4001); # Flat
+print(img_get(img, 0, 0)); # Expect < 10
+
+print(4002); # Edge
+print(img_get(img, 10, 5)); # Expect > 100
+
+print(9999); # DONE

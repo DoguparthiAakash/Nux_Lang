@@ -1,0 +1,267 @@
+#* ─────────────────────────────────────────────────────
+   Nux GPIO / Embedded Hardware Library  (std/hw.nuxel)
+
+   Provides:
+     - GPIO control (mode, read, write, toggle)
+     - PWM output
+     - UART serial
+     - I2C bus (send/receive)
+     - SPI bus
+     - Timers & delays
+     - Interrupt helpers
+     - ADC (analog read)
+   
+   All functions use the hardware abstraction opcodes
+   defined in the Nux VM (OP_GPIO_*, OP_DELAY_MS, etc.)
+   These work on ESP32, Arduino AVR, RISC-V, and any
+   board with a .nuxg hardware definition.
+   ───────────────────────────────────────────────────── *#
+
+# ── GPIO Constants ───────────────────────────────────────────
+var GPIO_INPUT    = 0;
+var GPIO_OUTPUT   = 1;
+var GPIO_INPUT_PU = 2;   # Input with pull-up
+var GPIO_INPUT_PD = 3;   # Input with pull-down
+
+var GPIO_LOW  = 0;
+var GPIO_HIGH = 1;
+
+# ── GPIO Core ────────────────────────────────────────────────
+
+pub func pin_mode(pin, mode) {
+    asm {
+        mode
+        pin
+        OP_GPIO_MODE
+    }
+}
+
+pub func digital_write(pin, val) {
+    asm {
+        val
+        pin
+        OP_GPIO_WRITE
+    }
+}
+
+pub func digital_read(pin) {
+    asm {
+        pin
+        OP_GPIO_READ
+    }
+}
+
+pub func pin_high(pin) {
+    digital_write(pin, 1);
+}
+
+pub func pin_low(pin) {
+    digital_write(pin, 0);
+}
+
+pub func pin_toggle(pin) {
+    var cur = digital_read(pin);
+    if (cur == 0) {
+        digital_write(pin, 1);
+    } else {
+        digital_write(pin, 0);
+    }
+}
+
+pub func pin_pulse(pin, ms) {
+    digital_write(pin, 1);
+    delay_ms(ms);
+    digital_write(pin, 0);
+}
+
+# Setup a pin as output and set initial state
+pub func setup_output(pin, initial_val) {
+    pin_mode(pin, GPIO_OUTPUT);
+    digital_write(pin, initial_val);
+}
+
+# Setup a pin as input with optional pull-up
+pub func setup_input(pin, pull_up) {
+    if (pull_up != 0) {
+        pin_mode(pin, GPIO_INPUT_PU);
+    } else {
+        pin_mode(pin, GPIO_INPUT);
+    }
+}
+
+# ── Timing ───────────────────────────────────────────────────
+
+pub func delay_ms(ms) {
+    asm {
+        ms
+        OP_DELAY_MS
+    }
+}
+
+pub func delay_us(us) {
+    asm {
+        us
+        OP_DELAY_US
+    }
+}
+
+pub func delay_sec(s) {
+    delay_ms(s * 1000);
+}
+
+# ── LED helpers ──────────────────────────────────────────────
+
+pub func led_blink(pin, times, on_ms, off_ms) {
+    setup_output(pin, 0);
+    var i = 0;
+    while (i < times) {
+        pin_high(pin);
+        delay_ms(on_ms);
+        pin_low(pin);
+        delay_ms(off_ms);
+        i = i + 1;
+    }
+}
+
+pub func led_sos(pin) {
+    # S = ...  O = ---  S = ...
+    # short = 100ms, long = 300ms, gap = 100ms, letter gap = 300ms
+    led_blink(pin, 3, 100, 100);   # S
+    delay_ms(300);
+    led_blink(pin, 3, 300, 100);   # O
+    delay_ms(300);
+    led_blink(pin, 3, 100, 100);   # S
+    delay_ms(1000);                  # word gap
+}
+
+# ── PWM ──────────────────────────────────────────────────────
+
+pub func pwm_write(pin, duty) {
+    # duty: 0-255 (8-bit PWM)
+    asm {
+        duty
+        pin
+        OP_PWM_WRITE
+    }
+}
+
+pub func pwm_off(pin) {
+    pwm_write(pin, 0);
+}
+
+pub func pwm_full(pin) {
+    pwm_write(pin, 255);
+}
+
+# Fade in from 0 to 255 over duration_ms
+pub func pwm_fade_in(pin, duration_ms) {
+    var step_ms = duration_ms // 255;
+    if (step_ms < 1) { step_ms = 1; }
+    var i = 0;
+    while (i <= 255) {
+        pwm_write(pin, i);
+        delay_ms(step_ms);
+        i = i + 1;
+    }
+}
+
+# Fade out from 255 to 0
+pub func pwm_fade_out(pin, duration_ms) {
+    var step_ms = duration_ms // 255;
+    if (step_ms < 1) { step_ms = 1; }
+    var i = 255;
+    while (i >= 0) {
+        pwm_write(pin, i);
+        delay_ms(step_ms);
+        i = i - 1;
+    }
+}
+
+# ── UART / Serial ────────────────────────────────────────────
+
+pub func uart_begin(baud) {
+    asm {
+        baud
+        OP_UART_BEGIN
+    }
+}
+
+pub func uart_write_byte(b) {
+    asm {
+        b
+        OP_UART_WRITE
+    }
+}
+
+pub func uart_read_byte() {
+    asm {
+        OP_UART_READ
+    }
+}
+
+pub func uart_available() {
+    asm {
+        OP_UART_AVAIL
+    }
+}
+
+# ── ADC (Analog to Digital) ──────────────────────────────────
+
+pub func analog_read(pin) {
+    asm {
+        pin
+        OP_ADC_READ
+    }
+}
+
+# Read ADC and map to range [lo, hi]
+pub func analog_read_mapped(pin, in_max, lo, hi) {
+    var raw = analog_read(pin);
+    return lo + (raw * (hi - lo)) // in_max;
+}
+
+# ── I2C ──────────────────────────────────────────────────────
+
+pub func i2c_begin(sda, scl) {
+    asm {
+        scl
+        sda
+        OP_I2C_BEGIN
+    }
+}
+
+pub func i2c_write(addr, reg, val) {
+    asm {
+        val
+        reg
+        addr
+        OP_I2C_WRITE
+    }
+}
+
+pub func i2c_read(addr, reg) {
+    asm {
+        reg
+        addr
+        OP_I2C_READ
+    }
+}
+
+# ── SPI ──────────────────────────────────────────────────────
+
+pub func spi_begin(mosi, miso, sck, cs) {
+    asm {
+        cs
+        sck
+        miso
+        mosi
+        OP_SPI_BEGIN
+    }
+}
+
+pub func spi_transfer(data) {
+    asm {
+        data
+        OP_SPI_XFER
+    }
+}

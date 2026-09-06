@@ -1,0 +1,244 @@
+# Reactive Programming & Observables
+
+# ============= OBSERVABLES =============
+
+class Observable<T> {
+    var subscribers: [func(T) -> void] = [];
+    
+    func subscribe(callback: func(T) -> void) -> Subscription {
+        this.subscribers.push(callback);
+        
+        return Subscription {
+            unsubscribe: () => {
+                this.subscribers.remove(callback);
+            }
+        };
+    }
+    
+    func next(value: T) {
+        for (var callback in this.subscribers) {
+            callback(value);
+        }
+    }
+    
+    func map<U>(f: func(T) -> U) -> Observable<U> {
+        var mapped = Observable<U>.new();
+        
+        this.subscribe((value) => {
+            mapped.next(f(value));
+        });
+        
+        return mapped;
+    }
+    
+    func filter(predicate: func(T) -> bool) -> Observable<T> {
+        var filtered = Observable<T>.new();
+        
+        this.subscribe((value) => {
+            if (predicate(value)) {
+                filtered.next(value);
+            }
+        });
+        
+        return filtered;
+    }
+    
+    func debounce(ms: int) -> Observable<T> {
+        var debounced = Observable<T>.new();
+        var timer: Option<Timer> = None;
+        
+        this.subscribe((value) => {
+            if (timer != None) {
+                timer.unwrap().cancel();
+            }
+            
+            timer = Some(Timer.after(ms, () => {
+                debounced.next(value);
+            }));
+        });
+        
+        return debounced;
+    }
+}
+
+struct Subscription {
+    var unsubscribe: func() -> void;
+}
+
+# ============= REACTIVE STATE =============
+
+class Signal<T> {
+    var value: T;
+    var observers: [func(T) -> void] = [];
+    
+    func new(initial: T) -> Signal<T> {
+        return Signal<T> { value: initial };
+    }
+    
+    func get() -> T {
+        return this.value;
+    }
+    
+    func set(new_value: T) {
+        this.value = new_value;
+        this.notify();
+    }
+    
+    func update(f: func(T) -> T) {
+        this.set(f(this.value));
+    }
+    
+    func observe(callback: func(T) -> void) {
+        this.observers.push(callback);
+        callback(this.value);  # Call immediately
+    }
+    
+    func notify() {
+        for (var observer in this.observers) {
+            observer(this.value);
+        }
+    }
+}
+
+# Computed signals
+class Computed<T> {
+    var compute: func() -> T;
+    var dependencies: [Signal<any>];
+    var cached_value: Option<T> = None;
+    
+    func get() -> T {
+        if (this.cached_value == None) {
+            this.cached_value = Some(this.compute());
+        }
+        return this.cached_value.unwrap();
+    }
+    
+    func invalidate() {
+        this.cached_value = None;
+    }
+}
+
+# ============= REACTIVE UI =============
+
+class Component {
+    var state: Map<string, Signal<any>> = Map.new();
+    
+    func create_signal<T>(name: string, initial: T) -> Signal<T> {
+        var signal = Signal.new(initial);
+        this.state[name] = signal;
+        
+        signal.observe((value) => {
+            this.render();
+        });
+        
+        return signal;
+    }
+    
+    func render() {
+        # Re-render component
+    }
+}
+
+# Example: Counter component
+class Counter extends Component {
+    var count: Signal<int>;
+    
+    func new() -> Counter {
+        var counter = Counter {};
+        counter.count = counter.create_signal("count", 0);
+        return counter;
+    }
+    
+    func increment() {
+        this.count.update((c) => c + 1);
+    }
+    
+    func render() {
+        println("Count: " + this.count.get());
+    }
+}
+
+# ============= EVENT STREAMS =============
+
+class EventStream<T> {
+    var events: Observable<T>;
+    
+    func new() -> EventStream<T> {
+        return EventStream<T> {
+            events: Observable<T>.new()
+        };
+    }
+    
+    func emit(event: T) {
+        this.events.next(event);
+    }
+    
+    func on(callback: func(T) -> void) {
+        this.events.subscribe(callback);
+    }
+    
+    func merge(other: EventStream<T>) -> EventStream<T> {
+        var merged = EventStream<T>.new();
+        
+        this.on((e) => merged.emit(e));
+        other.on((e) => merged.emit(e));
+        
+        return merged;
+    }
+}
+
+# ============= ASYNC STREAMS =============
+
+class AsyncStream<T> {
+    var queue: [T] = [];
+    var waiting: [func(T) -> void] = [];
+    
+    func push(value: T) {
+        if (this.waiting.length > 0) {
+            var callback = this.waiting.pop();
+            callback(value);
+        } else {
+            this.queue.push(value);
+        }
+    }
+    
+    async func next() -> T {
+        if (this.queue.length > 0) {
+            return this.queue.pop();
+        }
+        
+        return await new Promise((resolve) => {
+            this.waiting.push(resolve);
+        });
+    }
+}
+
+# ============= REACTIVE COLLECTIONS =============
+
+class ReactiveArray<T> {
+    var items: [T] = [];
+    var on_change: Observable<ArrayChange<T>>;
+    
+    func push(item: T) {
+        this.items.push(item);
+        this.on_change.next(ArrayChange.Add(item));
+    }
+    
+    func remove(index: int) {
+        var item = this.items[index];
+        this.items.remove(index);
+        this.on_change.next(ArrayChange.Remove(item));
+    }
+    
+    func update(index: int, item: T) {
+        var old = this.items[index];
+        this.items[index] = item;
+        this.on_change.next(ArrayChange.Update(old, item));
+    }
+}
+
+union ArrayChange<T> {
+    Add(T),
+    Remove(T),
+    Update(T, T)
+}

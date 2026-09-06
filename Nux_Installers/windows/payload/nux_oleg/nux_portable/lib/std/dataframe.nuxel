@@ -1,0 +1,101 @@
+#* ─────────────────────────────────────────────────────
+   Nux Standard DataFrame Library  (std/dataframe.nuxel)
+   
+   Provides a procedural, memory-mapped structure for dataframes.
+   Memory Layout:
+   [max_cols | max_rows | current_cols | current_rows | col0_ptr | col1_ptr ... ]
+   ───────────────────────────────────────────────────── *#
+
+import "std/mem.nuxel";
+import "std/io.nuxel";
+import "std/math_advanced.nuxel";
+
+# Allocates and initializes a new DataFrame
+# Returns pointer to the dataframe struct
+pub func dataframe_new(max_cols, max_rows) {
+    # 4 header words + max_cols pointers
+    var df = alloc(4 + max_cols);
+    poke(df, max_cols);     # [0] max_cols
+    poke(df + 1, max_rows); # [1] max_rows
+    poke(df + 2, 0);        # [2] current_cols
+    poke(df + 3, 0);        # [3] current_rows
+    return df;
+}
+
+# Adds a column pointer to the DataFrame
+# Returns the column index on success, or -1 if full
+pub func dataframe_add_column(df, col_ptr, rows) {
+    var max_cols = peek(df);
+    var current_cols = peek(df + 2);
+    
+    if (current_cols >= max_cols) {
+        return -1;
+    }
+    
+    # Store the column pointer
+    var ptr_offset = df + 4 + current_cols;
+    poke(ptr_offset, col_ptr);
+    
+    # Update current_cols
+    poke(df + 2, current_cols + 1);
+    
+    # Update current_rows (max of existing or new)
+    var current_rows = peek(df + 3);
+    if (rows > current_rows) {
+        poke(df + 3, rows);
+    }
+    
+    return current_cols;
+}
+
+# Returns the pointer to the specified column array, or 0 if invalid
+pub func dataframe_get_column(df, col_idx) {
+    var current_cols = peek(df + 2);
+    if (col_idx < 0) { return 0; }
+    if (col_idx >= current_cols) { return 0; }
+    
+    return peek(df + 4 + col_idx);
+}
+
+# Prints the first n rows of the DataFrame
+pub func dataframe_head(df, n) {
+    var current_cols = peek(df + 2);
+    var current_rows = peek(df + 3);
+    
+    var rows_to_print = n;
+    if (n > current_rows) {
+        rows_to_print = current_rows;
+    }
+    
+    print("DataFrame Head ("); print(rows_to_print); print(" rows):\\n");
+    
+    var r = 0;
+    while (r < rows_to_print) {
+        print("Row "); print(r); print(": [ ");
+        
+        var c = 0;
+        while (c < current_cols) {
+            var col_ptr = peek(df + 4 + c);
+            var val = peek(col_ptr + r);
+            print(val);
+            if (c < current_cols - 1) {
+                print(", ");
+            }
+            c = c + 1;
+        }
+        print(" ]\\n");
+        r = r + 1;
+    }
+}
+
+# Frees the DataFrame and all its owned column pointers
+pub func dataframe_free(df) {
+    var current_cols = peek(df + 2);
+    var c = 0;
+    while (c < current_cols) {
+        var col_ptr = peek(df + 4 + c);
+        free(col_ptr);
+        c = c + 1;
+    }
+    free(df);
+}

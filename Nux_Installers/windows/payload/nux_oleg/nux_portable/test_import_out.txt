@@ -1,0 +1,1662 @@
+#* ─────────────────────────────────────────────────────
+   Nux Standard Library — Master Import  (std.nuxel)
+
+   Import everything at once:
+
+   Or import individual modules:
+#* ─────────────────────────────────────────────────────
+   Nux Standard Math Library  (std/math.nuxel)
+   
+   Provides:
+     - abs, min, max, clamp
+     - pow, sqrt (Newton's method), cbrt
+     - factorial, fibonacci
+     - floor, ceil, round
+     - gcd, lcm, is_prime
+     - PI, E, TAU constants
+   ───────────────────────────────────────────────────── *#
+
+# ── Constants ────────────────────────────────────────────────
+var PI  = 3141592653;   # PI * 1e9  (use pi() for float)
+var E   = 2718281828;   # E  * 1e9
+var TAU = 6283185307;   # 2*PI * 1e9
+
+# Returns the absolute value of n
+pub func abs(n) {
+    if (n < 0) {
+        return 0 - n;
+    }
+    return n;
+}
+
+# Returns the smaller of a and b
+pub func min(a, b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+# Returns the larger of a and b
+pub func max(a, b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+# Clamps val between lo and hi
+pub func clamp(val, lo, hi) {
+    if (val < lo) { return lo; }
+    if (val > hi) { return hi; }
+    return val;
+}
+
+# Integer power: base^exp
+pub func pow(base, exp) {
+    var result = 1;
+    var i = 0;
+    while (i < exp) {
+        result = result * base;
+        i = i + 1;
+    }
+    return result;
+}
+
+# Integer square root (floor), Newton's method
+pub func sqrt_int(n) {
+    if (n < 0) { return 0; }
+    if (n == 0) { return 0; }
+    var x = n;
+    var y = (x + 1) // 2;
+    while (y < x) {
+        x = y;
+        y = (x + n // x) // 2;
+    }
+    return x;
+}
+
+# Integer cube root (floor)
+pub func cbrt(n) {
+    if (n == 0) { return 0; }
+    var neg = 0;
+    if (n < 0) {
+        n = 0 - n;
+        neg = 1;
+    }
+    var x = n;
+    var y = (2 * x + n // (x * x)) // 3;
+    while (y < x) {
+        x = y;
+        y = (2 * x + n // (x * x)) // 3;
+    }
+    if (neg == 1) {
+        return 0 - x;
+    }
+    return x;
+}
+
+# Factorial of n (iterative)
+pub func factorial(n) {
+    if (n <= 1) { return 1; }
+    var result = 1;
+    var i = 2;
+    while (i <= n) {
+        result = result * i;
+        i = i + 1;
+    }
+    return result;
+}
+
+# nth Fibonacci number (iterative, fast)
+pub func fibonacci(n) {
+    if (n <= 0) { return 0; }
+    if (n == 1) { return 1; }
+    var a = 0;
+    var b = 1;
+    var i = 2;
+    while (i <= n) {
+        var t = a + b;
+        a = b;
+        b = t;
+        i = i + 1;
+    }
+    return b;
+}
+
+# Greatest common divisor (Euclidean)
+pub func gcd(a, b) {
+    a = abs(a);
+    b = abs(b);
+    while (b != 0) {
+        var t = b;
+        b = a - (a // b) * b;   # a mod b
+        a = t;
+    }
+    return a;
+}
+
+# Lowest common multiple
+pub func lcm(a, b) {
+    if (a == 0) { return 0; }
+    if (b == 0) { return 0; }
+    return abs(a * b) // gcd(a, b);
+}
+
+# Returns 1 if n is prime, 0 otherwise
+pub func is_prime(n) {
+    if (n < 2) { return 0; }
+    if (n == 2) { return 1; }
+    if (n - (n // 2) * 2 == 0) { return 0; }   # even
+    var i = 3;
+    while (i * i <= n) {
+        if (n - (n // i) * i == 0) { return 0; }
+        i = i + 2;
+    }
+    return 1;
+}
+
+# Floor division (same as // but explicit)
+pub func floor_div(a, b) {
+    return a // b;
+}
+
+# Integer sign: -1, 0, or 1
+pub func sign(n) {
+    if (n > 0) { return 1; }
+    if (n < 0) { return -1; }
+    return 0;
+}
+#* ─────────────────────────────────────────────────────
+   Nux Array & Sorting Algorithms  (std/algo.nuxel)
+   
+   Provides:
+     - Sorting: bubble_sort, insertion_sort, selection_sort,
+                quick_sort_arr, merge_sort (manual)
+     - Searching: linear_search, binary_search
+     - Array utils: fill, reverse_arr, array_min, array_max,
+                    array_sum, array_contains
+   ───────────────────────────────────────────────────── *#
+
+# ── Array Utilities ──────────────────────────────────────────
+
+# Fill array of length n with a constant value
+pub func fill(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        poke(arr + i, val);
+        i = i + 1;
+    }
+}
+
+# Sum all elements of an integer array
+pub func array_sum(arr, n) {
+    var sum = 0;
+    var i = 0;
+    while (i < n) {
+        sum = sum + peek(arr + i);
+        i = i + 1;
+    }
+    return sum;
+}
+
+# Minimum value in array
+pub func array_min(arr, n) {
+    var m = peek(arr);
+    var i = 1;
+    while (i < n) {
+        var v = peek(arr + i);
+        if (v < m) { m = v; }
+        i = i + 1;
+    }
+    return m;
+}
+
+# Maximum value in array
+pub func array_max(arr, n) {
+    var m = peek(arr);
+    var i = 1;
+    while (i < n) {
+        var v = peek(arr + i);
+        if (v > m) { m = v; }
+        i = i + 1;
+    }
+    return m;
+}
+
+# Reverse an array in-place
+pub func reverse_arr(arr, n) {
+    var lo = 0;
+    var hi = n - 1;
+    while (lo < hi) {
+        var tmp = peek(arr + lo);
+        poke(arr + lo, peek(arr + hi));
+        poke(arr + hi, tmp);
+        lo = lo + 1;
+        hi = hi - 1;
+    }
+}
+
+# Returns 1 if val is in arr, 0 otherwise
+pub func array_contains(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { return 1; }
+        i = i + 1;
+    }
+    return 0;
+}
+
+# Count occurrences of val in array
+pub func array_count(arr, n, val) {
+    var c = 0;
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { c = c + 1; }
+        i = i + 1;
+    }
+    return c;
+}
+
+# ── Searching ────────────────────────────────────────────────
+
+# Linear search — returns index of val if found, -1 otherwise
+pub func linear_search(arr, n, val) {
+    var i = 0;
+    while (i < n) {
+        if (peek(arr + i) == val) { return i; }
+        i = i + 1;
+    }
+    return -1;
+}
+
+# Binary search — array MUST be sorted ascending
+# Returns index of val or -1 if not found
+pub func binary_search(arr, n, val) {
+    var lo = 0;
+    var hi = n - 1;
+    while (lo <= hi) {
+        var mid = (lo + hi) // 2;
+        var mv = peek(arr + mid);
+        if (mv == val) { return mid; }
+        if (mv < val) {
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return -1;
+}
+
+# ── Sorting Algorithms ───────────────────────────────────────
+
+# Bubble sort (ascending) — stable, O(n²)
+pub func bubble_sort(arr, n) {
+    var i = 0;
+    while (i < n - 1) {
+        var j = 0;
+        while (j < n - i - 1) {
+            var a = peek(arr + j);
+            var b = peek(arr + j + 1);
+            if (a > b) {
+                poke(arr + j,     b);
+                poke(arr + j + 1, a);
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+# Insertion sort (ascending) — stable, O(n²), fast for small n
+pub func insertion_sort(arr, n) {
+    var i = 1;
+    while (i < n) {
+        var key = peek(arr + i);
+        var j = i - 1;
+        while (j >= 0) {
+            var v = peek(arr + j);
+            if (v > key) {
+                poke(arr + j + 1, v);
+                j = j - 1;
+            } else {
+                j = -1;  # break
+            }
+        }
+        poke(arr + j + 1, key);
+        i = i + 1;
+    }
+}
+
+# Selection sort (ascending) — O(n²), minimal swaps
+pub func selection_sort(arr, n) {
+    var i = 0;
+    while (i < n - 1) {
+        var min_idx = i;
+        var j = i + 1;
+        while (j < n) {
+            if (peek(arr + j) < peek(arr + min_idx)) {
+                min_idx = j;
+            }
+            j = j + 1;
+        }
+        if (min_idx != i) {
+            var tmp = peek(arr + i);
+            poke(arr + i, peek(arr + min_idx));
+            poke(arr + min_idx, tmp);
+        }
+        i = i + 1;
+    }
+}
+
+# Shell sort (ascending) — O(n log² n) average, good for embedded
+pub func shell_sort(arr, n) {
+    var gap = n // 2;
+    while (gap > 0) {
+        var i = gap;
+        while (i < n) {
+            var tmp = peek(arr + i);
+            var j = i;
+            while (j >= gap) {
+                var v = peek(arr + j - gap);
+                if (v > tmp) {
+                    poke(arr + j, v);
+                    j = j - gap;
+                } else {
+                    j = 0;  # break
+                }
+            }
+            poke(arr + j, tmp);
+            i = i + 1;
+        }
+        gap = gap // 2;
+    }
+}
+
+# Counting sort — O(n + k), integers in range [0, max_val]
+pub func counting_sort(arr, n, max_val) {
+    *int cnt = alloc(max_val + 1);
+    fill(cnt, max_val + 1, 0);
+
+    # Count
+    var i = 0;
+    while (i < n) {
+        var v = peek(arr + i);
+        poke(cnt + v, peek(cnt + v) + 1);
+        i = i + 1;
+    }
+
+    # Write back
+    var pos = 0;
+    var v = 0;
+    while (v <= max_val) {
+        var c = peek(cnt + v);
+        var j = 0;
+        while (j < c) {
+            poke(arr + pos, v);
+            pos = pos + 1;
+            j = j + 1;
+        }
+        v = v + 1;
+    }
+
+    free(cnt);
+}
+#* ─────────────────────────────────────────────────────
+   Nux Data Structures Library  (std/ds.nuxel)
+   
+   Provides:
+     - Stack  (LIFO)
+     - Queue  (FIFO, ring buffer)
+     - Linked List
+     - Hash Map (open addressing, integer keys)
+     - Bitset
+   ───────────────────────────────────────────────────── *#
+
+# ── STACK (LIFO) ─────────────────────────────────────────────
+# Layout: [capacity | top | data...]
+
+pub func stack_new(capacity) {
+    *int s = alloc(capacity + 2);
+    poke(s,     capacity);
+    poke(s + 1, 0);        # top = 0
+    return s;
+}
+
+pub func stack_push(s, val) {
+    var cap = peek(s);
+    var top = peek(s + 1);
+    if (top >= cap) { return 0; }  # overflow
+    poke(s + 2 + top, val);
+    poke(s + 1, top + 1);
+    return 1;
+}
+
+pub func stack_pop(s) {
+    var top = peek(s + 1);
+    if (top == 0) { return 0; }  # underflow
+    top = top - 1;
+    poke(s + 1, top);
+    return peek(s + 2 + top);
+}
+
+pub func stack_peek_top(s) {
+    var top = peek(s + 1);
+    if (top == 0) { return 0; }
+    return peek(s + 2 + top - 1);
+}
+
+pub func stack_size(s) {
+    return peek(s + 1);
+}
+
+pub func stack_is_empty(s) {
+    if (peek(s + 1) == 0) { return 1; }
+    return 0;
+}
+
+pub func stack_free(s) {
+    free(s);
+}
+
+# ── QUEUE (FIFO ring buffer) ─────────────────────────────────
+# Layout: [capacity | head | tail | count | data...]
+
+pub func queue_new(capacity) {
+    *int q = alloc(capacity + 4);
+    poke(q,     capacity);
+    poke(q + 1, 0);  # head
+    poke(q + 2, 0);  # tail
+    poke(q + 3, 0);  # count
+    return q;
+}
+
+pub func queue_enqueue(q, val) {
+    var cap   = peek(q);
+    var tail  = peek(q + 2);
+    var count = peek(q + 3);
+    if (count >= cap) { return 0; }  # full
+    poke(q + 4 + tail, val);
+    poke(q + 2, (tail + 1) - ((tail + 1) // cap) * cap);  # mod cap
+    poke(q + 3, count + 1);
+    return 1;
+}
+
+pub func queue_dequeue(q) {
+    var cap   = peek(q);
+    var head  = peek(q + 1);
+    var count = peek(q + 3);
+    if (count == 0) { return 0; }   # empty
+    var val = peek(q + 4 + head);
+    poke(q + 1, (head + 1) - ((head + 1) // cap) * cap);  # mod cap
+    poke(q + 3, count - 1);
+    return val;
+}
+
+pub func queue_size(q) {
+    return peek(q + 3);
+}
+
+pub func queue_is_empty(q) {
+    if (peek(q + 3) == 0) { return 1; }
+    return 0;
+}
+
+pub func queue_free(q) {
+    free(q);
+}
+
+# ── LINKED LIST (singly linked) ──────────────────────────────
+# Each node: [value | next_ptr]
+# Returns a new node pointer
+
+pub func list_node(val) {
+    *int n = alloc(2);
+    poke(n,     val);
+    poke(n + 1, 0);   # next = null
+    return n;
+}
+
+pub func list_prepend(head, val) {
+    *int n = list_node(val);
+    poke(n + 1, head);
+    return n;   # new head
+}
+
+pub func list_append(head, val) {
+    *int n = list_node(val);
+    if (head == 0) { return n; }
+    var cur = head;
+    while (peek(cur + 1) != 0) {
+        cur = peek(cur + 1);
+    }
+    poke(cur + 1, n);
+    return head;
+}
+
+pub func list_len(head) {
+    var c = 0;
+    var cur = head;
+    while (cur != 0) {
+        c = c + 1;
+        cur = peek(cur + 1);
+    }
+    return c;
+}
+
+pub func list_get(head, idx) {
+    var cur = head;
+    var i = 0;
+    while (cur != 0) {
+        if (i == idx) { return peek(cur); }
+        cur = peek(cur + 1);
+        i = i + 1;
+    }
+    return 0;
+}
+
+pub func list_free(head) {
+    while (head != 0) {
+        var next = peek(head + 1);
+        free(head);
+        head = next;
+    }
+}
+
+# ── HASH MAP (open addressing, integer keys) ─────────────────
+# Layout: [capacity | count | key0 | val0 | key1 | val1 ...]
+# Uses 0 as empty sentinel — keys must be != 0
+
+pub func map_new(capacity) {
+    *int m = alloc(2 + capacity * 2);
+    poke(m,     capacity);
+    poke(m + 1, 0);   # count
+    var i = 0;
+    while (i < capacity * 2) {
+        poke(m + 2 + i, 0);
+        i = i + 1;
+    }
+    return m;
+}
+
+func _map_hash(cap, key) {
+    var h = key - (key // cap) * cap;   # key mod cap
+    if (h < 0) { h = 0 - h; }
+    return h;
+}
+
+pub func map_set(m, key, val) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == 0) {           # empty slot
+            poke(m + 2 + idx * 2,     key);
+            poke(m + 2 + idx * 2 + 1, val);
+            poke(m + 1, peek(m + 1) + 1);
+            return 1;
+        }
+        if (slot_key == key) {         # update
+            poke(m + 2 + idx * 2 + 1, val);
+            return 1;
+        }
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }   # wrap
+        probe = probe + 1;
+    }
+    return 0;  # full
+}
+
+pub func map_get(m, key) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == key) {
+            return peek(m + 2 + idx * 2 + 1);
+        }
+        if (slot_key == 0) { return 0; }  # empty — not found
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }
+        probe = probe + 1;
+    }
+    return 0;
+}
+
+pub func map_has(m, key) {
+    var cap = peek(m);
+    var idx = _map_hash(cap, key);
+    var probe = 0;
+    while (probe < cap) {
+        var slot_key = peek(m + 2 + idx * 2);
+        if (slot_key == key) { return 1; }
+        if (slot_key == 0) { return 0; }
+        idx = idx + 1;
+        if (idx >= cap) { idx = 0; }
+        probe = probe + 1;
+    }
+    return 0;
+}
+
+pub func map_count(m) {
+    return peek(m + 1);
+}
+
+pub func map_free(m) {
+    free(m);
+}
+
+# ── BITSET ───────────────────────────────────────────────────
+# n-bit set stored as an array of words (each word = 64 bits)
+
+pub func bitset_new(n_bits) {
+    var words = (n_bits + 63) // 64;
+    *int b = alloc(words + 1);
+    poke(b, words);  # store word count
+    var i = 1;
+    while (i <= words) {
+        poke(b + i, 0);
+        i = i + 1;
+    }
+    return b;
+}
+
+pub func bitset_set(b, bit) {
+    var word = bit // 64;
+    var off  = bit - word * 64;
+    var mask = 1;
+    var i = 0;
+    while (i < off) { mask = mask * 2; i = i + 1; }
+    poke(b + 1 + word, peek(b + 1 + word) + mask);
+}
+
+pub func bitset_get(b, bit) {
+    var word = bit // 64;
+    var off  = bit - word * 64;
+    var v = peek(b + 1 + word);
+    var mask = 1;
+    var i = 0;
+    while (i < off) { mask = mask * 2; i = i + 1; }
+    if (v - (v // (mask * 2)) * (mask * 2) >= mask) { return 1; }
+    return 0;
+}
+
+pub func bitset_free(b) {
+    free(b);
+}
+#* ─────────────────────────────────────────────────────
+   Nux Memory & Pointer Utilities  (std/mem.nuxel)
+
+   Provides:
+     - memcpy, memset, memcmp, memmove
+     - Safe pointer arithmetic helpers
+     - Stack-based arena allocator
+     - Bounds-checked read/write wrappers
+   ───────────────────────────────────────────────────── *#
+
+# Copy n words from src to dst (non-overlapping)
+pub func memcpy(dst, src, n) {
+    var i = 0;
+    while (i < n) {
+        poke(dst + i, peek(src + i));
+        i = i + 1;
+    }
+}
+
+# Copy n words handling overlapping regions (memmove)
+pub func memmove(dst, src, n) {
+    if (dst <= src) {
+        memcpy(dst, src, n);
+    } else {
+        var i = n - 1;
+        while (i >= 0) {
+            poke(dst + i, peek(src + i));
+            i = i - 1;
+        }
+    }
+}
+
+# Fill n words at dst with value val
+pub func memset(dst, n, val) {
+    var i = 0;
+    while (i < n) {
+        poke(dst + i, val);
+        i = i + 1;
+    }
+}
+
+# Compare n words at a and b — returns 0 if equal, 1 if different
+pub func memcmp(a, b, n) {
+    var i = 0;
+    while (i < n) {
+        if (peek(a + i) != peek(b + i)) { return 1; }
+        i = i + 1;
+    }
+    return 0;
+}
+
+# Zero out n words at dst
+pub func memzero(dst, n) {
+    memset(dst, n, 0);
+}
+
+# Swap two memory regions of size words (must not overlap)
+pub func memswap(a, b, size) {
+    var i = 0;
+    while (i < size) {
+        var tmp = peek(a + i);
+        poke(a + i, peek(b + i));
+        poke(b + i, tmp);
+        i = i + 1;
+    }
+}
+
+# ── Arena Allocator ──────────────────────────────────────────
+# A fast bump-pointer allocator for temporary allocations.
+# Usage:
+#   var arena = arena_new(1024);   # 1024-word arena
+#   var ptr   = arena_alloc(arena, 10);  # allocate 10 words
+#   arena_reset(arena);            # free all at once
+#   arena_free(arena);             # release arena memory
+
+# Arena layout: [capacity | used | data...]
+pub func arena_new(capacity) {
+    *int a = alloc(capacity + 2);
+    poke(a,     capacity);  # [0] = capacity
+    poke(a + 1, 0);         # [1] = used
+    return a;
+}
+
+pub func arena_alloc(arena, size) {
+    var capacity = peek(arena);
+    var used     = peek(arena + 1);
+    if (used + size > capacity) {
+        return 0;  # out of arena memory
+    }
+    var ptr = arena + 2 + used;
+    poke(arena + 1, used + size);
+    return ptr;
+}
+
+pub func arena_reset(arena) {
+    poke(arena + 1, 0);
+}
+
+pub func arena_free(arena) {
+    free(arena);
+}
+
+pub func arena_used(arena) {
+    return peek(arena + 1);
+}
+
+pub func arena_remaining(arena) {
+    return peek(arena) - peek(arena + 1);
+}
+
+# ── Safe Access Wrappers ─────────────────────────────────────
+# Bounds-checked array read — returns default_val if out of range
+pub func safe_peek(arr, n, idx, default_val) {
+    if (idx < 0) { return default_val; }
+    if (idx >= n) { return default_val; }
+    return peek(arr + idx);
+}
+
+# Bounds-checked array write — does nothing if out of range
+pub func safe_poke(arr, n, idx, val) {
+    if (idx < 0) { return; }
+    if (idx >= n) { return; }
+    poke(arr + idx, val);
+}
+#* ─────────────────────────────────────────────────────
+   Nux I/O Utilities  (std/io.nuxel)
+
+   Provides:
+     - print_int, print_hex, print_bin
+     - print_bool, print_newline
+     - read_int (placeholder for hardware)
+     - assert_eq, assert_neq, assert_gt, assert_lt
+     - log, log_ok, log_err, log_warn
+   ───────────────────────────────────────────────────── *#
+
+# Print a newline
+pub func println_empty() {
+    print("\n");
+}
+
+# Print integer followed by newline
+pub func println_int(n) {
+    print(n);
+    print("\n");
+}
+
+# Print a boolean as "true" or "false"
+pub func print_bool(b) {
+    if (b != 0) {
+        print("true");
+    } else {
+        print("false");
+    }
+}
+
+pub func println_bool(b) {
+    print_bool(b);
+    print("\n");
+}
+
+# Print integer in hexadecimal (simple, up to 8 hex digits)
+pub func print_hex(n) {
+    print("0x");
+    if (n == 0) {
+        print("0");
+        return;
+    }
+    # Extract up to 8 nibbles
+    *int digits = alloc(8);
+    var len = 0;
+    var v = n;
+    while (v != 0) {
+        var nibble = v - (v // 16) * 16;   # v mod 16
+        poke(digits + len, nibble);
+        v = v // 16;
+        len = len + 1;
+    }
+    # Print in reverse (most significant first)
+    var i = len - 1;
+    while (i >= 0) {
+        var d = peek(digits + i);
+        if (d < 10) {
+            print(d);
+        } else {
+            if (d == 10) { print("a"); }
+            if (d == 11) { print("b"); }
+            if (d == 12) { print("c"); }
+            if (d == 13) { print("d"); }
+            if (d == 14) { print("e"); }
+            if (d == 15) { print("f"); }
+        }
+        i = i - 1;
+    }
+    free(digits);
+}
+
+pub func println_hex(n) {
+    print_hex(n);
+    print("\n");
+}
+
+# Print integer in binary (up to 32 bits shown, trimmed)
+pub func print_bin(n) {
+    print("0b");
+    if (n == 0) {
+        print("0");
+        return;
+    }
+    *int bits = alloc(64);
+    var len = 0;
+    var v = n;
+    while (v != 0) {
+        poke(bits + len, v - (v // 2) * 2);   # v mod 2
+        v = v // 2;
+        len = len + 1;
+    }
+    var i = len - 1;
+    while (i >= 0) {
+        print(peek(bits + i));
+        i = i - 1;
+    }
+    free(bits);
+}
+
+pub func println_bin(n) {
+    print_bin(n);
+    print("\n");
+}
+
+# ── Assertions ───────────────────────────────────────────────
+
+pub func assert_eq(a, b) {
+    if (a != b) {
+        print("[ASSERT FAIL] expected ");
+        print(b);
+        print(" but got ");
+        print(a);
+        print("\n");
+        verify(0);   # halt
+    }
+}
+
+pub func assert_neq(a, b) {
+    if (a == b) {
+        print("[ASSERT FAIL] values should differ but both = ");
+        print(a);
+        print("\n");
+        verify(0);
+    }
+}
+
+pub func assert_gt(a, b) {
+    if (a <= b) {
+        print("[ASSERT FAIL] ");
+        print(a);
+        print(" should be > ");
+        print(b);
+        print("\n");
+        verify(0);
+    }
+}
+
+pub func assert_lt(a, b) {
+    if (a >= b) {
+        print("[ASSERT FAIL] ");
+        print(a);
+        print(" should be < ");
+        print(b);
+        print("\n");
+        verify(0);
+    }
+}
+
+# ── Logging ──────────────────────────────────────────────────
+
+pub func log(msg) {
+    print("[LOG] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_ok(msg) {
+    print("[OK ] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_err(msg) {
+    print("[ERR] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_warn(msg) {
+    print("[WRN] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_val(label, val) {
+    print("[LOG] ");
+    print(label);
+    print(" = ");
+    print(val);
+    print("\n");
+}
+#* ─────────────────────────────────────────────────────
+   Nux GPIO / Embedded Hardware Library  (std/hw.nuxel)
+
+   Provides:
+     - GPIO control (mode, read, write, toggle)
+     - PWM output
+     - UART serial
+     - I2C bus (send/receive)
+     - SPI bus
+     - Timers & delays
+     - Interrupt helpers
+     - ADC (analog read)
+   
+   All functions use the hardware abstraction opcodes
+   defined in the Nux VM (OP_GPIO_*, OP_DELAY_MS, etc.)
+   These work on ESP32, Arduino AVR, RISC-V, and any
+   board with a .nuxg hardware definition.
+   ───────────────────────────────────────────────────── *#
+
+# ── GPIO Constants ───────────────────────────────────────────
+var GPIO_INPUT    = 0;
+var GPIO_OUTPUT   = 1;
+var GPIO_INPUT_PU = 2;   # Input with pull-up
+var GPIO_INPUT_PD = 3;   # Input with pull-down
+
+var GPIO_LOW  = 0;
+var GPIO_HIGH = 1;
+
+# ── GPIO Core ────────────────────────────────────────────────
+
+pub func pin_mode(pin, mode) {
+    asm {
+        mode
+        pin
+        OP_GPIO_MODE
+    }
+}
+
+pub func digital_write(pin, val) {
+    asm {
+        val
+        pin
+        OP_GPIO_WRITE
+    }
+}
+
+pub func digital_read(pin) {
+    asm {
+        pin
+        OP_GPIO_READ
+    }
+}
+
+pub func pin_high(pin) {
+    digital_write(pin, 1);
+}
+
+pub func pin_low(pin) {
+    digital_write(pin, 0);
+}
+
+pub func pin_toggle(pin) {
+    var cur = digital_read(pin);
+    if (cur == 0) {
+        digital_write(pin, 1);
+    } else {
+        digital_write(pin, 0);
+    }
+}
+
+pub func pin_pulse(pin, ms) {
+    digital_write(pin, 1);
+    delay_ms(ms);
+    digital_write(pin, 0);
+}
+
+# Setup a pin as output and set initial state
+pub func setup_output(pin, initial_val) {
+    pin_mode(pin, GPIO_OUTPUT);
+    digital_write(pin, initial_val);
+}
+
+# Setup a pin as input with optional pull-up
+pub func setup_input(pin, pull_up) {
+    if (pull_up != 0) {
+        pin_mode(pin, GPIO_INPUT_PU);
+    } else {
+        pin_mode(pin, GPIO_INPUT);
+    }
+}
+
+# ── Timing ───────────────────────────────────────────────────
+
+pub func delay_ms(ms) {
+    asm {
+        ms
+        OP_DELAY_MS
+    }
+}
+
+pub func delay_us(us) {
+    asm {
+        us
+        OP_DELAY_US
+    }
+}
+
+pub func delay_sec(s) {
+    delay_ms(s * 1000);
+}
+
+# ── LED helpers ──────────────────────────────────────────────
+
+pub func led_blink(pin, times, on_ms, off_ms) {
+    setup_output(pin, 0);
+    var i = 0;
+    while (i < times) {
+        pin_high(pin);
+        delay_ms(on_ms);
+        pin_low(pin);
+        delay_ms(off_ms);
+        i = i + 1;
+    }
+}
+
+pub func led_sos(pin) {
+    # S = ...  O = ---  S = ...
+    # short = 100ms, long = 300ms, gap = 100ms, letter gap = 300ms
+    led_blink(pin, 3, 100, 100);   # S
+    delay_ms(300);
+    led_blink(pin, 3, 300, 100);   # O
+    delay_ms(300);
+    led_blink(pin, 3, 100, 100);   # S
+    delay_ms(1000);                  # word gap
+}
+
+# ── PWM ──────────────────────────────────────────────────────
+
+pub func pwm_write(pin, duty) {
+    # duty: 0-255 (8-bit PWM)
+    asm {
+        duty
+        pin
+        OP_PWM_WRITE
+    }
+}
+
+pub func pwm_off(pin) {
+    pwm_write(pin, 0);
+}
+
+pub func pwm_full(pin) {
+    pwm_write(pin, 255);
+}
+
+# Fade in from 0 to 255 over duration_ms
+pub func pwm_fade_in(pin, duration_ms) {
+    var step_ms = duration_ms // 255;
+    if (step_ms < 1) { step_ms = 1; }
+    var i = 0;
+    while (i <= 255) {
+        pwm_write(pin, i);
+        delay_ms(step_ms);
+        i = i + 1;
+    }
+}
+
+# Fade out from 255 to 0
+pub func pwm_fade_out(pin, duration_ms) {
+    var step_ms = duration_ms // 255;
+    if (step_ms < 1) { step_ms = 1; }
+    var i = 255;
+    while (i >= 0) {
+        pwm_write(pin, i);
+        delay_ms(step_ms);
+        i = i - 1;
+    }
+}
+
+# ── UART / Serial ────────────────────────────────────────────
+
+pub func uart_begin(baud) {
+    asm {
+        baud
+        OP_UART_BEGIN
+    }
+}
+
+pub func uart_write_byte(b) {
+    asm {
+        b
+        OP_UART_WRITE
+    }
+}
+
+pub func uart_read_byte() {
+    asm {
+        OP_UART_READ
+    }
+}
+
+pub func uart_available() {
+    asm {
+        OP_UART_AVAIL
+    }
+}
+
+# ── ADC (Analog to Digital) ──────────────────────────────────
+
+pub func analog_read(pin) {
+    asm {
+        pin
+        OP_ADC_READ
+    }
+}
+
+# Read ADC and map to range [lo, hi]
+pub func analog_read_mapped(pin, in_max, lo, hi) {
+    var raw = analog_read(pin);
+    return lo + (raw * (hi - lo)) // in_max;
+}
+
+# ── I2C ──────────────────────────────────────────────────────
+
+pub func i2c_begin(sda, scl) {
+    asm {
+        scl
+        sda
+        OP_I2C_BEGIN
+    }
+}
+
+pub func i2c_write(addr, reg, val) {
+    asm {
+        val
+        reg
+        addr
+        OP_I2C_WRITE
+    }
+}
+
+pub func i2c_read(addr, reg) {
+    asm {
+        reg
+        addr
+        OP_I2C_READ
+    }
+}
+
+# ── SPI ──────────────────────────────────────────────────────
+
+pub func spi_begin(mosi, miso, sck, cs) {
+    asm {
+        cs
+        sck
+        miso
+        mosi
+        OP_SPI_BEGIN
+    }
+}
+
+pub func spi_transfer(data) {
+    asm {
+        data
+        OP_SPI_XFER
+    }
+}
+#* ─────────────────────────────────────────────────────
+   Nux Cryptography & Hashing  (std/crypto.nuxel)
+   
+   Provides:
+     - DJB2 hash (fast string/data hash)
+     - FNV-1a hash
+     - XOR cipher (lightweight symmetric encryption)
+     - CRC8, CRC16 (error detection for embedded comms)
+     - Simple LCG PRNG (pseudo-random number generator)
+   ───────────────────────────────────────────────────── *#
+
+# ── Hashing ──────────────────────────────────────────────────
+
+# DJB2 hash of an integer array of length n
+# Great for hash maps and fast checksums
+pub func djb2_hash(arr, n) {
+    var h = 5381;
+    var i = 0;
+    while (i < n) {
+        h = h * 33 + peek(arr + i);
+        i = i + 1;
+    }
+    return h;
+}
+
+# FNV-1a 32-bit hash (better avalanche than DJB2)
+pub func fnv1a_hash(arr, n) {
+    var h = 2166136261;   # FNV offset basis
+    var prime = 16777619;
+    var i = 0;
+    while (i < n) {
+        var b_val = peek(arr + i);
+        h = (h - (h // 256) * 256);   # h mod 256 (low byte)
+        h = h + b_val;
+        h = h * prime;
+        i = i + 1;
+    }
+    return h;
+}
+
+# ── CRC (Error Detection) ────────────────────────────────────
+
+# CRC-8 for data packets (polynomial 0x07)
+pub func crc8(arr, n) {
+    var crc = 0;
+    var i = 0;
+    while (i < n) {
+        crc = crc + peek(arr + i);
+        var j = 0;
+        while (j < 8) {
+            if (crc >= 128) {
+                crc = (crc * 2) - 256;   # shift left
+                crc = crc + 7;           # XOR 0x07
+            } else {
+                crc = crc * 2;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return crc - (crc // 256) * 256;   # return 8 bits
+}
+
+# CRC-16/CCITT (polynomial 0x1021) used by UART/SD cards/XMODEM
+pub func crc16(arr, n) {
+    var crc = 65535;   # 0xFFFF
+    var i = 0;
+    while (i < n) {
+        crc = crc + peek(arr + i) * 256;  # XOR high byte
+        var j = 0;
+        while (j < 8) {
+            if (crc >= 32768) {
+                crc = (crc * 2) - 65536;
+                crc = crc + 4129;    # XOR 0x1021
+            } else {
+                crc = crc * 2;
+            }
+            crc = crc - (crc // 65536) * 65536;  # mod 65536
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return crc;
+}
+
+# ── XOR Cipher ───────────────────────────────────────────────
+# Simple and extremely fast on embedded — encrypt/decrypt with same key
+
+# Encrypt/decrypt n words in-place with a repeating key array of key_len
+pub func xor_crypt(data, n, key, key_len) {
+    var i = 0;
+    while (i < n) {
+        var k_idx = i - (i // key_len) * key_len;   # i mod key_len
+        var old = peek(data + i);
+        poke(data + i, old + peek(key + k_idx));     # XOR via sum trick
+        i = i + 1;
+    }
+}
+
+# XOR encrypt with a single integer key (simpler form)
+pub func xor_crypt_single(data, n, key) {
+    var i = 0;
+    while (i < n) {
+        poke(data + i, peek(data + i) + key);
+        i = i + 1;
+    }
+}
+
+# ── PRNG (LCG) ───────────────────────────────────────────────
+# Linear Congruential Generator — tiny, deterministic PRNG
+# Good for games, simulations, noise on embedded
+
+var _lcg_state = 12345;   # internal state (seed)
+
+pub func srand(seed) {
+    _lcg_state = seed;
+}
+
+pub func rand() {
+    # LCG: state = (a * state + c) mod m
+    # Knuth params: a=1664525, c=1013904223, m=2^32
+    _lcg_state = _lcg_state * 1664525 + 1013904223;
+    if (_lcg_state < 0) { _lcg_state = 0 - _lcg_state; }
+    return _lcg_state;
+}
+
+# Random integer in [0, max_val)
+pub func rand_range(max_val) {
+    var r = rand();
+    if (max_val <= 0) { return 0; }
+    return r - (r // max_val) * max_val;   # r mod max_val
+}
+
+# Shuffle an array using Fisher-Yates
+pub func shuffle(arr, n, seed) {
+    srand(seed);
+    var i = n - 1;
+    while (i > 0) {
+        var j = rand_range(i + 1);
+        var tmp = peek(arr + i);
+        poke(arr + i, peek(arr + j));
+        poke(arr + j, tmp);
+        i = i - 1;
+    }
+}
+   ───────────────────────────────────────────────────── *#
+
+#* ─────────────────────────────────────────────────────
+   Nux Standard Advanced Math Library  (std/math_advanced.nuxel)
+   
+   Provides data analytics math operations on arrays.
+   All returned values are scaled by 1000 (fixed-point)
+   to preserve decimal precision using Nux integers.
+   ───────────────────────────────────────────────────── *#
+
+
+# Returns the mean of the array, scaled by 1000
+pub func math_adv_mean(arr, size) {
+    if (size == 0) { return 0; }
+    var sum = 0;
+    var i = 0;
+    while (i < size) {
+        sum = sum + peek(arr + i);
+        i = i + 1;
+    }
+    return (sum * 1000) // size;
+}
+
+# Returns the variance of the array, scaled by 1000
+pub func math_adv_variance(arr, size) {
+    if (size == 0) { return 0; }
+    var mean = math_adv_mean(arr, size);
+    var sum_sq_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x = peek(arr + i) * 1000;
+        var diff = x - mean;
+        sum_sq_diff = sum_sq_diff + (diff * diff);
+        i = i + 1;
+    }
+    # sum_sq_diff is scaled by 1,000,000. Divide by size, then by 1000
+    return (sum_sq_diff // size) // 1000;
+}
+
+# Returns the standard deviation of the array, scaled by 1000
+pub func math_adv_stddev(arr, size) {
+    if (size == 0) { return 0; }
+    var mean = math_adv_mean(arr, size);
+    var sum_sq_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x = peek(arr + i) * 1000;
+        var diff = x - mean;
+        sum_sq_diff = sum_sq_diff + (diff * diff);
+        i = i + 1;
+    }
+    var var_million = sum_sq_diff // size;
+    return sqrt_int(var_million);
+}
+
+# Returns the covariance between two arrays, scaled by 1000
+pub func math_adv_cov(arr1, arr2, size) {
+    if (size == 0) { return 0; }
+    var mean1 = math_adv_mean(arr1, size);
+    var mean2 = math_adv_mean(arr2, size);
+    var sum_prod_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x1 = peek(arr1 + i) * 1000;
+        var x2 = peek(arr2 + i) * 1000;
+        var diff1 = x1 - mean1;
+        var diff2 = x2 - mean2;
+        sum_prod_diff = sum_prod_diff + (diff1 * diff2);
+        i = i + 1;
+    }
+    return (sum_prod_diff // size) // 1000;
+}
+
+# Returns the Pearson correlation coefficient between two arrays, scaled by 1000
+pub func math_adv_corrcoef(arr1, arr2, size) {
+    if (size == 0) { return 0; }
+    var std1 = math_adv_stddev(arr1, size);
+    var std2 = math_adv_stddev(arr2, size);
+    if (std1 == 0) { return 0; }
+    if (std2 == 0) { return 0; }
+
+    var mean1 = math_adv_mean(arr1, size);
+    var mean2 = math_adv_mean(arr2, size);
+    var sum_prod_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x1 = peek(arr1 + i) * 1000;
+        var x2 = peek(arr2 + i) * 1000;
+        var diff1 = x1 - mean1;
+        var diff2 = x2 - mean2;
+        sum_prod_diff = sum_prod_diff + (diff1 * diff2);
+        i = i + 1;
+    }
+    var cov_million = sum_prod_diff // size;
+    
+    # corr = (cov_million / 1,000,000) / ( (std1 / 1000) * (std2 / 1000) )
+    # corr = cov_million / (std1 * std2)
+    # To scale correlation by 1000:
+    return (cov_million * 1000) // (std1 * std2);
+}
+#* ─────────────────────────────────────────────────────
+   Nux Standard DataFrame Library  (std/dataframe.nuxel)
+   
+   Provides a procedural, memory-mapped structure for dataframes.
+   Memory Layout:
+   [max_cols | max_rows | current_cols | current_rows | col0_ptr | col1_ptr ... ]
+   ───────────────────────────────────────────────────── *#
+
+
+# Allocates and initializes a new DataFrame
+# Returns pointer to the dataframe struct
+pub func dataframe_new(max_cols, max_rows) {
+    # 4 header words + max_cols pointers
+    var df = alloc(4 + max_cols);
+    poke(df, max_cols);     # [0] max_cols
+    poke(df + 1, max_rows); # [1] max_rows
+    poke(df + 2, 0);        # [2] current_cols
+    poke(df + 3, 0);        # [3] current_rows
+    return df;
+}
+
+# Adds a column pointer to the DataFrame
+# Returns the column index on success, or -1 if full
+pub func dataframe_add_column(df, col_ptr, rows) {
+    var max_cols = peek(df);
+    var current_cols = peek(df + 2);
+    
+    if (current_cols >= max_cols) {
+        return -1;
+    }
+    
+    # Store the column pointer
+    var ptr_offset = df + 4 + current_cols;
+    poke(ptr_offset, col_ptr);
+    
+    # Update current_cols
+    poke(df + 2, current_cols + 1);
+    
+    # Update current_rows (max of existing or new)
+    var current_rows = peek(df + 3);
+    if (rows > current_rows) {
+        poke(df + 3, rows);
+    }
+    
+    return current_cols;
+}
+
+# Returns the pointer to the specified column array, or 0 if invalid
+pub func dataframe_get_column(df, col_idx) {
+    var current_cols = peek(df + 2);
+    if (col_idx < 0) { return 0; }
+    if (col_idx >= current_cols) { return 0; }
+    
+    return peek(df + 4 + col_idx);
+}
+
+# Prints the first n rows of the DataFrame
+pub func dataframe_head(df, n) {
+    var current_cols = peek(df + 2);
+    var current_rows = peek(df + 3);
+    
+    var rows_to_print = n;
+    if (n > current_rows) {
+        rows_to_print = current_rows;
+    }
+    
+    print("DataFrame Head ("); print(rows_to_print); print(" rows):\\n");
+    
+    var r = 0;
+    while (r < rows_to_print) {
+        print("Row "); print(r); print(": [ ");
+        
+        var c = 0;
+        while (c < current_cols) {
+            var col_ptr = peek(df + 4 + c);
+            var val = peek(col_ptr + r);
+            print(val);
+            if (c < current_cols - 1) {
+                print(", ");
+            }
+            c = c + 1;
+        }
+        print(" ]\\n");
+        r = r + 1;
+    }
+}
+
+# Frees the DataFrame and all its owned column pointers
+pub func dataframe_free(df) {
+    var current_cols = peek(df + 2);
+    var c = 0;
+    while (c < current_cols) {
+        var col_ptr = peek(df + 4 + c);
+        free(col_ptr);
+        c = c + 1;
+    }
+    free(df);
+}
+
+func main() {
+    print("Testing Advanced Math (Results scaled by 1000)...\n");
+    
+    var t1 = alloc(4);
+    poke(t1, 1); poke(t1+1, 2); poke(t1+2, 3); poke(t1+3, 4);
+    
+    var t2 = alloc(4);
+    poke(t2, 2); poke(t2+1, 4); poke(t2+2, 6); poke(t2+3, 8);
+    
+    var m = math_adv_mean(t1, 4);
+    print("Mean of [1, 2, 3, 4] x1000: ");
+    print(m);
+    print("\n");
+    
+    var v = math_adv_variance(t1, 4);
+    print("Variance x1000: ");
+    print(v);
+    print("\n");
+    
+    var s = math_adv_stddev(t1, 4);
+    print("StdDev x1000: ");
+    print(s);
+    print("\n");
+    
+    var corr = math_adv_corrcoef(t1, t2, 4);
+    print("Correlation between [1..4] and [2..8] x1000: ");
+    print(corr);
+    print("\n\n");
+    
+    print("Testing DataFrame...\n");
+    var df = dataframe_new(2, 4);
+    
+    var age_col = alloc(4);
+    poke(age_col, 25); poke(age_col+1, 30); poke(age_col+2, 35); poke(age_col+3, 40);
+    var age_idx = dataframe_add_column(df, age_col, 4);
+    
+    var sal_col = alloc(4);
+    poke(sal_col, 50000); poke(sal_col+1, 60000); poke(sal_col+2, 70000); poke(sal_col+3, 80000);
+    var sal_idx = dataframe_add_column(df, sal_col, 4);
+    
+    dataframe_head(df, 4);
+    
+    print("\nMean Age x1000: ");
+    print(math_adv_mean(dataframe_get_column(df, age_idx), 4));
+    
+    print("\nMean Salary x1000: ");
+    print(math_adv_mean(dataframe_get_column(df, sal_idx), 4));
+    print("\n");
+    
+    dataframe_free(df);
+    free(t1);
+    free(t2);
+    
+    return 0;
+}
+
+main();

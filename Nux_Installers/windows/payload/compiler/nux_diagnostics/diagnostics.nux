@@ -1,0 +1,92 @@
+# Nux Diagnostics Engine
+# Provides centralized, structured error reporting with spans and context labels.
+
+class Span {
+    var file_id;
+    var start;
+    var end;
+
+    func init(f_id, s, e) {
+        this.file_id = f_id;
+        this.start = s;
+        this.end = e;
+    }
+}
+
+class DiagnosticLabel {
+    var span;
+    var message;
+
+    func init(sp, msg) {
+        this.span = sp;
+        this.message = msg;
+    }
+}
+
+class Diagnostic {
+    var severity; # 0 = Error, 1 = Warning, 2 = Note
+    var code;
+    var message;
+    var primary_span;
+    var labels;
+    var help;
+
+    func init(sev, c, msg, span) {
+        this.severity = sev;
+        this.code = c;
+        this.message = msg;
+        this.primary_span = span;
+        
+        this.labels = new List();
+        this.labels.init();
+        
+        this.help = 0;
+    }
+
+    func add_label(span, msg) {
+        var label = new DiagnosticLabel();
+        label.init(span, msg);
+        this.labels.append(label);
+        return this;
+    }
+
+    func set_help(help_msg) {
+        this.help = help_msg;
+        return this;
+    }
+}
+
+class DiagnosticEngine {
+    var diagnostics;
+    var has_errors;
+
+    func init() {
+        this.diagnostics = new List();
+        this.diagnostics.init();
+        this.has_errors = 0;
+    }
+
+    func emit(diagnostic) {
+        this.diagnostics.append(diagnostic);
+        if (diagnostic.severity == 0) {
+            this.has_errors = 1;
+        }
+    }
+
+    func print_all() {
+        var i = 0;
+        while (i < this.diagnostics.length()) {
+            var diag = this.diagnostics.get(i);
+            # In a real implementation, this would look up the file source 
+            # and print the exact lines with '^' pointing to the spans.
+            print("--- Diagnostic ---");
+            if (diag.severity == 0) {
+                print("error[", diag.code, "]: ", diag.message);
+            }
+            if (diag.help != 0) {
+                print("  = help: ", diag.help);
+            }
+            i = i + 1;
+        }
+    }
+}

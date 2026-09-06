@@ -1,0 +1,28 @@
+# synapse::ops
+# Fundamental mathematical operations for Tensors.
+
+import std::gpu::ptx;
+
+# A massive advantage of Synapse over TensorFlow:
+# You can write your custom CUDA/PTX shaders directly in pure Nux!
+# The Nux compiler will lower this directly to PTX assembly.
+
+@[gpu_kernel]
+func matmul_gpu(A_ptr, B_ptr, C_ptr, M, N, K) {
+    # Block and Thread indices mapped to native PTX intrinsics
+    var row = ptx::block_idx_y() * ptx::block_dim_y() + ptx::thread_idx_y();
+    var col = ptx::block_idx_x() * ptx::block_dim_x() + ptx::thread_idx_x();
+    
+    if (row < M && col < N) {
+        var value = 0.0;
+        
+        # Matrix multiplication dot product loop
+        var i = 0;
+        while (i < K) {
+            value += A_ptr[row * K + i] * B_ptr[i * N + col];
+            i += 1;
+        }
+        
+        C_ptr[row * N + col] = value;
+    }
+}

@@ -1,0 +1,309 @@
+# Nux Package Manager
+# Package installation and dependency management
+
+# ===== PACKAGE CONFIGURATION =====
+
+class PackageConfig {
+    func constructor() {
+        this.name = "";
+        this.version = "1.0.0";
+        this.description = "";
+        this.author = "";
+        this.license = "MIT";
+        this.dependencies = {};
+        this.devDependencies = {};
+        this.scripts = {};
+        this.main = "index.nux";
+    }
+    
+    func toJSON() {
+        return {
+            name: this.name,
+            version: this.version,
+            description: this.description,
+            author: this.author,
+            license: this.license,
+            dependencies: this.dependencies,
+            devDependencies: this.devDependencies,
+            scripts: this.scripts,
+            main: this.main
+        };
+    }
+    
+    func fromJSON(json) {
+        this.name = json.name || "";
+        this.version = json.version || "1.0.0";
+        this.description = json.description || "";
+        this.author = json.author || "";
+        this.license = json.license || "MIT";
+        this.dependencies = json.dependencies || {};
+        this.devDependencies = json.devDependencies || {};
+        this.scripts = json.scripts || {};
+        this.main = json.main || "index.nux";
+    }
+}
+
+# ===== PACKAGE MANAGER =====
+
+class PackageManager {
+    func constructor() {
+        this.registry = "https://registry.nux.dev";
+        this.cacheDir = path_join(sys_home(), ".nux", "cache");
+        this.modulesDir = "nux_modules";
+    }
+    
+    func init(name) {
+        var config = new PackageConfig();
+        config.name = name;
+        
+        var json = json_stringify(config.toJSON(), 2);
+        file_write("nux.json", json);
+        
+        print("Created nux.json");
+    }
+    
+    func install(packageName, version) {
+        if (packageName) {
+            return this.installPackage(packageName, version);
+        } else {
+            return this.installAll();
+        }
+    }
+    
+    func installPackage(name, version) {
+        print("Installing " + name + "@" + (version || "latest") + "...");
+        
+        # Fetch package info
+        var info = this.fetchPackageInfo(name, version);
+        
+        # Download package
+        var tarballPath = this.downloadPackage(info);
+        
+        # Extract package
+        this.extractPackage(tarballPath, name);
+        
+        # Update nux.json
+        this.addDependency(name, info.version);
+        
+        # Install dependencies
+        this.installDependencies(info.dependencies);
+        
+        print("✓ Installed " + name + "@" + info.version);
+    }
+    
+    func installAll() {
+        var config = this.loadConfig();
+        
+        print("Installing dependencies...");
+        
+        obj_forEach(config.dependencies, func(name, version) {
+            this.installPackage(name, version);
+        });
+        
+        print("✓ All dependencies installed");
+    }
+    
+    func uninstall(packageName) {
+        print("Uninstalling " + packageName + "...");
+        
+        # Remove from nux_modules
+        var packagePath = path_join(this.modulesDir, packageName);
+        file_deleteDir(packagePath);
+        
+        # Remove from nux.json
+        this.removeDependency(packageName);
+        
+        print("✓ Uninstalled " + packageName);
+    }
+    
+    func update(packageName) {
+        if (packageName) {
+            this.updatePackage(packageName);
+        } else {
+            this.updateAll();
+        }
+    }
+    
+    func updatePackage(name) {
+        print("Updating " + name + "...");
+        
+        # Get latest version
+        var info = this.fetchPackageInfo(name, "latest");
+        
+        # Reinstall
+        this.uninstall(name);
+        this.installPackage(name, info.version);
+        
+        print("✓ Updated " + name + " to " + info.version);
+    }
+    
+    func updateAll() {
+        var config = this.loadConfig();
+        
+        obj_forEach(config.dependencies, func(name, version) {
+            this.updatePackage(name);
+        });
+    }
+    
+    func publish() {
+        var config = this.loadConfig();
+        
+        print("Publishing " + config.name + "@" + config.version + "...");
+        
+        # Create tarball
+        var tarballPath = this.createTarball(config);
+        
+        # Upload to registry
+        this.uploadPackage(tarballPath, config);
+        
+        print("✓ Published " + config.name + "@" + config.version);
+    }
+    
+    func search(query) {
+        print("Searching for: " + query);
+        
+        var url = this.registry + "/search?q=" + http_encodeURI(query);
+        var response = http_get(url);
+        
+        var results = json_parse(response.body);
+        
+        arr_forEach(results, func(pkg) {
+            print("  " + pkg.name + " - " + pkg.description);
+        });
+    }
+    
+    func list() {
+        var config = this.loadConfig();
+        
+        print("Dependencies:");
+        obj_forEach(config.dependencies, func(name, version) {
+            print("  " + name + "@" + version);
+        });
+    }
+    
+    # ===== HELPER METHODS =====
+    
+    func loadConfig() {
+        var json = file_read("nux.json");
+        var data = json_parse(json);
+        
+        var config = new PackageConfig();
+        config.fromJSON(data);
+        
+        return config;
+    }
+    
+    func saveConfig(config) {
+        var json = json_stringify(config.toJSON(), 2);
+        file_write("nux.json", json);
+    }
+    
+    func addDependency(name, version) {
+        var config = this.loadConfig();
+        config.dependencies[name] = "^" + version;
+        this.saveConfig(config);
+    }
+    
+    func removeDependency(name) {
+        var config = this.loadConfig();
+        config.dependencies[name] = null;
+        this.saveConfig(config);
+    }
+    
+    func fetchPackageInfo(name, version) {
+        var url = this.registry + "/" + name;
+        
+        if (version && version != "latest") {
+            url = url + "/" + version;
+        }
+        
+        var response = http_get(url);
+        return json_parse(response.body);
+    }
+    
+    func downloadPackage(info) {
+        var tarballUrl = info.dist.tarball;
+        var filename = info.name + "-" + info.version + ".tar.gz";
+        var cachePath = path_join(this.cacheDir, filename);
+        
+        # Create cache directory
+        if (!file_exists(this.cacheDir)) {
+            file_createDir(this.cacheDir);
+        }
+        
+        # Download
+        http_download(tarballUrl, cachePath);
+        
+        return cachePath;
+    }
+    
+    func extractPackage(tarballPath, name) {
+        var targetPath = path_join(this.modulesDir, name);
+        
+        # Create modules directory
+        if (!file_exists(this.modulesDir)) {
+            file_createDir(this.modulesDir);
+        }
+        
+        # Extract tarball
+        sys_exec("tar -xzf " + tarballPath + " -C " + this.modulesDir);
+    }
+    
+    func installDependencies(dependencies) {
+        obj_forEach(dependencies, func(name, version) {
+            this.installPackage(name, version);
+        });
+    }
+    
+    func createTarball(config) {
+        var filename = config.name + "-" + config.version + ".tar.gz";
+        sys_exec("tar -czf " + filename + " .");
+        return filename;
+    }
+    
+    func uploadPackage(tarballPath, config) {
+        var url = this.registry + "/publish";
+        
+        http_upload(url, tarballPath, {
+            name: config.name,
+            version: config.version
+        });
+    }
+}
+
+# ===== CLI INTERFACE =====
+
+func pkg_init(name) {
+    var pm = new PackageManager();
+    pm.init(name);
+}
+
+func pkg_install(packageName, version) {
+    var pm = new PackageManager();
+    pm.install(packageName, version);
+}
+
+func pkg_uninstall(packageName) {
+    var pm = new PackageManager();
+    pm.uninstall(packageName);
+}
+
+func pkg_update(packageName) {
+    var pm = new PackageManager();
+    pm.update(packageName);
+}
+
+func pkg_publish() {
+    var pm = new PackageManager();
+    pm.publish();
+}
+
+func pkg_search(query) {
+    var pm = new PackageManager();
+    pm.search(query);
+}
+
+func pkg_list() {
+    var pm = new PackageManager();
+    pm.list();
+}

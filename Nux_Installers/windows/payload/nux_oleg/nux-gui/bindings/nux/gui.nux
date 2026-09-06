@@ -1,0 +1,126 @@
+# Nux GUI Library - High-level wrapper for C++ GUI library
+
+# External C functions (FFI)
+extern func nux_gui_initialize(): bool;
+extern func nux_gui_shutdown();
+extern func nux_gui_poll_events();
+
+extern func nux_gui_window_create(width: int, height: int, title: string): ptr;
+extern func nux_gui_window_destroy(window: ptr);
+extern func nux_gui_window_should_close(window: ptr): bool;
+extern func nux_gui_window_swap_buffers(window: ptr);
+extern func nux_gui_window_clear(window: ptr, r: float, g: float, b: float, a: float);
+extern func nux_gui_window_render(window: ptr);
+extern func nux_gui_window_set_title(window: ptr, title: string);
+extern func nux_gui_window_add_widget(window: ptr, widget: ptr);
+
+extern func nux_gui_button_create(text: string): ptr;
+extern func nux_gui_button_destroy(button: ptr);
+extern func nux_gui_button_set_text(button: ptr, text: string);
+extern func nux_gui_button_set_position(button: ptr, x: float, y: float);
+extern func nux_gui_button_set_size(button: ptr, width: float, height: float);
+
+extern func nux_gui_label_create(text: string): ptr;
+extern func nux_gui_label_destroy(label: ptr);
+extern func nux_gui_label_set_text(label: ptr, text: string);
+extern func nux_gui_label_set_position(label: ptr, x: float, y: float);
+extern func nux_gui_label_set_font_size(label: ptr, size: float);
+
+# High-level Nux classes
+
+class Window {
+    var handle;
+    
+    func constructor(width, height, title) {
+        this.handle = nux_gui_window_create(width, height, title);
+    }
+    
+    func destructor() {
+        nux_gui_window_destroy(this.handle);
+    }
+    
+    func shouldClose() {
+        return nux_gui_window_should_close(this.handle);
+    }
+    
+    func pollEvents() {
+        nux_gui_poll_events();
+    }
+    
+    func swapBuffers() {
+        nux_gui_window_swap_buffers(this.handle);
+    }
+    
+    func clear(r, g, b, a) {
+        nux_gui_window_clear(this.handle, r, g, b, a);
+    }
+    
+    func render() {
+        nux_gui_window_render(this.handle);
+    }
+    
+    func setTitle(title) {
+        nux_gui_window_set_title(this.handle, title);
+    }
+    
+    func addWidget(widget) {
+        nux_gui_window_add_widget(this.handle, widget.handle);
+    }
+}
+
+class Button {
+    var handle;
+    
+    func constructor(text) {
+        this.handle = nux_gui_button_create(text);
+    }
+    
+    func destructor() {
+        nux_gui_button_destroy(this.handle);
+    }
+    
+    func setText(text) {
+        nux_gui_button_set_text(this.handle, text);
+    }
+    
+    func setPosition(x, y) {
+        nux_gui_button_set_position(this.handle, x, y);
+    }
+    
+    func setSize(width, height) {
+        nux_gui_button_set_size(this.handle, width, height);
+    }
+}
+
+class Label {
+    var handle;
+    
+    func constructor(text) {
+        this.handle = nux_gui_label_create(text);
+    }
+    
+    func destructor() {
+        nux_gui_label_destroy(this.handle);
+    }
+    
+    func setText(text) {
+        nux_gui_label_set_text(this.handle, text);
+    }
+    
+    func setPosition(x, y) {
+        nux_gui_label_set_position(this.handle, x, y);
+    }
+    
+    func setFontSize(size) {
+        nux_gui_label_set_font_size(this.handle, size);
+    }
+}
+
+# Initialize GUI library
+func initialize() {
+    return nux_gui_initialize();
+}
+
+func shutdown() {
+    nux_gui_shutdown();
+}

@@ -1,0 +1,28 @@
+# Core Nux Library
+# Provides essential IO and String abstractions
+
+class File {
+    var path;
+
+    func init(path) {
+        this.path = path;
+    }
+
+    func read_all() {
+        return file_read(this.path);
+    }
+}
+
+class StringUtil {
+    func length(s) {
+        return str_len(s);
+    }
+
+    func char_at(s, idx) {
+        return str_char(s, idx);
+    }
+
+    func substring(s, start, end) {
+        return str_sub(s, start, end);
+    }
+}

@@ -1,0 +1,392 @@
+# Nux Standard Library - Category Theory
+# Functors, Monads, Applicatives, and Category Theory abstractions
+
+# ===== FUNCTOR =====
+
+func functor_map(functor, func) {
+    # Map function over functor
+    return functor.map(func);
+}
+
+# Array Functor
+func array_functor(arr) {
+    return {
+        value: arr,
+        map: func(f) {
+            return array_functor(arr_map(this.value, f));
+        }
+    };
+}
+
+# Option Functor
+func option_functor(value) {
+    return {
+        value: value,
+        isSome: value != null,
+        map: func(f) {
+            if (this.isSome) {
+                return option_functor(f(this.value));
+            }
+            return option_functor(null);
+        }
+    };
+}
+
+# ===== APPLICATIVE =====
+
+func applicative_pure(value) {
+    # Lift value into applicative
+    return option_functor(value);
+}
+
+func applicative_ap(af, av) {
+    # Apply wrapped function to wrapped value
+    if (af.isSome && av.isSome) {
+        return option_functor(af.value(av.value));
+    }
+    return option_functor(null);
+}
+
+func applicative_liftA2(f, a, b) {
+    # Lift binary function
+    return applicative_ap(
+        functor_map(a, func(x) {
+            return func(y) { return f(x, y); };
+        }),
+        b
+    );
+}
+
+# ===== MONAD =====
+
+func monad_return(value) {
+    # Return/pure for monad
+    return option_functor(value);
+}
+
+func monad_bind(m, f) {
+    # Monadic bind (>>=)
+    if (m.isSome) {
+        return f(m.value);
+    }
+    return option_functor(null);
+}
+
+func monad_join(mm) {
+    # Flatten nested monad
+    return monad_bind(mm, func(m) { return m; });
+}
+
+func monad_sequence(monads) {
+    # Sequence list of monads
+    if (arr_length(monads) == 0) {
+        return monad_return([]);
+    }
+    
+    var head = monads[0];
+    var tail = arr_slice(monads, 1, arr_length(monads));
+    
+    return monad_bind(head, func(x) {
+        return monad_bind(monad_sequence(tail), func(xs) {
+            return monad_return(arr_concat([x], xs));
+        });
+    });
+}
+
+# ===== MONOID =====
+
+func monoid_create(empty, append) {
+    # Create monoid
+    return {
+        empty: empty,
+        append: append
+    };
+}
+
+func monoid_concat(monoid, values) {
+    # Concatenate using monoid
+    return arr_reduce(values, monoid.append, monoid.empty);
+}
+
+# String Monoid
+func monoid_string() {
+    return monoid_create("", func(a, b) { return a + b; });
+}
+
+# Array Monoid
+func monoid_array() {
+    return monoid_create([], func(a, b) { return arr_concat(a, b); });
+}
+
+# Sum Monoid
+func monoid_sum() {
+    return monoid_create(0, func(a, b) { return a + b; });
+}
+
+# Product Monoid
+func monoid_product() {
+    return monoid_create(1, func(a, b) { return a * b; });
+}
+
+# ===== FOLDABLE =====
+
+func foldable_foldr(foldable, f, init) {
+    # Right fold
+    return arr_reduceRight(foldable, f, init);
+}
+
+func foldable_foldl(foldable, f, init) {
+    # Left fold
+    return arr_reduce(foldable, f, init);
+}
+
+func foldable_foldMap(foldable, monoid, f) {
+    # Fold with monoid
+    var mapped = arr_map(foldable, f);
+    return monoid_concat(monoid, mapped);
+}
+
+# ===== TRAVERSABLE =====
+
+func traversable_traverse(traversable, applicative, f) {
+    # Traverse with applicative
+    if (arr_length(traversable) == 0) {
+        return applicative_pure([]);
+    }
+    
+    var head = traversable[0];
+    var tail = arr_slice(traversable, 1, arr_length(traversable));
+    
+    return applicative_liftA2(
+        func(x, xs) { return arr_concat([x], xs); },
+        f(head),
+        traversable_traverse(tail, applicative, f)
+    );
+}
+
+# ===== FREE MONAD =====
+
+func free_pure(value) {
+    # Pure for free monad
+    return {type: "pure", value: value};
+}
+
+func free_bind(fm, f) {
+    # Bind for free monad
+    if (fm.type == "pure") {
+        return f(fm.value);
+    } else if (fm.type == "free") {
+        return {
+            type: "free",
+            functor: functor_map(fm.functor, func(next) {
+                return free_bind(next, f);
+            })
+        };
+    }
+}
+
+func free_liftF(functor) {
+    # Lift functor into free monad
+    return {
+        type: "free",
+        functor: functor_map(functor, free_pure)
+    };
+}
+
+# ===== NATURAL TRANSFORMATION =====
+
+func natTrans_create(transform) {
+    # Create natural transformation
+    return {
+        transform: transform
+    };
+}
+
+func natTrans_apply(nt, functor) {
+    # Apply natural transformation
+    return nt.transform(functor);
+}
+
+# Example: List to Option
+func natTrans_listToOption() {
+    return natTrans_create(func(list) {
+        if (arr_length(list) > 0) {
+            return option_functor(list[0]);
+        }
+        return option_functor(null);
+    });
+}
+
+# ===== COMONAD =====
+
+func comonad_extract(cw) {
+    # Extract value from comonad
+    return cw.extract();
+}
+
+func comonad_extend(cw, f) {
+    # Extend comonad
+    return cw.extend(f);
+}
+
+# ===== LENS =====
+
+func lens_create(getter, setter) {
+    # Create lens
+    return {
+        get: getter,
+        set: setter
+    };
+}
+
+func lens_view(lens, obj) {
+    # View through lens
+    return lens.get(obj);
+}
+
+func lens_set(lens, value, obj) {
+    # Set through lens
+    return lens.set(value, obj);
+}
+
+func lens_over(lens, f, obj) {
+    # Modify through lens
+    var oldValue = lens.get(obj);
+    var newValue = f(oldValue);
+    return lens.set(newValue, obj);
+}
+
+func lens_compose(lens1, lens2) {
+    # Compose lenses
+    return lens_create(
+        func(obj) { return lens2.get(lens1.get(obj)); },
+        func(value, obj) {
+            var inner = lens1.get(obj);
+            var newInner = lens2.set(value, inner);
+            return lens1.set(newInner, obj);
+        }
+    );
+}
+
+# ===== PRISM =====
+
+func prism_create(match, build) {
+    # Create prism
+    return {
+        match: match,
+        build: build
+    };
+}
+
+func prism_preview(prism, value) {
+    # Preview through prism
+    return prism.match(value);
+}
+
+func prism_review(prism, value) {
+    # Review through prism
+    return prism.build(value);
+}
+
+# ===== ISO =====
+
+func iso_create(to, from) {
+    # Create isomorphism
+    return {
+        to: to,
+        from: from
+    };
+}
+
+func iso_view(iso, value) {
+    # View through iso
+    return iso.to(value);
+}
+
+func iso_review(iso, value) {
+    # Review through iso
+    return iso.from(value);
+}
+
+# ===== PROFUNCTOR =====
+
+func profunctor_dimap(prof, f, g) {
+    # Dimap for profunctor
+    return func(x) {
+        return g(prof(f(x)));
+    };
+}
+
+func profunctor_lmap(prof, f) {
+    # Left map
+    return profunctor_dimap(prof, f, func(x) { return x; });
+}
+
+func profunctor_rmap(prof, g) {
+    # Right map
+    return profunctor_dimap(prof, func(x) { return x; }, g);
+}
+
+# ===== ARROW =====
+
+func arrow_arr(f) {
+    # Lift function to arrow
+    return f;
+}
+
+func arrow_first(arrow) {
+    # Apply arrow to first element of pair
+    return func(pair) {
+        return [arrow(pair[0]), pair[1]];
+    };
+}
+
+func arrow_second(arrow) {
+    # Apply arrow to second element of pair
+    return func(pair) {
+        return [pair[0], arrow(pair[1])];
+    };
+}
+
+func arrow_compose(f, g) {
+    # Compose arrows
+    return func(x) { return g(f(x)); };
+}
+
+# ===== BIFUNCTOR =====
+
+func bifunctor_bimap(bf, f, g) {
+    # Map both sides of bifunctor
+    return bf.bimap(f, g);
+}
+
+func bifunctor_first(bf, f) {
+    # Map first side
+    return bifunctor_bimap(bf, f, func(x) { return x; });
+}
+
+func bifunctor_second(bf, g) {
+    # Map second side
+    return bifunctor_bimap(bf, func(x) { return x; }, g);
+}
+
+# ===== CONTRAVARIANT =====
+
+func contravariant_contramap(cv, f) {
+    # Contramap
+    return cv.contramap(f);
+}
+
+# ===== YONEDA LEMMA =====
+
+func yoneda_lift(functor) {
+    # Lift functor to Yoneda
+    return func(f) {
+        return functor_map(functor, f);
+    };
+}
+
+func yoneda_lower(yoneda) {
+    # Lower Yoneda to functor
+    return yoneda(func(x) { return x; });
+}

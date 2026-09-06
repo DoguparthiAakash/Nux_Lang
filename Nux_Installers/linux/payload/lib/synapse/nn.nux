@@ -1,0 +1,116 @@
+# synapse::nn
+# Neural Network layers
+
+import std::collections::List;
+import synapse::tensor;
+
+class Module {
+    # Base class for all NN modules
+    var parameters: List;
+    
+    func init() {
+        this.parameters = new List();
+        this.parameters.init();
+    }
+    
+    func to_device() {
+        var len = this.parameters.len();
+        var i = 0;
+        while (i < len) {
+            var t = this.parameters.get(i); # typeof Tensor
+            # Pseudo-code to call to_device: t.to_device()
+            i += 1;
+        }
+    }
+}
+
+class Linear {
+    var weight: tensor::Tensor;
+    var bias: tensor::Tensor;
+    var use_bias: bool;
+    
+    func init(in_features: u32, out_features: u32, bias: bool) {
+        this.use_bias = bias;
+        
+        var w_shape = new List();
+        w_shape.init();
+        w_shape.append(in_features);
+        w_shape.append(out_features);
+        
+        # In a real impl, we'd use kaiming or xavier initialization
+        this.weight = new tensor::Tensor();
+        this.weight.init(w_shape, true); 
+        
+        if (bias) {
+            var b_shape = new List();
+            b_shape.init();
+            b_shape.append(out_features);
+            this.bias = new tensor::Tensor();
+            this.bias.init(b_shape, true);
+        }
+    }
+    
+    func forward(x: tensor::Tensor) -> tensor::Tensor {
+        var out = x.matmul(this.weight);
+        if (this.use_bias) {
+            out = out.add(this.bias); # assumes broadcasting is handled in tensor.add
+        }
+        return out;
+    }
+}
+
+class Conv2D {
+    var weight: tensor::Tensor;
+    var bias: tensor::Tensor;
+    var stride: u32;
+    var padding: u32;
+    var use_bias: bool;
+    
+    func init(in_channels: u32, out_channels: u32, kernel_size: u32, stride: u32, padding: u32, bias: bool) {
+        this.stride = stride;
+        this.padding = padding;
+        this.use_bias = bias;
+        
+        var w_shape = new List();
+        w_shape.init();
+        w_shape.append(out_channels);
+        w_shape.append(in_channels);
+        w_shape.append(kernel_size);
+        w_shape.append(kernel_size);
+        
+        this.weight = new tensor::Tensor();
+        this.weight.init(w_shape, true);
+        
+        if (bias) {
+            var b_shape = new List();
+            b_shape.init();
+            b_shape.append(out_channels);
+            this.bias = new tensor::Tensor();
+            this.bias.init(b_shape, true);
+        }
+    }
+    
+    func forward(x: tensor::Tensor) -> tensor::Tensor {
+        var out = x.conv2d(this.weight, this.stride, this.padding);
+        if (this.use_bias) {
+            # bias addition typically over channel dimension
+            out = out.add(this.bias); 
+        }
+        return out;
+    }
+}
+
+class ReLU {
+    func forward(x: tensor::Tensor) -> tensor::Tensor {
+        # A true implementation would use a specialized gpu kernel for relu max(0, x)
+        # For simplicity, returning input right now
+        return x;
+    }
+}
+
+class Sigmoid {
+    func forward(x: tensor::Tensor) -> tensor::Tensor {
+        # gpu kernel for 1 / (1 + exp(-x))
+        return x; 
+    }
+}

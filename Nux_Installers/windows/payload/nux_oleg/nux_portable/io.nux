@@ -1,0 +1,21 @@
+# Nux Standard IO Library
+
+func IO_print_int(n) {
+    print(n);
+}
+
+func IO_print_str(s) {
+    # print(s) would look for variable s.
+    # Parser handles variables in print.
+    print(s);
+}
+
+func IO_input_int() {
+    return input();
+}
+
+# Helper to clear screen (using ANSI)
+func IO_clear() {
+    print("\x1B[2J\x1B[1;1H");
+}
+

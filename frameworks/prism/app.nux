@@ -1,0 +1,37 @@
+# frameworks::prism::app
+# Application lifecycle and Rendering loop
+
+import frameworks::prism::widget::Widget;
+import game::window::Window;
+
+class PrismApp {
+    var root: Widget;
+    var window: Window;
+    
+    func init(title: String, width: u32, height: u32) {
+        this.window = new Window();
+        this.window.init(title, width, height);
+        this.root = new Widget();
+        this.root.init();
+        this.root.width = 800.0; # Cast u32 to f32 theoretically
+        this.root.height = 600.0;
+    }
+    
+    func set_root(widget: Widget) {
+        this.root = widget;
+    }
+    
+    func run() {
+        while (this.window.is_open()) {
+            this.window.poll_events();
+            
+            # Clear background to white
+            this.window.clear(255, 255, 255, 255);
+            
+            # Draw UI tree
+            this.root.draw();
+            
+            this.window.display();
+        }
+    }
+}

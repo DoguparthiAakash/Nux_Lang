@@ -1,0 +1,366 @@
+# Basic Data Structures - Foundation concepts
+
+# ============= ARRAY =============
+class DynamicArray<T> {
+    var data: [T];
+    var size: int = 0;
+    var capacity: int = 10;
+    
+    func new() -> DynamicArray<T> {
+        return DynamicArray<T> {
+            data: Array.with_capacity(10)
+        };
+    }
+    
+    func push(value: T) {
+        if (this.size == this.capacity) {
+            this.resize();
+        }
+        this.data[this.size] = value;
+        this.size += 1;
+    }
+    
+    func pop() -> Option<T> {
+        if (this.size == 0) return None;
+        this.size -= 1;
+        return Some(this.data[this.size]);
+    }
+    
+    func get(index: int) -> T {
+        if (index < 0 || index >= this.size) {
+            throw Error("Index out of bounds");
+        }
+        return this.data[index];
+    }
+    
+    func resize() {
+        this.capacity *= 2;
+        var new_data: [T] = Array.with_capacity(this.capacity);
+        for (var i: int = 0; i < this.size; i++) {
+            new_data[i] = this.data[i];
+        }
+        this.data = new_data;
+    }
+}
+
+# ============= LINKED LIST =============
+class Node<T> {
+    var value: T;
+    var next: Option<Node<T>> = None;
+}
+
+class LinkedList<T> {
+    var head: Option<Node<T>> = None;
+    var tail: Option<Node<T>> = None;
+    var length: int = 0;
+    
+    func push_front(value: T) {
+        var node = Node<T> { value: value, next: this.head };
+        this.head = Some(node);
+        
+        if (this.tail == None) {
+            this.tail = Some(node);
+        }
+        
+        this.length += 1;
+    }
+    
+    func push_back(value: T) {
+        var node = Node<T> { value: value };
+        
+        if (this.tail == None) {
+            this.head = Some(node);
+            this.tail = Some(node);
+        } else {
+            this.tail.unwrap().next = Some(node);
+            this.tail = Some(node);
+        }
+        
+        this.length += 1;
+    }
+    
+    func pop_front() -> Option<T> {
+        if (this.head == None) return None;
+        
+        var node = this.head.unwrap();
+        this.head = node.next;
+        this.length -= 1;
+        
+        if (this.head == None) {
+            this.tail = None;
+        }
+        
+        return Some(node.value);
+    }
+    
+    func find(value: T) -> bool where T: Eq {
+        var current = this.head;
+        
+        while (current != None) {
+            if (current.unwrap().value == value) {
+                return true;
+            }
+            current = current.unwrap().next;
+        }
+        
+        return false;
+    }
+}
+
+# ============= STACK =============
+class Stack<T> {
+    var items: [T] = [];
+    
+    func push(value: T) {
+        this.items.push(value);
+    }
+    
+    func pop() -> Option<T> {
+        if (this.items.length == 0) return None;
+        return Some(this.items.pop());
+    }
+    
+    func peek() -> Option<T> {
+        if (this.items.length == 0) return None;
+        return Some(this.items[this.items.length - 1]);
+    }
+    
+    func is_empty() -> bool {
+        return this.items.length == 0;
+    }
+}
+
+# ============= QUEUE =============
+class Queue<T> {
+    var items: [T] = [];
+    var front: int = 0;
+    
+    func enqueue(value: T) {
+        this.items.push(value);
+    }
+    
+    func dequeue() -> Option<T> {
+        if (this.front >= this.items.length) return None;
+        
+        var value = this.items[this.front];
+        this.front += 1;
+        
+        # Compact array if too much waste
+        if (this.front > this.items.length / 2) {
+            this.items = this.items[this.front..];
+            this.front = 0;
+        }
+        
+        return Some(value);
+    }
+    
+    func peek() -> Option<T> {
+        if (this.front >= this.items.length) return None;
+        return Some(this.items[this.front]);
+    }
+}
+
+# ============= HASH MAP =============
+class HashMap<K, V> where K: Hash + Eq {
+    var buckets: [[(K, V)]];
+    var size: int = 0;
+    var capacity: int = 16;
+    
+    func new() -> HashMap<K, V> {
+        var buckets: [[(K, V)]] = [];
+        for (var i: int = 0; i < 16; i++) {
+            buckets.push([]);
+        }
+        
+        return HashMap<K, V> { buckets: buckets };
+    }
+    
+    func insert(key: K, value: V) {
+        var hash = key.hash() % this.capacity;
+        
+        # Check if key exists
+        for (var i: int = 0; i < this.buckets[hash].length; i++) {
+            if (this.buckets[hash][i].0 == key) {
+                this.buckets[hash][i].1 = value;
+                return;
+            }
+        }
+        
+        # Insert new
+        this.buckets[hash].push((key, value));
+        this.size += 1;
+        
+        # Resize if load factor > 0.75
+        if (this.size > this.capacity * 3 / 4) {
+            this.resize();
+        }
+    }
+    
+    func get(key: K) -> Option<V> {
+        var hash = key.hash() % this.capacity;
+        
+        for (var (k, v) in this.buckets[hash]) {
+            if (k == key) {
+                return Some(v);
+            }
+        }
+        
+        return None;
+    }
+    
+    func remove(key: K) -> Option<V> {
+        var hash = key.hash() % this.capacity;
+        
+        for (var i: int = 0; i < this.buckets[hash].length; i++) {
+            if (this.buckets[hash][i].0 == key) {
+                var value = this.buckets[hash][i].1;
+                this.buckets[hash].remove(i);
+                this.size -= 1;
+                return Some(value);
+            }
+        }
+        
+        return None;
+    }
+    
+    func resize() {
+        var old_buckets = this.buckets;
+        this.capacity *= 2;
+        this.buckets = [];
+        
+        for (var i: int = 0; i < this.capacity; i++) {
+            this.buckets.push([]);
+        }
+        
+        this.size = 0;
+        
+        for (var bucket in old_buckets) {
+            for (var (key, value) in bucket) {
+                this.insert(key, value);
+            }
+        }
+    }
+}
+
+# ============= BINARY TREE =============
+class TreeNode<T> {
+    var value: T;
+    var left: Option<TreeNode<T>> = None;
+    var right: Option<TreeNode<T>> = None;
+}
+
+class BinarySearchTree<T> where T: Ord {
+    var root: Option<TreeNode<T>> = None;
+    
+    func insert(value: T) {
+        if (this.root == None) {
+            this.root = Some(TreeNode<T> { value: value });
+        } else {
+            this.insert_recursive(this.root.unwrap(), value);
+        }
+    }
+    
+    func insert_recursive(node: TreeNode<T>, value: T) {
+        if (value < node.value) {
+            if (node.left == None) {
+                node.left = Some(TreeNode<T> { value: value });
+            } else {
+                this.insert_recursive(node.left.unwrap(), value);
+            }
+        } else {
+            if (node.right == None) {
+                node.right = Some(TreeNode<T> { value: value });
+            } else {
+                this.insert_recursive(node.right.unwrap(), value);
+            }
+        }
+    }
+    
+    func search(value: T) -> bool {
+        return this.search_recursive(this.root, value);
+    }
+    
+    func search_recursive(node: Option<TreeNode<T>>, value: T) -> bool {
+        if (node == None) return false;
+        
+        var n = node.unwrap();
+        
+        if (value == n.value) return true;
+        if (value < n.value) return this.search_recursive(n.left, value);
+        return this.search_recursive(n.right, value);
+    }
+    
+    func inorder_traversal() -> [T] {
+        var result: [T] = [];
+        this.inorder_recursive(this.root, result);
+        return result;
+    }
+    
+    func inorder_recursive(node: Option<TreeNode<T>>, result: [T]) {
+        if (node == None) return;
+        
+        var n = node.unwrap();
+        this.inorder_recursive(n.left, result);
+        result.push(n.value);
+        this.inorder_recursive(n.right, result);
+    }
+}
+
+# ============= HEAP =============
+class MinHeap<T> where T: Ord {
+    var data: [T] = [];
+    
+    func push(value: T) {
+        this.data.push(value);
+        this.bubble_up(this.data.length - 1);
+    }
+    
+    func pop() -> Option<T> {
+        if (this.data.length == 0) return None;
+        
+        var min = this.data[0];
+        var last = this.data.pop();
+        
+        if (this.data.length > 0) {
+            this.data[0] = last;
+            this.bubble_down(0);
+        }
+        
+        return Some(min);
+    }
+    
+    func peek() -> Option<T> {
+        if (this.data.length == 0) return None;
+        return Some(this.data[0]);
+    }
+    
+    func bubble_up(index: int) {
+        if (index == 0) return;
+        
+        var parent = (index - 1) / 2;
+        
+        if (this.data[index] < this.data[parent]) {
+            swap(this.data, index, parent);
+            this.bubble_up(parent);
+        }
+    }
+    
+    func bubble_down(index: int) {
+        var left = 2 * index + 1;
+        var right = 2 * index + 2;
+        var smallest = index;
+        
+        if (left < this.data.length && this.data[left] < this.data[smallest]) {
+            smallest = left;
+        }
+        
+        if (right < this.data.length && this.data[right] < this.data[smallest]) {
+            smallest = right;
+        }
+        
+        if (smallest != index) {
+            swap(this.data, index, smallest);
+            this.bubble_down(smallest);
+        }
+    }
+}

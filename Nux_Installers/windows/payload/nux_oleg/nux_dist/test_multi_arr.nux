@@ -1,0 +1,22 @@
+# Test multiple arr_new inside function
+func make_tensor() {
+    var data = arr_new(3);
+    var shape = arr_new(1);
+    arr_set(shape, 0, 3);
+    var t = arr_new(4);
+    arr_set(t, 0, data);
+    arr_set(t, 1, shape);
+    arr_set(t, 2, 1);
+    arr_set(t, 3, 3);
+    print(arr_len(t));
+    print(arr_get(t, 3));
+    return t;
+}
+
+var v = make_tensor();
+print("returned");
+print(arr_len(v));
+print(arr_get(v, 0));
+print(arr_get(v, 1));
+print(arr_get(v, 2));
+print(arr_get(v, 3));

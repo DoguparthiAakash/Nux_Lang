@@ -1,0 +1,11 @@
+# Debug: test multiple arr_new 
+func test() {
+    var a = arr_new(5);
+    print(arr_len(a));
+    var b = arr_new(2);
+    print(arr_len(b));
+    var c = arr_new(4);
+    print(arr_len(c));
+    return 0;
+}
+test();

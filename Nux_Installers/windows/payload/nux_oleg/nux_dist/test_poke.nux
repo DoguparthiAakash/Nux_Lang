@@ -1,0 +1,6 @@
+func main() {
+    poke(4000, 42);
+    println(peek(4000));
+    poke(4008, 7);
+    println(peek(4008));
+}

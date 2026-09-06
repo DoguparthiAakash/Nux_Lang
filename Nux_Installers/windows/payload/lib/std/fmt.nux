@@ -1,0 +1,21 @@
+# std::fmt
+# Advanced string formatting and templating.
+
+class Formatter {
+    var buffer;
+    
+    func init() {
+        # Initializes a dynamic string builder buffer
+    }
+    
+    func write_str(s) {
+        # Appends string slice
+    }
+    
+    func write_int(i) {
+        # High-speed integer to string conversion (itoa)
+    }
+}
+
+# The @[comptime] macro expands format!("Hello {}", name) into
+# efficient Formatter calls at compile time.

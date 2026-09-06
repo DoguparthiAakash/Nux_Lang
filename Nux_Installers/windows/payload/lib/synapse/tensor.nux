@@ -1,0 +1,30 @@
+# synapse::tensor
+# The core N-dimensional array for the Synapse ML framework.
+# Designed for zero-allocation slices and strict borrowing via Nux memory model.
+
+import std::gpu::ptx;
+
+class Tensor {
+    var data_ptr;       # Raw pointer to heap or VRAM
+    var shape;          # e.g. [64, 3, 256, 256]
+    var strides;        # e.g. [196608, 65536, 256, 1]
+    var device;         # "cpu" or "gpu"
+    var requires_grad;
+    var grad;           # Optional gradient Tensor
+    var grad_fn;        # The Autograd node that created this tensor
+    
+    func init(shape, device="cpu") {
+        # Allocates contiguous memory based on shape
+    }
+    
+    func backward() {
+        # Kicks off the reverse-mode automatic differentiation
+        if (this.grad_fn != 0) {
+            this.grad_fn.backward(this.grad);
+        }
+    }
+    
+    func to(target_device) {
+        # Moves memory seamlessly between CPU RAM and Nvidia VRAM
+    }
+}

@@ -1,0 +1,326 @@
+# Nux Advanced Mathematics Library
+# Pure Nux implementation for high performance and compatibility
+
+import "std/io";
+import "std/math";
+
+# ==========================================
+# 1. COMPLEX NUMBERS
+# ==========================================
+class ComplexNumber {
+    var real: float;
+    var imag: float;
+
+    func init(r: float, i: float) {
+        this.real = r;
+        this.imag = i;
+    }
+
+    func add(&self, other: &ComplexNumber) -> @own ComplexNumber {
+        return new ComplexNumber(this.real + other.real, this.imag + other.imag);
+    }
+
+    func sub(&self, other: &ComplexNumber) -> @own ComplexNumber {
+        return new ComplexNumber(this.real - other.real, this.imag - other.imag);
+    }
+
+    func mul(&self, other: &ComplexNumber) -> @own ComplexNumber {
+        var r = this.real * other.real - this.imag * other.imag;
+        var i = this.real * other.imag + this.imag * other.real;
+        return new ComplexNumber(r, i);
+    }
+
+    func div(&self, other: &ComplexNumber) -> @own ComplexNumber {
+        var denom = other.real * other.real + other.imag * other.imag;
+        if (denom == 0.0) {
+            println("ComplexNumber: Division by zero!");
+            return new ComplexNumber(0.0, 0.0);
+        }
+        var r = (this.real * other.real + this.imag * other.imag) / denom;
+        var i = (this.imag * other.real - this.real * other.imag) / denom;
+        return new ComplexNumber(r, i);
+    }
+
+    func magnitude(&self) -> float {
+        return Math.sqrt(this.real * this.real + this.imag * this.imag);
+    }
+
+    func phase(&self) -> float {
+        return Math.atan2(this.imag, this.real);
+    }
+
+    func to_str(&self) -> String {
+        var sign = if (this.imag >= 0.0) " + " else " - ";
+        var abs_imag = if (this.imag >= 0.0) this.imag else -this.imag;
+        return float_to_str(this.real) + sign + float_to_str(abs_imag) + "i";
+    }
+}
+
+# ==========================================
+# 2. 3D VECTORS
+# ==========================================
+class Vector3D {
+    var x: float;
+    var y: float;
+    var z: float;
+
+    func init(x: float, y: float, z: float) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    func add(&self, other: &Vector3D) -> @own Vector3D {
+        return new Vector3D(this.x + other.x, this.y + other.y, this.z + other.z);
+    }
+
+    func sub(&self, other: &Vector3D) -> @own Vector3D {
+        return new Vector3D(this.x - other.x, this.y - other.y, this.z - other.z);
+    }
+
+    func mul_scalar(&self, scalar: float) -> @own Vector3D {
+        return new Vector3D(this.x * scalar, this.y * scalar, this.z * scalar);
+    }
+
+    func dot(&self, other: &Vector3D) -> float {
+        return this.x * other.x + this.y * other.y + this.z * other.z;
+    }
+
+    func cross(&self, other: &Vector3D) -> @own Vector3D {
+        var cx = this.y * other.z - this.z * other.y;
+        var cy = this.z * other.x - this.x * other.z;
+        var cz = this.x * other.y - this.y * other.x;
+        return new Vector3D(cx, cy, cz);
+    }
+
+    func magnitude(&self) -> float {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+
+    func normalize(&self) -> @own Vector3D {
+        var mag = this.magnitude();
+        if (mag == 0.0) {
+            return new Vector3D(0.0, 0.0, 0.0);
+        }
+        return new Vector3D(this.x / mag, this.y / mag, this.z / mag);
+    }
+
+    func distance(&self, other: &Vector3D) -> float {
+        var dx = this.x - other.x;
+        var dy = this.y - other.y;
+        var dz = this.z - other.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    func to_str(&self) -> String {
+        return "[" + float_to_str(this.x) + ", " + float_to_str(this.y) + ", " + float_to_str(this.z) + "]";
+    }
+}
+
+# ==========================================
+# 3. MATRICES (Arbitrary Size & Operations)
+# ==========================================
+class Matrix {
+    var rows: int;
+    var cols: int;
+    var data: [];
+
+    func init(r: int, c: int, values = null) {
+        this.rows = r;
+        this.cols = c;
+        this.data = [];
+        
+        var total_elements = r * c;
+        if (values == null) {
+            for (var i = 0; i < total_elements; i += 1) {
+                this.data.push(0.0);
+            }
+        } else {
+            for (var i = 0; i < total_elements; i += 1) {
+                this.data.push(values[i]);
+            }
+        }
+    }
+
+    func get(&self, r: int, c: int) -> float {
+        return this.data[r * this.cols + c];
+    }
+
+    func set(&mut self, r: int, c: int, val: float) {
+        this.data[r * this.cols + c] = val;
+    }
+
+    func add(&self, other: &Matrix) -> @own Matrix {
+        if (this.rows != other.rows || this.cols != other.cols) {
+            println("Matrix: Dimension mismatch in add!");
+            return new Matrix(1, 1, null);
+        }
+        var result = new Matrix(this.rows, this.cols, null);
+        for (var i = 0; i < this.rows; i += 1) {
+            for (var j = 0; j < this.cols; j += 1) {
+                result.set(i, j, this.get(i, j) + other.get(i, j));
+            }
+        }
+        return result;
+    }
+
+    func mul(&self, other: &Matrix) -> @own Matrix {
+        if (this.cols != other.rows) {
+            println("Matrix: Dimension mismatch in mul!");
+            return new Matrix(1, 1, null);
+        }
+        var result = new Matrix(this.rows, other.cols, null);
+        for (var i = 0; i < this.rows; i += 1) {
+            for (var j = 0; j < other.cols; j += 1) {
+                var sum = 0.0;
+                for (var k = 0; k < this.cols; k += 1) {
+                    sum += this.get(i, k) * other.get(k, j);
+                }
+                result.set(i, j, sum);
+            }
+        }
+        return result;
+    }
+
+    func transpose(&self) -> @own Matrix {
+        var result = new Matrix(this.cols, this.rows, null);
+        for (var i = 0; i < this.rows; i += 1) {
+            for (var j = 0; j < this.cols; j += 1) {
+                result.set(j, i, this.get(i, j));
+            }
+        }
+        return result;
+    }
+
+    # Gaussian elimination to solve Ax = b. 
+    # 'b' is a flat array representing the constants vector of size 'rows'.
+    # Returns a flat array of size 'rows' representing the solutions.
+    func solve(&self, b: []) -> [] {
+        if (this.rows != this.cols || this.rows != b.len()) {
+            println("Matrix.solve: Invalid dimensions!");
+            return [];
+        }
+        
+        # Clone coefficient matrix & constants vector
+        var n = this.rows;
+        var A = new Matrix(n, n, this.data);
+        var x = [];
+        var temp_b = [];
+        for (var i = 0; i < n; i += 1) {
+            temp_b.push(b[i]);
+            x.push(0.0);
+        }
+
+        # Forward elimination
+        for (var i = 0; i < n; i += 1) {
+            # Find pivot
+            var max_el = Math.abs_float(A.get(i, i));
+            var max_row = i;
+            for (var k = i + 1; k < n; k += 1) {
+                if (Math.abs_float(A.get(k, i)) > max_el) {
+                    max_el = Math.abs_float(A.get(k, i));
+                    max_row = k;
+                }
+            }
+
+            # Swap maximum row with current row
+            for (var k = i; k < n; k += 1) {
+                var temp = A.get(max_row, k);
+                A.set(max_row, k, A.get(i, k));
+                A.set(i, k, temp);
+            }
+            var t = temp_b[max_row];
+            temp_b[max_row] = temp_b[i];
+            temp_b[i] = t;
+
+            # Check if singular
+            if (Math.abs_float(A.get(i, i)) < 0.000000001) {
+                println("Matrix.solve: Matrix is singular!");
+                return [];
+            }
+
+            # Eliminate below
+            for (var k = i + 1; k < n; k += 1) {
+                var factor = A.get(k, i) / A.get(i, i);
+                temp_b[k] -= factor * temp_b[i];
+                for (var j = i; j < n; j += 1) {
+                    A.set(k, j, A.get(k, j) - factor * A.get(i, j));
+                }
+            }
+        }
+
+        # Back substitution
+        for (var i = n - 1; i >= 0; i -= 1) {
+            var sum = 0.0;
+            for (var j = i + 1; j < n; j += 1) {
+                sum += A.get(i, j) * x[j];
+            }
+            x[i] = (temp_b[i] - sum) / A.get(i, i);
+        }
+
+        return x;
+    }
+
+    # Inverse calculation via Gaussian Elimination
+    func inverse(&self) -> @own Matrix {
+        if (this.rows != this.cols) {
+            println("Matrix.inverse: Non-square matrix!");
+            return new Matrix(1, 1, null);
+        }
+
+        var n = this.rows;
+        var result = new Matrix(n, n, null);
+        
+        # We solve A x_i = e_i for each unit vector e_i to construct columns of A^-1
+        for (var i = 0; i < n; i += 1) {
+            var e = [];
+            for (var j = 0; j < n; j += 1) {
+                e.push(if (i == j) 1.0 else 0.0);
+            }
+            
+            var col_sol = this.solve(e);
+            if (col_sol.len() == 0) {
+                println("Matrix.inverse: Inversion failed (singular matrix)!");
+                return new Matrix(1, 1, null);
+            }
+            
+            for (var j = 0; j < n; j += 1) {
+                result.set(j, i, col_sol[j]);
+            }
+        }
+        
+        return result;
+    }
+
+    func to_str(&self) -> String {
+        var str = "";
+        for (var i = 0; i < this.rows; i += 1) {
+            var row_str = "| ";
+            for (var j = 0; j < this.cols; j += 1) {
+                row_str += float_to_str(this.get(i, j)) + " ";
+            }
+            str += row_str + "|\n";
+        }
+        return str;
+    }
+}
+
+# ==========================================
+# 4. NUMERICAL CALCULUS (Derivative & Integral)
+# ==========================================
+
+# Centered difference derivative: f'(x)
+func derivative(f, x: float, h = 0.0001) -> float {
+    return (f(x + h) - f(x - h)) / (2.0 * h);
+}
+
+# Trapezoidal rule numerical integration of f(x) from a to b
+func integrate(f, a: float, b: float, steps = 1000) -> float {
+    var h = (b - a) / (steps as float);
+    var sum = 0.5 * (f(a) + f(b));
+    for (var i = 1; i < steps; i += 1) {
+        var x = a + (i as float) * h;
+        sum += f(x);
+    }
+    return sum * h;
+}

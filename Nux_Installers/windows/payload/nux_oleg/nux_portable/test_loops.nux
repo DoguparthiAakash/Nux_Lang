@@ -1,0 +1,30 @@
+import "io.nux";
+
+func main() {
+    println("--- Testing While Loop ---");
+    var i: int = 0;
+    while (i < 3) {
+        print("While: ");
+        println(i);
+        i = i + 1;
+    }
+
+    println("--- Testing Do-While Loop ---");
+    var j: int = 0;
+    do {
+        print("Do-While: ");
+        println(j);
+        j = j + 1;
+    } while (j < 3);
+
+    println("--- Testing For Loop ---");
+    # Standard C-style for
+    for (var k: int = 0; k < 3; k = k + 1) {
+        print("For: ");
+        println(k);
+    }
+    
+    println("Done.");
+}
+
+main();

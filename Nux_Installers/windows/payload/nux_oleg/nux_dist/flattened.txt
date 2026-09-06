@@ -1,0 +1,983 @@
+1: # Test script for Nux Lexer
+2: import std/core
+2.1: # Core Nux Library
+2.2: # Provides essential IO and String abstractions
+2.3: 
+2.4: class File {
+2.5:     var path;
+2.6: 
+2.7:     func init(path) {
+2.8:         this.path = path;
+2.9:     }
+2.10: 
+2.11:     func read_all() {
+2.12:         return file_read(this.path);
+2.13:     }
+2.14: }
+2.15: 
+2.16: class StringUtil {
+2.17:     func length(s) {
+2.18:         return str_len(s);
+2.19:     }
+2.20: 
+2.21:     func char_at(s, idx) {
+2.22:         return str_char(s, idx);
+2.23:     }
+2.24: 
+2.25:     func substring(s, start, end) {
+2.26:         return str_sub(s, start, end);
+2.27:     }
+2.28: }
+3: import compiler/lexer
+3.1: var TK_EOF = 0;
+3.2: var TK_PRINT = 1;
+3.3: var TK_PRINTLN = 2;
+3.4: var TK_INPUT = 3;
+3.5: var TK_CLASS = 4;
+3.6: var TK_ENUM = 5;
+3.7: var TK_TRAIT = 6;
+3.8: var TK_FUNC = 7;
+3.9: var TK_FN = 8;
+3.10: var TK_VAR = 9;
+3.11: var TK_LET = 10;
+3.12: var TK_CONST = 11;
+3.13: var TK_RETURN = 12;
+3.14: var TK_NEW = 13;
+3.15: var TK_THIS = 14;
+3.16: var TK_IF = 15;
+3.17: var TK_ELSE = 16;
+3.18: var TK_WHILE = 17;
+3.19: var TK_FOR = 18;
+3.20: var TK_DO = 19;
+3.21: var TK_DEFER = 20;
+3.22: var TK_MATCH = 21;
+3.23: var TK_ASM = 22;
+3.24: var TK_UNSAFE = 23;
+3.25: var TK_SPAWN = 24;
+3.26: var TK_JOIN = 25;
+3.27: var TK_PARALLEL = 26;
+3.28: var TK_ASYNC = 27;
+3.29: var TK_LOCK = 28;
+3.30: var TK_UNLOCK = 29;
+3.31: var TK_IMPORT = 30;
+3.32: var TK_FROM = 31;
+3.33: var TK_USE = 32;
+3.34: var TK_PEEK = 33;
+3.35: var TK_PEEK32 = 34;
+3.36: var TK_POKE = 35;
+3.37: var TK_POKE32 = 36;
+3.38: var TK_BREAK = 37;
+3.39: var TK_CONTINUE = 38;
+3.40: var TK_TRY = 39;
+3.41: var TK_CATCH = 40;
+3.42: var TK_THROW = 41;
+3.43: var TK_IDENTIFIER = 42;
+3.44: var TK_STRING = 43;
+3.45: var TK_FLOAT = 44;
+3.46: var TK_NUMBER = 45;
+3.47: var TK_KW_INT = 46;
+3.48: var TK_KW_FLOAT = 47;
+3.49: var TK_KW_BYTE = 48;
+3.50: var TK_KW_SHORT = 49;
+3.51: var TK_KW_LONG = 50;
+3.52: var TK_KW_CHAR = 51;
+3.53: var TK_KW_STRING = 52;
+3.54: var TK_TRUE = 53;
+3.55: var TK_FALSE = 54;
+3.56: var TK_NOT = 55;
+3.57: var TK_IMG_ALLOC = 56;
+3.58: var TK_IMG_FREE = 57;
+3.59: var TK_IMG_DRAW = 58;
+3.60: var TK_CAM_CAPTURE = 59;
+3.61: var TK_IMG_FILTER = 60;
+3.62: var TK_IMG_GET = 61;
+3.63: var TK_IMG_SET = 62;
+3.64: var TK_IMG_FILL = 63;
+3.65: var TK_IMG_RESIZE = 64;
+3.66: var TK_IMG_CROP = 65;
+3.67: var TK_IMG_GRAYSCALE = 66;
+3.68: var TK_SIN = 67;
+3.69: var TK_COS = 68;
+3.70: var TK_SQRT = 69;
+3.71: var TK_SYS_PLATFORM = 70;
+3.72: var TK_CAM_COUNT = 71;
+3.73: var TK_IS_KEY_DOWN = 72;
+3.74: var TK_UPPER_CASE = 73;
+3.75: var TK_LOWER_CASE = 74;
+3.76: var TK_LPAREN = 75;
+3.77: var TK_RPAREN = 76;
+3.78: var TK_LBRACE = 77;
+3.79: var TK_RBRACE = 78;
+3.80: var TK_LBRACKET = 79;
+3.81: var TK_RBRACKET = 80;
+3.82: var TK_SLASH = 81;
+3.83: var TK_SLASH_SLASH = 82;
+3.84: var TK_STAR = 83;
+3.85: var TK_STAR_STAR = 84;
+3.86: var TK_PERCENT = 85;
+3.87: var TK_EQ = 86;
+3.88: var TK_EQ_EQ = 87;
+3.89: var TK_FAT_ARROW = 88;
+3.90: var TK_NOT_EQ = 89;
+3.91: var TK_LT = 90;
+3.92: var TK_GT = 91;
+3.93: var TK_LT_EQ = 92;
+3.94: var TK_GT_EQ = 93;
+3.95: var TK_AND = 94;
+3.96: var TK_OR = 95;
+3.97: var TK_XOR = 96;
+3.98: var TK_XAND = 97;
+3.99: var TK_XNOT = 98;
+3.100: var TK_SEMICOLON = 99;
+3.101: var TK_COLON = 100;
+3.102: var TK_COLON_COLON = 101;
+3.103: var TK_COLON_EQ = 102;
+3.104: var TK_DOT = 103;
+3.105: var TK_COMMA = 104;
+3.106: var TK_PLUS = 105;
+3.107: var TK_MINUS = 106;
+3.108: var TK_AT = 107;
+3.109: var TK_LSHIFT = 108;
+3.110: var TK_RSHIFT = 109;
+3.111: var TK_CARET = 110;
+3.112: var TK_AMPERSAND = 111;
+3.113: var TK_PIPE = 112;
+3.114: var TK_TILDE = 113;
+3.115: 
+3.116: func lex_is_digit(c) {
+3.117:     if (c >= '0') {
+3.118:         if (c <= '9') {
+3.119:             return 1;
+3.120:         }
+3.121:     }
+3.122:     return 0;
+3.123: }
+3.124: 
+3.125: func lex_is_alpha(c) {
+3.126:     if (c >= 'a') {
+3.127:         if (c <= 'z') { return 1; }
+3.128:     }
+3.129:     if (c >= 'A') {
+3.130:         if (c <= 'Z') { return 1; }
+3.131:     }
+3.132:     if (c == '_') { return 1; }
+3.133:     return 0;
+3.134: }
+3.135: 
+3.136: func lex_is_alnum(c) {
+3.137:     if (lex_is_digit(c) == 1) { return 1; }
+3.138:     if (lex_is_alpha(c) == 1) { return 1; }
+3.139:     return 0;
+3.140: }
+3.141: 
+3.142: func lex_is_hex(c) {
+3.143:     if (lex_is_digit(c) == 1) { return 1; }
+3.144:     if (c >= 'a') {
+3.145:         if (c <= 'f') { return 1; }
+3.146:     }
+3.147:     if (c >= 'A') {
+3.148:         if (c <= 'F') { return 1; }
+3.149:     }
+3.150:     return 0;
+3.151: }
+3.152: 
+3.153: func lex_is_ws(c) {
+3.154:     if (c == ' ') { return 1; }
+3.155:     if (c == 9) { return 1; }
+3.156:     if (c == 13) { return 1; }
+3.157:     if (c == 10) { return 1; }
+3.158:     return 0;
+3.159: }
+3.160: 
+3.161: func lex_triggers_asi(kind) {
+3.162:     if (kind == TK_IDENTIFIER) { return 1; }
+3.163:     if (kind == TK_NUMBER) { return 1; }
+3.164:     if (kind == TK_FLOAT) { return 1; }
+3.165:     if (kind == TK_STRING) { return 1; }
+3.166:     if (kind == TK_RBRACE) { return 1; }
+3.167:     if (kind == TK_RPAREN) { return 1; }
+3.168:     if (kind == TK_RETURN) { return 1; }
+3.169:     if (kind == TK_BREAK) { return 1; }
+3.170:     if (kind == TK_CONTINUE) { return 1; }
+3.171:     if (kind == TK_TRUE) { return 1; }
+3.172:     if (kind == TK_FALSE) { return 1; }
+3.173:     if (kind == TK_THIS) { return 1; }
+3.174:     return 0;
+3.175: }
+3.176: 
+3.177: func lex_match_kw(src, s, len) {
+3.178:     if (len == 2) {
+3.179:         var c0 = str_char(src, s);
+3.180:         var c1 = str_char(src, s + 1);
+3.181:         if (c0 == 'i') { if (c1 == 'f') { return TK_IF; } }
+3.182:         if (c0 == 'f') { if (c1 == 'n') { return TK_FN; } }
+3.183:         if (c0 == 'd') { if (c1 == 'o') { return TK_DO; } }
+3.184:         if (c0 == 'o') { if (c1 == 'r') { return TK_OR; } }
+3.185:         return TK_IDENTIFIER;
+3.186:     }
+3.187:     if (len == 3) {
+3.188:         var c0 = str_char(src, s);
+3.189:         var c1 = str_char(src, s + 1);
+3.190:         var c2 = str_char(src, s + 2);
+3.191:         if (c0 == 'v') { if (c1 == 'a') { if (c2 == 'r') { return TK_VAR; } } }
+3.192:         if (c0 == 'l') { if (c1 == 'e') { if (c2 == 't') { return TK_LET; } } }
+3.193:         if (c0 == 'f') { if (c1 == 'o') { if (c2 == 'r') { return TK_FOR; } } }
+3.194:         if (c0 == 'n') { if (c1 == 'e') { if (c2 == 'w') { return TK_NEW; } } }
+3.195:         if (c0 == 'a') { if (c1 == 's') { if (c2 == 'm') { return TK_ASM; } } }
+3.196:         if (c0 == 't') { if (c1 == 'r') { if (c2 == 'y') { return TK_TRY; } } }
+3.197:         if (c0 == 'n') { if (c1 == 'o') { if (c2 == 't') { return TK_NOT; } } }
+3.198:         if (c0 == 'a') { if (c1 == 'n') { if (c2 == 'd') { return TK_AND; } } }
+3.199:         if (c0 == 'x') { if (c1 == 'o') { if (c2 == 'r') { return TK_XOR; } } }
+3.200:         if (c0 == 's') { if (c1 == 'i') { if (c2 == 'n') { return TK_SIN; } } }
+3.201:         if (c0 == 'c') { if (c1 == 'o') { if (c2 == 's') { return TK_COS; } } }
+3.202:         if (c0 == 'u') { if (c1 == 's') { if (c2 == 'e') { return TK_USE; } } }
+3.203:         if (c0 == 'i') { if (c1 == 'n') { if (c2 == 't') { return TK_KW_INT; } } }
+3.204:         return TK_IDENTIFIER;
+3.205:     }
+3.206:     if (len == 4) {
+3.207:         var c0 = str_char(src, s);
+3.208:         var c1 = str_char(src, s + 1);
+3.209:         var c2 = str_char(src, s + 2);
+3.210:         var c3 = str_char(src, s + 3);
+3.211:         if (c0 == 'f') { if (c1 == 'u') { if (c2 == 'n') { if (c3 == 'c') { return TK_FUNC; } } } }
+3.212:         if (c0 == 'e') { if (c1 == 'l') { if (c2 == 's') { if (c3 == 'e') { return TK_ELSE; } } } }
+3.213:         if (c0 == 't') { if (c1 == 'h') { if (c2 == 'i') { if (c3 == 's') { return TK_THIS; } } } }
+3.214:         if (c0 == 'e') { if (c1 == 'n') { if (c2 == 'u') { if (c3 == 'm') { return TK_ENUM; } } } }
+3.215:         if (c0 == 'f') { if (c1 == 'r') { if (c2 == 'o') { if (c3 == 'm') { return TK_FROM; } } } }
+3.216:         if (c0 == 't') { if (c1 == 'r') { if (c2 == 'u') { if (c3 == 'e') { return TK_TRUE; } } } }
+3.217:         if (c0 == 'p') { if (c1 == 'o') { if (c2 == 'k') { if (c3 == 'e') { return TK_POKE; } } } }
+3.218:         if (c0 == 'p') { if (c1 == 'e') { if (c2 == 'e') { if (c3 == 'k') { return TK_PEEK; } } } }
+3.219:         if (c0 == 'l') { if (c1 == 'o') { if (c2 == 'c') { if (c3 == 'k') { return TK_LOCK; } } } }
+3.220:         if (c0 == 'j') { if (c1 == 'o') { if (c2 == 'i') { if (c3 == 'n') { return TK_JOIN; } } } }
+3.221:         if (c0 == 'l') { if (c1 == 'o') { if (c2 == 'n') { if (c3 == 'g') { return TK_KW_LONG; } } } }
+3.222:         if (c0 == 'b') { if (c1 == 'y') { if (c2 == 't') { if (c3 == 'e') { return TK_KW_BYTE; } } } }
+3.223:         if (c0 == 'c') { if (c1 == 'h') { if (c2 == 'a') { if (c3 == 'r') { return TK_KW_CHAR; } } } }
+3.224:         if (c0 == 'x') { if (c1 == 'a') { if (c2 == 'n') { if (c3 == 'd') { return TK_XAND; } } } }
+3.225:         if (c0 == 'x') { if (c1 == 'n') { if (c2 == 'o') { if (c3 == 't') { return TK_XNOT; } } } }
+3.226:         if (c0 == 's') { if (c1 == 'q') { if (c2 == 'r') { if (c3 == 't') { return TK_SQRT; } } } }
+3.227:         return TK_IDENTIFIER;
+3.228:     }
+3.229:     if (len == 5) {
+3.230:         var c0 = str_char(src, s);
+3.231:         var c1 = str_char(src, s + 1);
+3.232:         var c2 = str_char(src, s + 2);
+3.233:         var c3 = str_char(src, s + 3);
+3.234:         var c4 = str_char(src, s + 4);
+3.235:         if (c0 == 'w') { if (c1 == 'h') { if (c2 == 'i') { if (c3 == 'l') { if (c4 == 'e') { return TK_WHILE; } } } } }
+3.236:         if (c0 == 'm') { if (c1 == 'a') { if (c2 == 't') { if (c3 == 'c') { if (c4 == 'h') { return TK_MATCH; } } } } }
+3.237:         if (c0 == 'c') { if (c1 == 'o') { if (c2 == 'n') { if (c3 == 's') { if (c4 == 't') { return TK_CONST; } } } } }
+3.238:         if (c0 == 'b') { if (c1 == 'r') { if (c2 == 'e') { if (c3 == 'a') { if (c4 == 'k') { return TK_BREAK; } } } } }
+3.239:         if (c0 == 't') { if (c1 == 'r') { if (c2 == 'a') { if (c3 == 'i') { if (c4 == 't') { return TK_TRAIT; } } } } }
+3.240:         if (c0 == 'c') { if (c1 == 'l') { if (c2 == 'a') { if (c3 == 's') { if (c4 == 's') { return TK_CLASS; } } } } }
+3.241:         if (c0 == 'p') { if (c1 == 'r') { if (c2 == 'i') { if (c3 == 'n') { if (c4 == 't') { return TK_PRINT; } } } } }
+3.242:         if (c0 == 'i') { if (c1 == 'n') { if (c2 == 'p') { if (c3 == 'u') { if (c4 == 't') { return TK_INPUT; } } } } }
+3.243:         if (c0 == 's') { if (c1 == 'p') { if (c2 == 'a') { if (c3 == 'w') { if (c4 == 'n') { return TK_SPAWN; } } } } }
+3.244:         if (c0 == 'a') { if (c1 == 's') { if (c2 == 'y') { if (c3 == 'n') { if (c4 == 'c') { return TK_ASYNC; } } } } }
+3.245:         if (c0 == 't') { if (c1 == 'h') { if (c2 == 'r') { if (c3 == 'o') { if (c4 == 'w') { return TK_THROW; } } } } }
+3.246:         if (c0 == 'c') { if (c1 == 'a') { if (c2 == 't') { if (c3 == 'c') { if (c4 == 'h') { return TK_CATCH; } } } } }
+3.247:         if (c0 == 'f') { if (c1 == 'l') { if (c2 == 'o') { if (c3 == 'a') { if (c4 == 't') { return TK_KW_FLOAT; } } } } }
+3.248:         if (c0 == 's') { if (c1 == 'h') { if (c2 == 'o') { if (c3 == 'r') { if (c4 == 't') { return TK_KW_SHORT; } } } } }
+3.249:         if (c0 == 'f') { if (c1 == 'a') { if (c2 == 'l') { if (c3 == 's') { if (c4 == 'e') { return TK_FALSE; } } } } }
+3.250:         return TK_IDENTIFIER;
+3.251:     }
+3.252:     if (len == 6) {
+3.253:         var c0 = str_char(src, s);
+3.254:         var c1 = str_char(src, s + 1);
+3.255:         if (c0 == 'r') { if (c1 == 'e') { if (str_char(src, s+2) == 't') { if (str_char(src, s+3) == 'u') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'n') { return TK_RETURN; } } } } } }
+3.256:         if (c0 == 'u') {
+3.257:             if (c1 == 'n') {
+3.258:                 if (str_char(src, s+2) == 's') { if (str_char(src, s+3) == 'a') { if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'e') { return TK_UNSAFE; } } } }
+3.259:                 if (str_char(src, s+2) == 'l') { if (str_char(src, s+3) == 'o') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'k') { return TK_UNLOCK; } } } }
+3.260:             }
+3.261:         }
+3.262:         if (c0 == 'i') { if (c1 == 'm') { if (str_char(src, s+2) == 'p') { if (str_char(src, s+3) == 'o') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 't') { return TK_IMPORT; } } } } } }
+3.263:         if (c0 == 'p') { if (c1 == 'e') { if (str_char(src, s+2) == 'e') { if (str_char(src, s+3) == 'k') { if (str_char(src, s+4) == '3') { if (str_char(src, s+5) == '2') { return TK_PEEK32; } } } } } }
+3.264:         if (c0 == 'p') { if (c1 == 'o') { if (str_char(src, s+2) == 'k') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == '3') { if (str_char(src, s+5) == '2') { return TK_POKE32; } } } } } }
+3.265:         if (c0 == 's') { if (c1 == 't') { if (str_char(src, s+2) == 'r') { if (str_char(src, s+3) == 'i') { if (str_char(src, s+4) == 'n') { if (str_char(src, s+5) == 'g') { return TK_KW_STRING; } } } } } }
+3.266:         if (c0 == 'd') { if (c1 == 'e') { if (str_char(src, s+2) == 'f') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { return TK_DEFER; } } } } }
+3.267:         return TK_IDENTIFIER;
+3.268:     }
+3.269:     if (len == 7) {
+3.270:         var c0 = str_char(src, s);
+3.271:         if (c0 == 'p') { if (str_char(src, s+1) == 'r') { if (str_char(src, s+2) == 'i') { if (str_char(src, s+3) == 'n') { if (str_char(src, s+4) == 't') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'n') { return TK_PRINTLN; } } } } } } }
+3.272:         if (c0 == 'i') {
+3.273:             if (str_char(src, s+1) == 'm') {
+3.274:                 if (str_char(src, s+2) == 'g') {
+3.275:                     if (str_char(src, s+3) == '_') {
+3.276:                         if (str_char(src, s+4) == 'g') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 't') { return TK_IMG_GET; } } }
+3.277:                         if (str_char(src, s+4) == 's') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 't') { return TK_IMG_SET; } } }
+3.278:                     }
+3.279:                 }
+3.280:             }
+3.281:         }
+3.282:         return TK_IDENTIFIER;
+3.283:     }
+3.284:     if (len == 8) {
+3.285:         var c0 = str_char(src, s);
+3.286:         if (c0 == 'c') { if (str_char(src, s+1) == 'o') { if (str_char(src, s+2) == 'n') { if (str_char(src, s+3) == 't') { if (str_char(src, s+4) == 'i') { if (str_char(src, s+5) == 'n') { if (str_char(src, s+6) == 'u') { if (str_char(src, s+7) == 'e') { return TK_CONTINUE; } } } } } } } }
+3.287:         if (c0 == 'p') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'r') { if (str_char(src, s+3) == 'a') { if (str_char(src, s+4) == 'l') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'e') { if (str_char(src, s+7) == 'l') { return TK_PARALLEL; } } } } } } } }
+3.288:         if (c0 == 'i') {
+3.289:             if (str_char(src, s+1) == 'm') {
+3.290:                 if (str_char(src, s+2) == 'g') {
+3.291:                     if (str_char(src, s+3) == '_') {
+3.292:                         if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'e') { if (str_char(src, s+7) == 'e') { return TK_IMG_FREE; } } } }
+3.293:                         if (str_char(src, s+4) == 'd') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 'w') { return TK_IMG_DRAW; } } } }
+3.294:                         if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'i') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 'l') { return TK_IMG_FILL; } } } }
+3.295:                         if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'o') { if (str_char(src, s+7) == 'p') { return TK_IMG_CROP; } } } }
+3.296:                     }
+3.297:                 }
+3.298:             }
+3.299:         }
+3.300:         return TK_IDENTIFIER;
+3.301:     }
+3.302:     if (len == 9) {
+3.303:         var c0 = str_char(src, s);
+3.304:         if (c0 == 'i') { if (str_char(src, s+1) == 'm') { if (str_char(src, s+2) == 'g') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'a') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 'o') { if (str_char(src, s+8) == 'c') { return TK_IMG_ALLOC; } } } } } } } } }
+3.305:         if (c0 == 'U') { if (str_char(src, s+1) == 'p') { if (str_char(src, s+2) == 'p') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'C') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 's') { if (str_char(src, s+8) == 'e') { return TK_UPPER_CASE; } } } } } } } } }
+3.306:         if (c0 == 'L') { if (str_char(src, s+1) == 'o') { if (str_char(src, s+2) == 'w') { if (str_char(src, s+3) == 'e') { if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'C') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 's') { if (str_char(src, s+8) == 'e') { return TK_LOWER_CASE; } } } } } } } } }
+3.307:         if (c0 == 'c') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'm') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'o') { if (str_char(src, s+6) == 'u') { if (str_char(src, s+7) == 'n') { if (str_char(src, s+8) == 't') { return TK_CAM_COUNT; } } } } } } } } }
+3.308:         return TK_IDENTIFIER;
+3.309:     }
+3.310:     if (len == 10) {
+3.311:         var c0 = str_char(src, s);
+3.312:         if (c0 == 'i') {
+3.313:             if (str_char(src, s+1) == 'm') {
+3.314:                 if (str_char(src, s+2) == 'g') {
+3.315:                     if (str_char(src, s+3) == '_') {
+3.316:                         if (str_char(src, s+4) == 'f') { if (str_char(src, s+5) == 'i') { if (str_char(src, s+6) == 'l') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'e') { if (str_char(src, s+9) == 'r') { return TK_IMG_FILTER; } } } } } }
+3.317:                         if (str_char(src, s+4) == 'r') { if (str_char(src, s+5) == 'e') { if (str_char(src, s+6) == 's') { if (str_char(src, s+7) == 'i') { if (str_char(src, s+8) == 'z') { if (str_char(src, s+9) == 'e') { return TK_IMG_RESIZE; } } } } } }
+3.318:                     }
+3.319:                 }
+3.320:             }
+3.321:         }
+3.322:         return TK_IDENTIFIER;
+3.323:     }
+3.324:     if (len == 11) {
+3.325:         var c0 = str_char(src, s);
+3.326:         if (c0 == 'c') { if (str_char(src, s+1) == 'a') { if (str_char(src, s+2) == 'm') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'c') { if (str_char(src, s+5) == 'a') { if (str_char(src, s+6) == 'p') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'u') { if (str_char(src, s+9) == 'r') { if (str_char(src, s+10) == 'e') { return TK_CAM_CAPTURE; } } } } } } } } } } }
+3.327:         if (c0 == 'i') { if (str_char(src, s+1) == 's') { if (str_char(src, s+2) == '_') { if (str_char(src, s+3) == 'k') { if (str_char(src, s+4) == 'e') { if (str_char(src, s+5) == 'y') { if (str_char(src, s+6) == '_') { if (str_char(src, s+7) == 'd') { if (str_char(src, s+8) == 'o') { if (str_char(src, s+9) == 'w') { if (str_char(src, s+10) == 'n') { return TK_IS_KEY_DOWN; } } } } } } } } } } }
+3.328:         return TK_IDENTIFIER;
+3.329:     }
+3.330:     if (len == 12) {
+3.331:         if (str_char(src, s) == 's') { if (str_char(src, s+1) == 'y') { if (str_char(src, s+2) == 's') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'p') { if (str_char(src, s+5) == 'l') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 't') { if (str_char(src, s+8) == 'f') { if (str_char(src, s+9) == 'o') { if (str_char(src, s+10) == 'r') { if (str_char(src, s+11) == 'm') { return TK_SYS_PLATFORM; } } } } } } } } } } } }
+3.332:         return TK_IDENTIFIER;
+3.333:     }
+3.334:     if (len == 13) {
+3.335:         if (str_char(src, s) == 'i') { if (str_char(src, s+1) == 'm') { if (str_char(src, s+2) == 'g') { if (str_char(src, s+3) == '_') { if (str_char(src, s+4) == 'g') { if (str_char(src, s+5) == 'r') { if (str_char(src, s+6) == 'a') { if (str_char(src, s+7) == 'y') { if (str_char(src, s+8) == 's') { if (str_char(src, s+9) == 'c') { if (str_char(src, s+10) == 'a') { if (str_char(src, s+11) == 'l') { if (str_char(src, s+12) == 'e') { return TK_IMG_GRAYSCALE; } } } } } } } } } } } } }
+3.336:         return TK_IDENTIFIER;
+3.337:     }
+3.338:     return TK_IDENTIFIER;
+3.339: }
+3.340: 
+3.341: func lex_hex_val(c) {
+3.342:     if (c >= '0') {
+3.343:         if (c <= '9') { return c - '0'; }
+3.344:     }
+3.345:     if (c >= 'a') {
+3.346:         if (c <= 'f') { return c - 'a' + 10; }
+3.347:     }
+3.348:     if (c >= 'A') {
+3.349:         if (c <= 'F') { return c - 'A' + 10; }
+3.350:     }
+3.351:     return 0;
+3.352: }
+3.353: 
+3.354: class Lexer {
+3.355:     var source;
+3.356:     var pos;
+3.357:     var length;
+3.358:     var line;
+3.359:     var col;
+3.360:     var tk_kind;
+3.361:     var tk_line;
+3.362:     var tk_col;
+3.363:     var tk_start;
+3.364:     var tk_end;
+3.365:     var tk_ival;
+3.366:     var tk_fval;
+3.367:     var last_kind;
+3.368:     var pending_semi;
+3.369: 
+3.370:     func init(src) {
+3.371:         this.source = src;
+3.372:         this.pos = 0;
+3.373:         this.length = str_len(src);
+3.374:         this.line = 1;
+3.375:         this.col = 1;
+3.376:         this.tk_kind = TK_EOF;
+3.377:         this.tk_line = 1;
+3.378:         this.tk_col = 1;
+3.379:         this.tk_start = 0;
+3.380:         this.tk_end = 0;
+3.381:         this.tk_ival = 0;
+3.382:         this.tk_fval = 0;
+3.383:         this.last_kind = 0;
+3.384:         this.pending_semi = 0;
+3.385:     }
+3.386: 
+3.387:     func advance_pos() {
+3.388:         if (this.pos < this.length) {
+3.389:             var c = str_char(this.source, this.pos);
+3.390:             this.pos = this.pos + 1;
+3.391:             if (c == 10) {
+3.392:                 this.line = this.line + 1;
+3.393:                 this.col = 1;
+3.394:             } else {
+3.395:                 this.col = this.col + 1;
+3.396:             }
+3.397:         }
+3.398:     }
+3.399: 
+3.400:     func cur() {
+3.401:         if (this.pos >= this.length) { return 0; }
+3.402:         return str_char(this.source, this.pos);
+3.403:     }
+3.404: 
+3.405:     func peek_next() {
+3.406:         if (this.pos + 1 >= this.length) { return 0; }
+3.407:         return str_char(this.source, this.pos + 1);
+3.408:     }
+3.409: 
+3.410:     func set_tk(kind) {
+3.411:         this.tk_kind = kind;
+3.412:         this.tk_end = this.pos;
+3.413:         this.last_kind = kind;
+3.414:     }
+3.415: 
+3.416:     func skip_ws() {
+3.417:         var hit_nl = 0;
+3.418:         while (this.pos < this.length) {
+3.419:             var c = str_char(this.source, this.pos);
+3.420:             print("skip_ws checking char at "); print(this.pos); print(": "); println(c);
+3.421:             var is_ws = lex_is_ws(c);
+3.422:             if (is_ws == 0) {
+3.423:                 print("Not ws, breaking\n");
+3.424:                 break;
+3.425:             }
+3.426:             if (c == 10) {
+3.427:                 hit_nl = 1;
+3.428:             }
+3.429:             this.advance_pos();
+3.430:         }
+3.431:         return hit_nl;
+3.432:     }
+3.433: 
+3.434:     func lex_number() {
+3.435:         var start = this.pos;
+3.436:         var first = this.cur();
+3.437:         this.advance_pos();
+3.438: 
+3.439:         var parsed_prefix = 0;
+3.440:         if (first == '0') {
+3.441:             if (this.pos < this.length) {
+3.442:                 var nx = this.cur();
+3.443:                 var is_hex = 0;
+3.444:                 if (nx == 'x') { is_hex = 1; }
+3.445:                 if (nx == 'X') { is_hex = 1; }
+3.446:                 
+3.447:                 if (is_hex == 1) {
+3.448:                     this.advance_pos();
+3.449:                     var val = 0;
+3.450:                     while (this.pos < this.length) {
+3.451:                         var c = this.cur();
+3.452:                         var ok = lex_is_hex(c);
+3.453:                         if (c == '_') { ok = 1; }
+3.454:                         if (ok == 0) { break; }
+3.455:                         if (c != '_') {
+3.456:                             val = val * 16 + lex_hex_val(c);
+3.457:                         }
+3.458:                         this.advance_pos();
+3.459:                     }
+3.460:                     this.tk_ival = val;
+3.461:                     this.set_tk(TK_NUMBER);
+3.462:                     parsed_prefix = 1;
+3.463:                 } else {
+3.464:                     var is_bin = 0;
+3.465:                     if (nx == 'b') { is_bin = 1; }
+3.466:                     if (nx == 'B') { is_bin = 1; }
+3.467:                     if (is_bin == 1) {
+3.468:                         this.advance_pos();
+3.469:                         var val = 0;
+3.470:                         while (this.pos < this.length) {
+3.471:                             var c = this.cur();
+3.472:                             var ok = 0;
+3.473:                             if (c == '0') { ok = 1; }
+3.474:                             if (c == '1') { ok = 1; }
+3.475:                             if (c == '_') { ok = 1; }
+3.476:                             if (ok == 0) { break; }
+3.477:                             if (c != '_') {
+3.478:                                 val = val * 2 + (c - '0');
+3.479:                             }
+3.480:                             this.advance_pos();
+3.481:                         }
+3.482:                         this.tk_ival = val;
+3.483:                         this.set_tk(TK_NUMBER);
+3.484:                         parsed_prefix = 1;
+3.485:                     }
+3.486:                 }
+3.487:             }
+3.488:         }
+3.489:         
+3.490:         if (parsed_prefix == 1) {
+3.491:             return 0;
+3.492:         }
+3.493: 
+3.494:         var is_float = 0;
+3.495:         while (this.pos < this.length) {
+3.496:             var c = this.cur();
+3.497:             if (lex_is_digit(c) == 1) {
+3.498:                 this.advance_pos();
+3.499:             } else {
+3.500:                 if (c == '_') {
+3.501:                     this.advance_pos();
+3.502:                 } else {
+3.503:                     if (c == '.') {
+3.504:                         if (is_float == 0) {
+3.505:                             if (this.pos + 1 < this.length) {
+3.506:                                 if (lex_is_digit(this.peek_next()) == 1) {
+3.507:                                     is_float = 1;
+3.508:                                     this.advance_pos();
+3.509:                                 } else {
+3.510:                                     break;
+3.511:                                 }
+3.512:                             } else {
+3.513:                                 break;
+3.514:                             }
+3.515:                         } else {
+3.516:                             break;
+3.517:                         }
+3.518:                     } else {
+3.519:                         break;
+3.520:                     }
+3.521:                 }
+3.522:             }
+3.523:         }
+3.524: 
+3.525:         if (is_float == 1) {
+3.526:             var int_part = 0;
+3.527:             var frac_part = 0;
+3.528:             var frac_div = 1;
+3.529:             var in_frac = 0;
+3.530:             var i = start;
+3.531:             while (i < this.pos) {
+3.532:                 var d = str_char(this.source, i);
+3.533:                 if (d == '.') {
+3.534:                     in_frac = 1;
+3.535:                 } else {
+3.536:                     if (d != '_') {
+3.537:                         var digit = d - '0';
+3.538:                         if (in_frac == 0) {
+3.539:                             int_part = int_part * 10 + digit;
+3.540:                         } else {
+3.541:                             frac_part = frac_part * 10 + digit;
+3.542:                             frac_div = frac_div * 10;
+3.543:                         }
+3.544:                     }
+3.545:                 }
+3.546:                 i = i + 1;
+3.547:             }
+3.548:             var fval = float(int_part) + float(frac_part) / float(frac_div);
+3.549:             this.tk_fval = fval;
+3.550:             this.set_tk(TK_FLOAT);
+3.551:         } else {
+3.552:             var val = 0;
+3.553:             var i = start;
+3.554:             while (i < this.pos) {
+3.555:                 var d = str_char(this.source, i);
+3.556:                 if (d != '_') {
+3.557:                     val = val * 10 + (d - '0');
+3.558:                 }
+3.559:                 i = i + 1;
+3.560:             }
+3.561:             this.tk_ival = val;
+3.562:             this.set_tk(TK_NUMBER);
+3.563:         }
+3.564:         return 0;
+3.565:     }
+3.566: 
+3.567:     func lex_identifier() {
+3.568:         var start = this.pos;
+3.569:         while (this.pos < this.length) {
+3.570:             if (lex_is_alnum(this.cur()) == 0) {
+3.571:                 break;
+3.572:             }
+3.573:             this.advance_pos();
+3.574:         }
+3.575:         var len = this.pos - start;
+3.576:         var kind = lex_match_kw(this.source, start, len);
+3.577:         this.set_tk(kind);
+3.578:         return 0;
+3.579:     }
+3.580: 
+3.581:     func lex_string() {
+3.582:         this.advance_pos();
+3.583:         this.tk_start = this.pos;
+3.584:         while (this.pos < this.length) {
+3.585:             var c = this.cur();
+3.586:             if (c == '"') {
+3.587:                 break;
+3.588:             }
+3.589:             if (c == 92) {
+3.590:                 this.advance_pos();
+3.591:             }
+3.592:             this.advance_pos();
+3.593:         }
+3.594:         this.tk_end = this.pos;
+3.595:         this.advance_pos();
+3.596:         this.set_tk(TK_STRING);
+3.597:         return 0;
+3.598:     }
+3.599: 
+3.600:     func lex_operator() {
+3.601:         var c = this.cur();
+3.602:         this.advance_pos();
+3.603:         if (this.pos < this.length) {
+3.604:             var nx = this.cur();
+3.605:             var matched = 0;
+3.606:             if (c == '=') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); matched = 1; } }
+3.607:             if (c == '!') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_NOT_EQ); matched = 1; } }
+3.608:             if (c == '<') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_LT_EQ); matched = 1; } }
+3.609:             if (c == '>') { if (nx == '=') { this.advance_pos(); this.set_tk(TK_GT_EQ); matched = 1; } }
+3.610:             if (c == '&') { if (nx == '&') { this.advance_pos(); this.set_tk(TK_AND); matched = 1; } }
+3.611:             if (c == '|') { if (nx == '|') { this.advance_pos(); this.set_tk(TK_OR); matched = 1; } }
+3.612:             if (c == '<') { if (nx == '<') { this.advance_pos(); this.set_tk(TK_LSHIFT); matched = 1; } }
+3.613:             if (c == '>') { if (nx == '>') { this.advance_pos(); this.set_tk(TK_RSHIFT); matched = 1; } }
+3.614:             
+3.615:             if (matched == 1) { return 0; }
+3.616:         }
+3.617:         
+3.618:         if (c == '=') { this.set_tk(TK_EQ); return 0; }
+3.619:         if (c == '<') { this.set_tk(TK_LT); return 0; }
+3.620:         if (c == '>') { this.set_tk(TK_GT); return 0; }
+3.621:         if (c == '&') { this.set_tk(TK_AMPERSAND); return 0; }
+3.622:         if (c == '|') { this.set_tk(TK_PIPE); return 0; }
+3.623:         if (c == '^') { this.set_tk(TK_CARET); return 0; }
+3.624:         if (c == '~') { this.set_tk(TK_TILDE); return 0; }
+3.625:         this.set_tk(TK_IDENTIFIER);
+3.626:         return 0;
+3.627:     }
+3.628: 
+3.629:     func next_token() {
+3.630:         if (this.pending_semi == 1) {
+3.631:             this.pending_semi = 0;
+3.632:             this.tk_kind = TK_SEMICOLON;
+3.633:             this.tk_line = this.line;
+3.634:             this.tk_col = this.col;
+3.635:             this.last_kind = TK_SEMICOLON;
+3.636:             return 0;
+3.637:         }
+3.638: 
+3.639:         var pre_line = this.line;
+3.640:         var pre_col = this.col;
+3.641:         var hit_nl = this.skip_ws();
+3.642:         if (hit_nl == 1) {
+3.643:             if (lex_triggers_asi(this.last_kind) == 1) {
+3.644:                 this.tk_kind = TK_SEMICOLON;
+3.645:                 this.tk_line = pre_line;
+3.646:                 this.tk_col = pre_col;
+3.647:                 this.last_kind = TK_SEMICOLON;
+3.648:                 return 0;
+3.649:             }
+3.650:         }
+3.651: 
+3.652:         this.tk_line = this.line;
+3.653:         this.tk_col = this.col;
+3.654:         this.tk_start = this.pos;
+3.655: 
+3.656:         if (this.pos >= this.length) {
+3.657:             this.tk_kind = TK_EOF;
+3.658:             return 0;
+3.659:         }
+3.660: 
+3.661:         var c = this.cur();
+3.662: 
+3.663:         if (c == '+') { this.advance_pos(); this.set_tk(TK_PLUS); return 0; }
+3.664:         if (c == '-') { this.advance_pos(); this.set_tk(TK_MINUS); return 0; }
+3.665:         if (c == '%') { this.advance_pos(); this.set_tk(TK_PERCENT); return 0; }
+3.666:         if (c == '(') { this.advance_pos(); this.set_tk(TK_LPAREN); return 0; }
+3.667:         if (c == ')') { this.advance_pos(); this.set_tk(TK_RPAREN); return 0; }
+3.668:         if (c == '[') { this.advance_pos(); this.set_tk(TK_LBRACKET); return 0; }
+3.669:         if (c == ']') { this.advance_pos(); this.set_tk(TK_RBRACKET); return 0; }
+3.670:         if (c == '{') { this.advance_pos(); this.set_tk(TK_LBRACE); return 0; }
+3.671:         if (c == '}') { this.advance_pos(); this.set_tk(TK_RBRACE); return 0; }
+3.672:         if (c == ';') { this.advance_pos(); this.set_tk(TK_SEMICOLON); return 0; }
+3.673:         if (c == '.') { this.advance_pos(); this.set_tk(TK_DOT); return 0; }
+3.674:         if (c == ',') { this.advance_pos(); this.set_tk(TK_COMMA); return 0; }
+3.675:         if (c == '@') { this.advance_pos(); this.set_tk(TK_AT); return 0; }
+3.676: 
+3.677:         if (c == '*') {
+3.678:             this.advance_pos();
+3.679:             if (this.cur() == '*') {
+3.680:                 this.advance_pos();
+3.681:                 this.set_tk(TK_STAR_STAR);
+3.682:             } else {
+3.683:                 this.set_tk(TK_STAR);
+3.684:             }
+3.685:             return 0;
+3.686:         }
+3.687: 
+3.688:         if (c == '=') {
+3.689:             this.advance_pos();
+3.690:             if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_EQ_EQ); return 0; }
+3.691:             if (this.cur() == '>') { this.advance_pos(); this.set_tk(TK_FAT_ARROW); return 0; }
+3.692:             this.set_tk(TK_EQ);
+3.693:             return 0;
+3.694:         }
+3.695: 
+3.696:         if (c == ':') {
+3.697:             this.advance_pos();
+3.698:             if (this.cur() == '=') { this.advance_pos(); this.set_tk(TK_COLON_EQ); return 0; }
+3.699:             if (this.cur() == ':') { this.advance_pos(); this.set_tk(TK_COLON_COLON); return 0; }
+3.700:             this.set_tk(TK_COLON);
+3.701:             return 0;
+3.702:         }
+3.703: 
+3.704:         if (c == '/') {
+3.705:             this.advance_pos();
+3.706:             if (this.cur() == '/') {
+3.707:                 this.advance_pos();
+3.708:                 var nc = this.cur();
+3.709:                 var is_comment = 0;
+3.710:                 if (this.pos >= this.length) { is_comment = 1; }
+3.711:                 if (nc == ' ') { is_comment = 1; }
+3.712:                 if (nc == 9) { is_comment = 1; }
+3.713:                 if (nc == 13) { is_comment = 1; }
+3.714:                 if (nc == 10) { is_comment = 1; }
+3.715:                 if (lex_is_alpha(nc) == 1) { is_comment = 1; }
+3.716:                 if (nc == '/') { is_comment = 1; }
+3.717:                 if (nc == '!') { is_comment = 1; }
+3.718:                 if (nc == '*') { is_comment = 1; }
+3.719:                 
+3.720:                 if (is_comment == 1) {
+3.721:                     while (this.pos < this.length) {
+3.722:                         if (this.cur() == 10) { break; }
+3.723:                         this.advance_pos();
+3.724:                     }
+3.725:                     this.next_token();
+3.726:                     return 0;
+3.727:                 } else {
+3.728:                     this.set_tk(TK_SLASH_SLASH);
+3.729:                     return 0;
+3.730:                 }
+3.731:             }
+3.732:             this.set_tk(TK_SLASH);
+3.733:             return 0;
+3.734:         }
+3.735: 
+3.736:         if (c == '#') {
+3.737:             this.advance_pos();
+3.738:             if (this.cur() == '*') {
+3.739:                 this.advance_pos();
+3.740:                 var depth = 1;
+3.741:                 while (this.pos < this.length) {
+3.742:                     if (depth == 0) { break; }
+3.743:                     if (this.cur() == '#') {
+3.744:                         this.advance_pos();
+3.745:                         if (this.pos < this.length) {
+3.746:                             if (this.cur() == '*') {
+3.747:                                 depth = depth + 1;
+3.748:                                 this.advance_pos();
+3.749:                             }
+3.750:                         }
+3.751:                     } else {
+3.752:                         if (this.cur() == '*') {
+3.753:                             this.advance_pos();
+3.754:                             if (this.pos < this.length) {
+3.755:                                 if (this.cur() == '#') {
+3.756:                                     depth = depth - 1;
+3.757:                                     this.advance_pos();
+3.758:                                 }
+3.759:                             }
+3.760:                         } else {
+3.761:                             this.advance_pos();
+3.762:                         }
+3.763:                     }
+3.764:                 }
+3.765:                 this.next_token();
+3.766:                 return 0;
+3.767:             } else {
+3.768:                 while (this.pos < this.length) {
+3.769:                     if (this.cur() == 10) { break; }
+3.770:                     this.advance_pos();
+3.771:                 }
+3.772:                 this.next_token();
+3.773:                 return 0;
+3.774:             }
+3.775:         }
+3.776: 
+3.777:         var is_op = 0;
+3.778:         if (c == '!') { is_op = 1; }
+3.779:         if (c == '<') { is_op = 1; }
+3.780:         if (c == '>') { is_op = 1; }
+3.781:         if (c == '&') { is_op = 1; }
+3.782:         if (c == '|') { is_op = 1; }
+3.783:         if (c == '^') { is_op = 1; }
+3.784:         if (c == '~') { is_op = 1; }
+3.785:         if (is_op == 1) {
+3.786:             this.lex_operator();
+3.787:             return 0;
+3.788:         }
+3.789: 
+3.790:         if (c == 39) {
+3.791:             this.advance_pos();
+3.792:             if (this.pos < this.length) {
+3.793:                 var ch = this.cur();
+3.794:                 this.advance_pos();
+3.795:                 if (this.pos < this.length) {
+3.796:                     if (this.cur() == 39) {
+3.797:                         this.advance_pos();
+3.798:                         this.tk_ival = ch;
+3.799:                         this.set_tk(TK_NUMBER);
+3.800:                     } else {
+3.801:                         this.set_tk(TK_IDENTIFIER);
+3.802:                     }
+3.803:                 } else {
+3.804:                     this.set_tk(TK_IDENTIFIER);
+3.805:                 }
+3.806:             } else {
+3.807:                 this.set_tk(TK_IDENTIFIER);
+3.808:             }
+3.809:             return 0;
+3.810:         }
+3.811: 
+3.812:         if (c == '"') {
+3.813:             this.lex_string();
+3.814:             return 0;
+3.815:         }
+3.816: 
+3.817:         if (lex_is_digit(c) == 1) {
+3.818:             this.lex_number();
+3.819:             return 0;
+3.820:         }
+3.821: 
+3.822:         if (lex_is_alpha(c) == 1) {
+3.823:             this.lex_identifier();
+3.824:             return 0;
+3.825:         }
+3.826: 
+3.827:         this.advance_pos();
+3.828:         this.set_tk(TK_IDENTIFIER);
+3.829:         return 0;
+3.830:     }
+3.831: }
+3.832: 
+3.833: func print_tk_name(kind) {
+3.834:     if (kind == TK_EOF) { print("EOF"); return 0; }
+3.835:     if (kind == TK_PRINT) { print("PRINT"); return 0; }
+3.836:     if (kind == TK_PRINTLN) { print("PRINTLN"); return 0; }
+3.837:     if (kind == TK_INPUT) { print("INPUT"); return 0; }
+3.838:     if (kind == TK_CLASS) { print("CLASS"); return 0; }
+3.839:     if (kind == TK_ENUM) { print("ENUM"); return 0; }
+3.840:     if (kind == TK_TRAIT) { print("TRAIT"); return 0; }
+3.841:     if (kind == TK_FUNC) { print("FUNC"); return 0; }
+3.842:     if (kind == TK_FN) { print("FN"); return 0; }
+3.843:     if (kind == TK_VAR) { print("VAR"); return 0; }
+3.844:     if (kind == TK_LET) { print("LET"); return 0; }
+3.845:     if (kind == TK_CONST) { print("CONST"); return 0; }
+3.846:     if (kind == TK_RETURN) { print("RETURN"); return 0; }
+3.847:     if (kind == TK_NEW) { print("NEW"); return 0; }
+3.848:     if (kind == TK_THIS) { print("THIS"); return 0; }
+3.849:     if (kind == TK_IF) { print("IF"); return 0; }
+3.850:     if (kind == TK_ELSE) { print("ELSE"); return 0; }
+3.851:     if (kind == TK_WHILE) { print("WHILE"); return 0; }
+3.852:     if (kind == TK_FOR) { print("FOR"); return 0; }
+3.853:     if (kind == TK_DO) { print("DO"); return 0; }
+3.854:     if (kind == TK_DEFER) { print("DEFER"); return 0; }
+3.855:     if (kind == TK_MATCH) { print("MATCH"); return 0; }
+3.856:     if (kind == TK_ASM) { print("ASM"); return 0; }
+3.857:     if (kind == TK_UNSAFE) { print("UNSAFE"); return 0; }
+3.858:     if (kind == TK_SPAWN) { print("SPAWN"); return 0; }
+3.859:     if (kind == TK_JOIN) { print("JOIN"); return 0; }
+3.860:     if (kind == TK_PARALLEL) { print("PARALLEL"); return 0; }
+3.861:     if (kind == TK_ASYNC) { print("ASYNC"); return 0; }
+3.862:     if (kind == TK_LOCK) { print("LOCK"); return 0; }
+3.863:     if (kind == TK_UNLOCK) { print("UNLOCK"); return 0; }
+3.864:     if (kind == TK_IMPORT) { print("IMPORT"); return 0; }
+3.865:     if (kind == TK_FROM) { print("FROM"); return 0; }
+3.866:     if (kind == TK_USE) { print("USE"); return 0; }
+3.867:     if (kind == TK_PEEK) { print("PEEK"); return 0; }
+3.868:     if (kind == TK_PEEK32) { print("PEEK32"); return 0; }
+3.869:     if (kind == TK_POKE) { print("POKE"); return 0; }
+3.870:     if (kind == TK_POKE32) { print("POKE32"); return 0; }
+3.871:     if (kind == TK_BREAK) { print("BREAK"); return 0; }
+3.872:     if (kind == TK_CONTINUE) { print("CONTINUE"); return 0; }
+3.873:     if (kind == TK_TRY) { print("TRY"); return 0; }
+3.874:     if (kind == TK_CATCH) { print("CATCH"); return 0; }
+3.875:     if (kind == TK_THROW) { print("THROW"); return 0; }
+3.876:     if (kind == TK_IDENTIFIER) { print("IDENT"); return 0; }
+3.877:     if (kind == TK_STRING) { print("STRING"); return 0; }
+3.878:     if (kind == TK_FLOAT) { print("FLOAT"); return 0; }
+3.879:     if (kind == TK_NUMBER) { print("NUMBER"); return 0; }
+3.880:     if (kind == TK_KW_INT) { print("KW_INT"); return 0; }
+3.881:     if (kind == TK_KW_FLOAT) { print("KW_FLOAT"); return 0; }
+3.882:     if (kind == TK_KW_BYTE) { print("KW_BYTE"); return 0; }
+3.883:     if (kind == TK_KW_SHORT) { print("KW_SHORT"); return 0; }
+3.884:     if (kind == TK_KW_LONG) { print("KW_LONG"); return 0; }
+3.885:     if (kind == TK_KW_CHAR) { print("KW_CHAR"); return 0; }
+3.886:     if (kind == TK_KW_STRING) { print("KW_STRING"); return 0; }
+3.887:     if (kind == TK_TRUE) { print("TRUE"); return 0; }
+3.888:     if (kind == TK_FALSE) { print("FALSE"); return 0; }
+3.889:     if (kind == TK_NOT) { print("NOT"); return 0; }
+3.890:     if (kind == TK_SEMICOLON) { print("SEMI"); return 0; }
+3.891:     if (kind == TK_COLON) { print("COLON"); return 0; }
+3.892:     if (kind == TK_COLON_COLON) { print("COLON2"); return 0; }
+3.893:     if (kind == TK_COLON_EQ) { print("COLON_EQ"); return 0; }
+3.894:     if (kind == TK_DOT) { print("DOT"); return 0; }
+3.895:     if (kind == TK_COMMA) { print("COMMA"); return 0; }
+3.896:     if (kind == TK_PLUS) { print("PLUS"); return 0; }
+3.897:     if (kind == TK_MINUS) { print("MINUS"); return 0; }
+3.898:     if (kind == TK_STAR) { print("STAR"); return 0; }
+3.899:     if (kind == TK_STAR_STAR) { print("STAR2"); return 0; }
+3.900:     if (kind == TK_SLASH) { print("SLASH"); return 0; }
+3.901:     if (kind == TK_SLASH_SLASH) { print("SLASH2"); return 0; }
+3.902:     if (kind == TK_PERCENT) { print("PERCENT"); return 0; }
+3.903:     if (kind == TK_EQ) { print("EQ"); return 0; }
+3.904:     if (kind == TK_EQ_EQ) { print("EQ_EQ"); return 0; }
+3.905:     if (kind == TK_FAT_ARROW) { print("FAT_ARROW"); return 0; }
+3.906:     if (kind == TK_NOT_EQ) { print("NOT_EQ"); return 0; }
+3.907:     if (kind == TK_LT) { print("LT"); return 0; }
+3.908:     if (kind == TK_GT) { print("GT"); return 0; }
+3.909:     if (kind == TK_LT_EQ) { print("LT_EQ"); return 0; }
+3.910:     if (kind == TK_GT_EQ) { print("GT_EQ"); return 0; }
+3.911:     if (kind == TK_AND) { print("AND"); return 0; }
+3.912:     if (kind == TK_OR) { print("OR"); return 0; }
+3.913:     if (kind == TK_XOR) { print("XOR"); return 0; }
+3.914:     if (kind == TK_XAND) { print("XAND"); return 0; }
+3.915:     if (kind == TK_XNOT) { print("XNOT"); return 0; }
+3.916:     if (kind == TK_LPAREN) { print("LPAREN"); return 0; }
+3.917:     if (kind == TK_RPAREN) { print("RPAREN"); return 0; }
+3.918:     if (kind == TK_LBRACE) { print("LBRACE"); return 0; }
+3.919:     if (kind == TK_RBRACE) { print("RBRACE"); return 0; }
+3.920:     if (kind == TK_LBRACKET) { print("LBRACKET"); return 0; }
+3.921:     if (kind == TK_RBRACKET) { print("RBRACKET"); return 0; }
+3.922:     if (kind == TK_AT) { print("AT"); return 0; }
+3.923:     if (kind == TK_LSHIFT) { print("LSHIFT"); return 0; }
+3.924:     if (kind == TK_RSHIFT) { print("RSHIFT"); return 0; }
+3.925:     if (kind == TK_CARET) { print("CARET"); return 0; }
+3.926:     if (kind == TK_AMPERSAND) { print("AMPERSAND"); return 0; }
+3.927:     if (kind == TK_PIPE) { print("PIPE"); return 0; }
+3.928:     if (kind == TK_TILDE) { print("TILDE"); return 0; }
+3.929:     print("?");
+3.930:     print(kind);
+3.931:     return 0;
+3.932: }
+3.933: 
+4: 
+5: # A simple program to lex
+6: var source = "var x = 42; # comment if (x) { print_val(x); }";
+7: 
+8: var lexer = new Lexer;
+9: lexer.init(source);
+10: 
+11: lexer.next_token();
+12: var t_type = lexer.tk_kind;
+13: while (t_type != 0) {
+14:     print("Token Type: ");
+15:     print(t_type);
+16:     # Since we can't easily slice strings yet, we just print the type for now
+17:     println("");
+18: 
+19:     lexer.next_token();
+20:     t_type = lexer.tk_kind;
+21: }
+22: println("Done lexing!");

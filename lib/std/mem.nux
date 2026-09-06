@@ -1,0 +1,122 @@
+/// std::mem — Nux Memory Management
+///
+/// Provides memory allocation and management for both bare-metal (kernel)
+/// and user-space (Linux/Windows) contexts.
+
+@[no_std]
+
+# ─── Bare-metal Bump Allocator ────────────────────────────────────────────────
+
+var HEAP_START: *u8 = 0x00400000;  # 4 MB — above kernel, below 16MB
+var HEAP_END:   *u8 = 0x01000000;  # 16 MB
+var heap_ptr:   *u8 = 0x00400000;  # cursor (same as start initially)
+
+# ─── Primitives ───────────────────────────────────────────────────────────────
+
+/// Allocate `size` bytes from the heap.
+@[builtin = "mem_alloc"]
+func alloc(size: u32) -> *u8;
+
+/// Free a previously allocated block.
+@[builtin = "mem_free"]
+func free(ptr: *u8);
+
+/// Copy `n` bytes from `src` to `dst`.
+@[builtin = "mem_copy"]
+func copy(dst: *u8, src: *u8, n: u32);
+
+/// Fill `n` bytes at `dst` with the byte value `val`.
+@[builtin = "mem_set"]
+func set(dst: *u8, val: u8, n: u32);
+
+/// Compare `n` bytes between `a` and `b`.
+@[builtin = "mem_cmp"]
+func cmp(a: *u8, b: *u8, n: u32) -> u32;
+
+# ─── Advanced Allocation ──────────────────────────────────────────────────────
+
+/// Allocate `count` elements of `elem_size` bytes each, zero-filled.
+func calloc(count: u32, elem_size: u32) -> *u8 {
+    var total = count * elem_size;
+    var ptr: *u8 = alloc(total);
+    if (ptr != 0) {
+        set(ptr, 0, total);
+    }
+    return ptr;
+}
+
+/// Resize a previously allocated block.
+func realloc(old_ptr: *u8, old_size: u32, new_size: u32) -> *u8 {
+    var new_ptr: *u8 = alloc(new_size);
+    if (new_ptr != 0) {
+        var copy_size = old_size;
+        if (new_size < old_size) {
+            copy_size = new_size;
+        }
+        copy(new_ptr, old_ptr, copy_size);
+    }
+    free(old_ptr);
+    return new_ptr;
+}
+
+/// Copy `n` bytes from `src` to `dst`, handling overlapping regions safely.
+func move(dst: *u8, src: *u8, n: u32) {
+    if (dst == src) {
+        return;
+    }
+    if (dst < src) {
+        copy(dst, src, n);
+    } else {
+        # Copy backwards to handle overlap
+        var i: u32 = n;
+        while (i > 0) {
+            i -= 1;
+            var c: u8 = 0;
+            asm("mov %1, %%eax\n\t"
+                "add %2, %%eax\n\t"
+                "movb (%%eax), %%cl\n\t"
+                "mov %%cl, %0\n\t"
+                : "=r"(c) : "r"(src), "r"(i) : "%eax", "%ecx");
+            asm("mov %0, %%eax\n\t"
+                "add %1, %%eax\n\t"
+                "movb %b2, (%%eax)\n\t"
+                : : "r"(dst), "r"(i), "q"(c) : "%eax");
+        }
+    }
+}
+
+# ─── Alignment Helpers ────────────────────────────────────────────────────────
+
+func align_up(addr: u32, align: u32) -> u32 {
+    return (addr + align - 1) & -(align);
+}
+
+func align_down(addr: u32, align: u32) -> u32 {
+    return addr & -(align);
+}
+
+func is_aligned(ptr: *u8, align: u32) -> bool {
+    var addr: u32 = ptr;
+    return (addr & (align - 1)) == 0;
+}
+
+# ─── Heap Diagnostics ────────────────────────────────────────────────────────
+
+func heap_free_bytes() -> u32 {
+    var end: u32 = HEAP_END;
+    var cur: u32 = heap_ptr;
+    if (cur >= end) {
+        return 0;
+    }
+    return end - cur;
+}
+
+func heap_used_bytes() -> u32 {
+    var start: u32 = HEAP_START;
+    var cur: u32 = heap_ptr;
+    return cur - start;
+}
+
+func heap_reset() {
+    heap_ptr = HEAP_START;
+}

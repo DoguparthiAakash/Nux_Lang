@@ -1,0 +1,4 @@
+func main() { 
+    var s: string = "hello"; 
+    print_str(s); 
+}

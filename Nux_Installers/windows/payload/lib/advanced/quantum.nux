@@ -1,0 +1,299 @@
+# Nux - Quantum Computing Primitives
+# Real quantum computing support!
+
+# Quantum bit (qubit)
+class Qubit {
+    var state: Complex[2];  # |0⟩ and |1⟩ amplitudes
+    var entangled_with: [Qubit] = [];
+    
+    func new() -> Qubit {
+        # Initialize to |0⟩ state
+        return Qubit {
+            state: [Complex(1.0, 0.0), Complex(0.0, 0.0)]
+        };
+    }
+    
+    # Measure qubit (collapses superposition)
+    func measure() -> int {
+        var prob_0 = this.state[0].magnitude_squared();
+        var prob_1 = this.state[1].magnitude_squared();
+        
+        var random = Random.next_float();
+        if (random < prob_0) {
+            this.state = [Complex(1.0, 0.0), Complex(0.0, 0.0)];
+            return 0;
+        } else {
+            this.state = [Complex(0.0, 0.0), Complex(1.0, 0.0)];
+            return 1;
+        }
+    }
+}
+
+# Quantum gates
+class QuantumGate {
+    # Hadamard gate (creates superposition)
+    static func H(q: Qubit) {
+        var sqrt2 = 1.0 / sqrt(2.0);
+        var new_state = [
+            Complex(sqrt2, 0.0) * (q.state[0] + q.state[1]),
+            Complex(sqrt2, 0.0) * (q.state[0] - q.state[1])
+        ];
+        q.state = new_state;
+    }
+    
+    # Pauli-X gate (NOT gate)
+    static func X(q: Qubit) {
+        var temp = q.state[0];
+        q.state[0] = q.state[1];
+        q.state[1] = temp;
+    }
+    
+    # Pauli-Y gate
+    static func Y(q: Qubit) {
+        var temp = q.state[0];
+        q.state[0] = Complex(0.0, -1.0) * q.state[1];
+        q.state[1] = Complex(0.0, 1.0) * temp;
+    }
+    
+    # Pauli-Z gate
+    static func Z(q: Qubit) {
+        q.state[1] = -q.state[1];
+    }
+    
+    # Phase gate
+    static func S(q: Qubit) {
+        q.state[1] = Complex(0.0, 1.0) * q.state[1];
+    }
+    
+    # T gate (π/8 gate)
+    static func T(q: Qubit) {
+        var phase = exp(Complex(0.0, PI / 4.0));
+        q.state[1] = phase * q.state[1];
+    }
+    
+    # CNOT gate (controlled-NOT)
+    static func CNOT(control: Qubit, target: Qubit) {
+        # If control is |1⟩, flip target
+        var prob_control_1 = control.state[1].magnitude_squared();
+        
+        if (prob_control_1 > 0.5) {
+            QuantumGate.X(target);
+        }
+        
+        # Entangle qubits
+        control.entangled_with.push(target);
+        target.entangled_with.push(control);
+    }
+    
+    # Toffoli gate (CCNOT)
+    static func CCNOT(control1: Qubit, control2: Qubit, target: Qubit) {
+        var prob1 = control1.state[1].magnitude_squared();
+        var prob2 = control2.state[1].magnitude_squared();
+        
+        if (prob1 > 0.5 && prob2 > 0.5) {
+            QuantumGate.X(target);
+        }
+    }
+}
+
+# Quantum circuit
+class QuantumCircuit {
+    var qubits: [Qubit] = [];
+    var gates: [QuantumOperation] = [];
+    
+    func add_qubit() -> int {
+        this.qubits.push(Qubit.new());
+        return this.qubits.length - 1;
+    }
+    
+    func h(qubit_idx: int) {
+        QuantumGate.H(this.qubits[qubit_idx]);
+        this.gates.push(QuantumOperation { gate: "H", qubits: [qubit_idx] });
+    }
+    
+    func x(qubit_idx: int) {
+        QuantumGate.X(this.qubits[qubit_idx]);
+        this.gates.push(QuantumOperation { gate: "X", qubits: [qubit_idx] });
+    }
+    
+    func cnot(control: int, target: int) {
+        QuantumGate.CNOT(this.qubits[control], this.qubits[target]);
+        this.gates.push(QuantumOperation { gate: "CNOT", qubits: [control, target] });
+    }
+    
+    func measure(qubit_idx: int) -> int {
+        return this.qubits[qubit_idx].measure();
+    }
+    
+    func measure_all() -> [int] {
+        var results: [int] = [];
+        for (var qubit in this.qubits) {
+            results.push(qubit.measure());
+        }
+        return results;
+    }
+}
+
+# Quantum algorithms
+
+# Deutsch-Jozsa algorithm
+func deutsch_jozsa(oracle: func(Qubit) -> void) -> bool {
+    var circuit = QuantumCircuit.new();
+    var q0 = circuit.add_qubit();
+    var q1 = circuit.add_qubit();
+    
+    # Initialize
+    circuit.x(q1);
+    circuit.h(q0);
+    circuit.h(q1);
+    
+    # Apply oracle
+    oracle(circuit.qubits[q0]);
+    
+    # Measure
+    circuit.h(q0);
+    var result = circuit.measure(q0);
+    
+    return result == 0;  # Constant if 0, balanced if 1
+}
+
+# Grover's search algorithm
+func grovers_search(n: int, oracle: func([Qubit]) -> void) -> int {
+    var circuit = QuantumCircuit.new();
+    var qubits: [int] = [];
+    
+    # Create n qubits
+    for (var i: int = 0; i < n; i++) {
+        qubits.push(circuit.add_qubit());
+    }
+    
+    # Initialize superposition
+    for (var q in qubits) {
+        circuit.h(q);
+    }
+    
+    # Grover iterations
+    var iterations = floor(PI / 4.0 * sqrt(pow(2, n)));
+    for (var i: int = 0; i < iterations; i++) {
+        # Oracle
+        oracle(circuit.qubits);
+        
+        # Diffusion operator
+        for (var q in qubits) {
+            circuit.h(q);
+            circuit.x(q);
+        }
+        
+        # Multi-controlled Z
+        # ... (simplified)
+        
+        for (var q in qubits) {
+            circuit.x(q);
+            circuit.h(q);
+        }
+    }
+    
+    # Measure
+    var results = circuit.measure_all();
+    return binary_to_int(results);
+}
+
+# Quantum Fourier Transform
+func qft(circuit: QuantumCircuit, qubits: [int]) {
+    var n = qubits.length;
+    
+    for (var i: int = 0; i < n; i++) {
+        circuit.h(qubits[i]);
+        
+        for (var j = i + 1; j < n; j++) {
+            var angle = 2.0 * PI / pow(2, j - i + 1);
+            # Controlled phase rotation
+            # circuit.controlled_phase(qubits[j], qubits[i], angle);
+        }
+    }
+    
+    # Swap qubits
+    for (var i: int = 0; i < n / 2; i++) {
+        # circuit.swap(qubits[i], qubits[n - i - 1]);
+    }
+}
+
+# Shor's factoring algorithm (simplified)
+func shors_algorithm(N: int) -> int {
+    # Find period of modular exponentiation
+    # Use QFT to find period
+    # Classical post-processing to find factors
+    
+    var circuit = QuantumCircuit.new();
+    var n_qubits = ceil(log2(N));
+    
+    # ... (complex implementation)
+    
+    return 0;  # Factor
+}
+
+# Example: Bell state (entanglement)
+func create_bell_state() -> [Qubit] {
+    var circuit = QuantumCircuit.new();
+    var q0 = circuit.add_qubit();
+    var q1 = circuit.add_qubit();
+    
+    # Create entanglement
+    circuit.h(q0);
+    circuit.cnot(q0, q1);
+    
+    return [circuit.qubits[q0], circuit.qubits[q1]];
+}
+
+# Quantum teleportation
+func quantum_teleport(state: Qubit) -> Qubit {
+    var circuit = QuantumCircuit.new();
+    
+    # Create Bell pair
+    var alice_bell = circuit.add_qubit();
+    var bob_bell = circuit.add_qubit();
+    circuit.h(alice_bell);
+    circuit.cnot(alice_bell, bob_bell);
+    
+    # Alice's operations
+    var alice_state = circuit.add_qubit();
+    circuit.qubits[alice_state] = state;
+    
+    circuit.cnot(alice_state, alice_bell);
+    circuit.h(alice_state);
+    
+    # Measure Alice's qubits
+    var m1 = circuit.measure(alice_state);
+    var m2 = circuit.measure(alice_bell);
+    
+    # Bob's corrections
+    if (m2 == 1) circuit.x(bob_bell);
+    if (m1 == 1) circuit.z(bob_bell);
+    
+    return circuit.qubits[bob_bell];
+}
+
+# Example usage
+func test_quantum() {
+    # Create superposition
+    var q = Qubit.new();
+    QuantumGate.H(q);
+    
+    # Measure (50% chance of 0 or 1)
+    var result = q.measure();
+    println("Measured: " + result);
+    
+    # Bell state
+    var bell_pair = create_bell_state();
+    var m1 = bell_pair[0].measure();
+    var m2 = bell_pair[1].measure();
+    println("Entangled: " + m1 + ", " + m2);  # Always same!
+    
+    # Grover's search
+    var target: int = 5;
+    var oracle = (qubits: [Qubit]) => {
+        # Mark target state
+    };
+    var found = grovers_search(3, oracle);
+    println("Found: " + found);
+}

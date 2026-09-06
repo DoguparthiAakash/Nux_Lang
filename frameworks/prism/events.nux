@@ -1,0 +1,22 @@
+# frameworks::prism::events
+# UI Event models (Clicks, Hovers, Keyboard)
+
+class MouseEvent {
+    var x: f32;
+    var y: f32;
+    var button: u32; # 0 = Left, 1 = Right
+    
+    func init(x: f32, y: f32, button: u32) {
+        this.x = x;
+        this.y = y;
+        this.button = button;
+    }
+}
+
+class KeyEvent {
+    var keycode: i32;
+    
+    func init(keycode: i32) {
+        this.keycode = keycode;
+    }
+}

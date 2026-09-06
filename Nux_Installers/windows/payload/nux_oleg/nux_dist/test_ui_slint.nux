@@ -1,0 +1,34 @@
+import "ui/desktop";
+
+# A declarative UI block parsed directly by the modified Nux Compiler
+ui MainWindow inherits Window {
+    width: 640;
+    height: 480;
+    title: "Nux Declarative UI";
+}
+
+func main() {
+    println("Initializing Slint-like Declarative UI...");
+    
+    # The `ui MainWindow` block generated a class `MainWindow` that we can instantiate
+    var app = new MainWindow();
+    
+    # The base `Window` init handles the FFI wrapper setup for desktop UI
+    # So we invoke the desktop window explicitly to test the bindings
+    var desktop_win = new Window("My Nux App", 640, 480);
+    
+    println("Window running! Press ESC to close.");
+    
+    while (desktop_win.update()) {
+        # Draw a red rectangle (AARRGGBB = 0xFFFF0000)
+        desktop_win.draw_rect(100, 100, 200, 150, 4294901760);
+        
+        # Draw a blue square (0xFF0000FF)
+        desktop_win.draw_rect(350, 150, 100, 100, 4278190335);
+    }
+    
+    desktop_win.close();
+    println("UI exited cleanly.");
+}
+
+main();

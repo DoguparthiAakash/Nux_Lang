@@ -1,0 +1,163 @@
+#* ─────────────────────────────────────────────────────
+   Nux Standard Math Library  (std/math.nuxel)
+   
+   Provides:
+     - abs, min, max, clamp
+     - pow, sqrt (Newton's method), cbrt
+     - factorial, fibonacci
+     - floor, ceil, round
+     - gcd, lcm, is_prime
+     - PI, E, TAU constants
+   ───────────────────────────────────────────────────── *#
+
+# ── Constants ────────────────────────────────────────────────
+var PI  = 3141592653;   # PI * 1e9  (use pi() for float)
+var E   = 2718281828;   # E  * 1e9
+var TAU = 6283185307;   # 2*PI * 1e9
+
+# Returns the absolute value of n
+pub func abs(n) {
+    if (n < 0) {
+        return 0 - n;
+    }
+    return n;
+}
+
+# Returns the smaller of a and b
+pub func min(a, b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+# Returns the larger of a and b
+pub func max(a, b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+# Clamps val between lo and hi
+pub func clamp(val, lo, hi) {
+    if (val < lo) { return lo; }
+    if (val > hi) { return hi; }
+    return val;
+}
+
+# Integer power: base^exp
+pub func pow(base, exp) {
+    var result = 1;
+    var i = 0;
+    while (i < exp) {
+        result = result * base;
+        i = i + 1;
+    }
+    return result;
+}
+
+# Integer square root (floor), Newton's method
+pub func sqrt_int(n) {
+    if (n < 0) { return 0; }
+    if (n == 0) { return 0; }
+    var x = n;
+    var y = (x + 1) // 2;
+    while (y < x) {
+        x = y;
+        y = (x + n // x) // 2;
+    }
+    return x;
+}
+
+# Integer cube root (floor)
+pub func cbrt(n) {
+    if (n == 0) { return 0; }
+    var neg = 0;
+    if (n < 0) {
+        n = 0 - n;
+        neg = 1;
+    }
+    var x = n;
+    var y = (2 * x + n // (x * x)) // 3;
+    while (y < x) {
+        x = y;
+        y = (2 * x + n // (x * x)) // 3;
+    }
+    if (neg == 1) {
+        return 0 - x;
+    }
+    return x;
+}
+
+# Factorial of n (iterative)
+pub func factorial(n) {
+    if (n <= 1) { return 1; }
+    var result = 1;
+    var i = 2;
+    while (i <= n) {
+        result = result * i;
+        i = i + 1;
+    }
+    return result;
+}
+
+# nth Fibonacci number (iterative, fast)
+pub func fibonacci(n) {
+    if (n <= 0) { return 0; }
+    if (n == 1) { return 1; }
+    var a = 0;
+    var b = 1;
+    var i = 2;
+    while (i <= n) {
+        var t = a + b;
+        a = b;
+        b = t;
+        i = i + 1;
+    }
+    return b;
+}
+
+# Greatest common divisor (Euclidean)
+pub func gcd(a, b) {
+    a = abs(a);
+    b = abs(b);
+    while (b != 0) {
+        var t = b;
+        b = a - (a // b) * b;   # a mod b
+        a = t;
+    }
+    return a;
+}
+
+# Lowest common multiple
+pub func lcm(a, b) {
+    if (a == 0) { return 0; }
+    if (b == 0) { return 0; }
+    return abs(a * b) // gcd(a, b);
+}
+
+# Returns 1 if n is prime, 0 otherwise
+pub func is_prime(n) {
+    if (n < 2) { return 0; }
+    if (n == 2) { return 1; }
+    if (n - (n // 2) * 2 == 0) { return 0; }   # even
+    var i = 3;
+    while (i * i <= n) {
+        if (n - (n // i) * i == 0) { return 0; }
+        i = i + 2;
+    }
+    return 1;
+}
+
+# Floor division (same as // but explicit)
+pub func floor_div(a, b) {
+    return a // b;
+}
+
+# Integer sign: -1, 0, or 1
+pub func sign(n) {
+    if (n > 0) { return 1; }
+    if (n < 0) { return -1; }
+    return 0;
+}

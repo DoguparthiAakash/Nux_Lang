@@ -1,0 +1,147 @@
+# Machine Learning Pipeline Example
+# Demonstrates using Python's NumPy and scikit-learn with Nux orchestration
+
+import std.polyglot
+import std.interop
+
+# Import Python libraries
+import python:numpy as np
+import python:pandas as pd
+from python:sklearn.model_selection import train_test_split
+from python:sklearn.linear_model import LinearRegression
+
+# Define Python data processing block
+@python {
+    import numpy as np
+    import pandas as pd
+    
+    def load_dataset(file_path):
+        """Load dataset from CSV file"""
+        df = pd.read_csv(file_path)
+        return df
+    
+    def preprocess_data(df):
+        """Preprocess the dataset"""
+        # Handle missing values
+        df = df.fillna(df.mean())
+        
+        # Normalize features
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+        
+        return df
+    
+    def create_features(df, target_column):
+        """Split into features and target"""
+        X = df.drop(columns=[target_column])
+        y = df[target_column]
+        return X, y
+}
+
+# Nux orchestration code
+fn main() {
+    print("=== Machine Learning Pipeline with Python Integration ===\n")
+    
+    # Step 1: Load data using Python
+    print("Step 1: Loading dataset...")
+    let dataset_path = "data/housing.csv"
+    let df = python.load_dataset(dataset_path)
+    print("Dataset loaded: " + str(df.shape) + " rows and columns\n")
+    
+    # Step 2: Preprocess data
+    print("Step 2: Preprocessing data...")
+    let df_clean = python.preprocess_data(df)
+    print("Data preprocessed successfully\n")
+    
+    # Step 3: Create features
+    print("Step 3: Creating features...")
+    let (X, y) = python.create_features(df_clean, "price")
+    print("Features created: X shape = " + str(X.shape) + ", y shape = " + str(y.shape) + "\n")
+    
+    # Step 4: Split data (using Python)
+    print("Step 4: Splitting data into train/test sets...")
+    let (X_train, X_test, y_train, y_test) = train_test_split(X, y, test_size=0.2, random_state=42)
+    print("Train set: " + str(len(X_train)) + " samples")
+    print("Test set: " + str(len(X_test)) + " samples\n")
+    
+    # Step 5: Train model
+    print("Step 5: Training Linear Regression model...")
+    let model = LinearRegression()
+    model.fit(X_train, y_train)
+    print("Model trained successfully\n")
+    
+    # Step 6: Evaluate model
+    print("Step 6: Evaluating model...")
+    let train_score = model.score(X_train, y_train)
+    let test_score = model.score(X_test, y_test)
+    
+    print("Training R² score: " + str(train_score))
+    print("Testing R² score: " + str(test_score) + "\n")
+    
+    # Step 7: Make predictions (Nux-side processing)
+    print("Step 7: Making predictions...")
+    let predictions = model.predict(X_test)
+    
+    # Calculate metrics in Nux
+    let mse = calculate_mse(y_test, predictions)
+    let rmse = sqrt(mse)
+    
+    print("Mean Squared Error: " + str(mse))
+    print("Root Mean Squared Error: " + str(rmse) + "\n")
+    
+    # Step 8: Visualize results (using Python matplotlib)
+    print("Step 8: Visualizing results...")
+    visualize_results(y_test, predictions)
+    
+    print("\n=== Pipeline Complete ===")
+}
+
+# Nux helper functions
+fn calculate_mse(y_true: array, y_pred: array) -> float {
+    let n = len(y_true)
+    let sum_squared_error = 0.0
+    
+    for i in range(n) {
+        let error = y_true[i] - y_pred[i]
+        sum_squared_error += error * error
+    }
+    
+    return sum_squared_error / n
+}
+
+fn sqrt(x: float) -> float {
+    # Use Python's math.sqrt for now
+    return @python(import math; math.sqrt(x))
+}
+
+# Python visualization block
+@python {
+    import matplotlib.pyplot as plt
+    
+    def visualize_results(y_true, y_pred):
+        """Create visualization of predictions vs actual values"""
+        plt.figure(figsize=(10, 6))
+        
+        # Scatter plot
+        plt.scatter(y_true, y_pred, alpha=0.5)
+        plt.plot([y_true.min(), y_true.max()], 
+                 [y_true.min(), y_true.max()], 
+                 'r--', lw=2)
+        
+        plt.xlabel('Actual Values')
+        plt.ylabel('Predicted Values')
+        plt.title('Actual vs Predicted Values')
+        plt.grid(True, alpha=0.3)
+        
+        plt.savefig('predictions_plot.png')
+        print("Plot saved to predictions_plot.png")
+}
+
+fn visualize_results(y_true: array, y_pred: array) {
+    python.visualize_results(y_true, y_pred)
+}
+
+# Run the pipeline
+main()

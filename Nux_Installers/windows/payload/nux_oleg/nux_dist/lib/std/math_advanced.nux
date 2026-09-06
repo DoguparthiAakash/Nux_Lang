@@ -1,0 +1,96 @@
+# math_advanced.nux - Advanced mathematics and statistics for Nux Data Analytics
+# Operates on tensors and standard arrays
+
+import "std/tensor.nux";
+
+class MathAdv {
+
+    # Calculates the mean of a 1D tensor
+    func mean(t_1d) {
+        var size = tensor_size(t_1d);
+        if (size == 0) { return 0; }
+        var sum = tensor_sum(t_1d);
+        return sum / size;
+    }
+    
+    # Calculates the variance of a 1D tensor
+    func variance(t_1d) {
+        var size = tensor_size(t_1d);
+        if (size <= 1) { return 0; }
+        
+        var m = this.mean(t_1d);
+        var sum_sq_diff = 0;
+        var data = arr_get(t_1d, 0);
+        
+        for (var i = 0; i < size; i = i + 1) {
+            var val = arr_get(data, i);
+            var diff = val - m;
+            sum_sq_diff = sum_sq_diff + (diff * diff);
+        }
+        
+        # Sample variance
+        return sum_sq_diff / (size - 1);
+    }
+    
+    # Calculates the standard deviation of a 1D tensor
+    func stddev(t_1d) {
+        var var_val = this.variance(t_1d);
+        return sqrt(var_val);
+    }
+    
+    # Calculates covariance between two 1D tensors
+    func cov(t1, t2) {
+        var size1 = tensor_size(t1);
+        var size2 = tensor_size(t2);
+        if (size1 != size2) { return 0; }
+        if (size1 <= 1) { return 0; }
+        
+        var m1 = this.mean(t1);
+        var m2 = this.mean(t2);
+        
+        var data1 = arr_get(t1, 0);
+        var data2 = arr_get(t2, 0);
+        var sum_prod = 0;
+        
+        for (var i = 0; i < size1; i = i + 1) {
+            var diff1 = arr_get(data1, i) - m1;
+            var diff2 = arr_get(data2, i) - m2;
+            sum_prod = sum_prod + (diff1 * diff2);
+        }
+        
+        return sum_prod / (size1 - 1);
+    }
+    
+    # Calculates the Pearson correlation coefficient
+    func corrcoef(t1, t2) {
+        var c = this.cov(t1, t2);
+        var std1 = this.stddev(t1);
+        var std2 = this.stddev(t2);
+        
+        if (std1 == 0) { return 0; }
+        if (std2 == 0) { return 0; }
+        
+        return c / (std1 * std2);
+    }
+    
+    # Normalizes a tensor (z-score normalization)
+    func normalize(t_1d) {
+        var size = tensor_size(t_1d);
+        var result = tensor_zeros_1d(size);
+        
+        var m = this.mean(t_1d);
+        var s = this.stddev(t_1d);
+        
+        if (s == 0) { s = 1; } # Avoid div by zero
+        
+        var data_t = arr_get(t_1d, 0);
+        var data_r = arr_get(result, 0);
+        
+        for (var i = 0; i < size; i = i + 1) {
+            var val = arr_get(data_t, i);
+            arr_set(data_r, i, (val - m) / s);
+        }
+        
+        return result;
+    }
+}

@@ -1,0 +1,53 @@
+# Nux Register Bytecode (NRBC) Definition
+# A strictly register-based bytecode architecture designed to map cleanly 
+# to physical CPU registers in the Tiered JIT, avoiding stack-thrashing.
+
+class NRBCInstruction {
+    var opcode;
+    var dest_reg; # Virtual register ID (e.g., v0, v1, ...)
+    var src_regs; # List of source virtual registers
+    var imm_val;  # Optional immediate value
+
+    func init(op, dest) {
+        this.opcode = op;
+        this.dest_reg = dest;
+        this.src_regs = new List();
+        this.src_regs.init();
+    }
+}
+
+class NRBCBuilder {
+    # Emits NRBC instructions from CIR
+    
+    func emit_load_imm(vDest, val) {
+        # LOAD_IMM vDest, <val>
+    }
+    
+    func emit_add(vDest, vSrc1, vSrc2) {
+        # ADD vDest, vSrc1, vSrc2
+        # Maps to `add rcx, rdx`
+    }
+    
+    func emit_load_mem(vDest, vAddrReg, offset) {
+        # LOAD_MEM vDest, [vAddrReg + offset]
+        # Notice: NO bounds check instruction emitted. 
+        # The JIT trusts the Borrow Checker's compile-time proofs.
+    }
+    
+    func emit_vec_add_4s(vDest, vSrc1, vSrc2) {
+        # VEC_ADD.4s vDest, vSrc1, vSrc2
+        # Emits SIMD AVX/NEON vector instructions.
+    }
+    
+    func emit_syscall(vDest, sys_num_reg, args_regs) {
+        # SYSCALL vDest, sys_num_reg, [args_regs...]
+        # Maps directly to the x86_64 `syscall` or ARM64 `svc` instruction.
+        # Zero-overhead boundary crossing into the OS kernel.
+    }
+    
+    func emit_call_extern(vDest, symbol_name_reg, args_regs) {
+        # CALL_EXTERN vDest, symbol_name_reg, [args_regs...]
+        # Native FFI jump. Emits a dynamic linker lookup (`dlsym` equivalent) 
+        # and jumps into the C ABI payload without VM trampoline overhead.
+    }
+}

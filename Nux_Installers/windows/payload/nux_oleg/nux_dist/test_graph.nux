@@ -1,0 +1,11 @@
+import "alloc"
+import "graph"
+
+func main() {
+    alloc_init(116, 1000000);
+    var nodes = alloc(100 * 4 * 8); # Space for 100 nodes, 4 words each
+    
+    # Run BFS
+    var res = bfs_concurrent(nodes, 5, 100);
+    println(res);
+}

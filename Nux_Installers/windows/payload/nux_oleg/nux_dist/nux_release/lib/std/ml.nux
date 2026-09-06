@@ -1,0 +1,70 @@
+# ml.nux - Machine Learning Core Library
+# Handles vectors, matrices, and basic math routines using fixed-point integer scaling (scale = 1000)
+
+@priority(40)
+
+# Vector Addition: res = a + b
+func ml_vec_add(addr_a, addr_b, addr_res, length) {
+    for (var i = 0; i < length; i = i + 1) {
+        var offset = i * 8;
+        var val_a = peek(addr_a + offset);
+        var val_b = peek(addr_b + offset);
+        poke(addr_res + offset, val_a + val_b);
+    }
+    return 0;
+}
+
+# Vector Dot Product: returns sum(a * b)
+func ml_vec_dot(addr_a, addr_b, length) {
+    var sum = 0;
+    for (var i = 0; i < length; i = i + 1) {
+        var offset = i * 8;
+        var val_a = peek(addr_a + offset);
+        var val_b = peek(addr_b + offset);
+        sum = sum + ((val_a * val_b) / 1000); # Fixed-point divide
+    }
+    return sum;
+}
+
+# Matrix Multiplication (Row-by-row concurrent)
+# A: [rows_a x cols_a], B: [cols_a x cols_b], Res: [rows_a x cols_b]
+func _ml_mat_mul_row(addr_a, addr_b, addr_res, row, rows_a, cols_a, cols_b) {
+    for (var col = 0; col < cols_b; col = col + 1) {
+        var sum = 0;
+        for (var k = 0; k < cols_a; k = k + 1) {
+            var val_a = peek(addr_a + (row * cols_a + k) * 8);
+            var val_b = peek(addr_b + (k * cols_b + col) * 8);
+            sum = sum + ((val_a * val_b) / 1000);
+        }
+        poke(addr_res + (row * cols_b + col) * 8, sum);
+    }
+    return 0;
+}
+
+func ml_mat_mul(addr_a, addr_b, addr_res, rows_a, cols_a, cols_b) {
+    # If the matrix is very large, we can spawn tasks per row
+    # For now we do it synchronously or with limited spawning to avoid too many threads
+    for (var r = 0; r < rows_a; r = r + 1) {
+        _ml_mat_mul_row(addr_a, addr_b, addr_res, r, rows_a, cols_a, cols_b);
+    }
+    return 0;
+}
+
+# ReLU Activation
+func ml_relu(val) {
+    if (val < 0) {
+        return 0;
+    }
+    return val;
+}
+
+# Approximation of Sigmoid: x / (1 + |x|)
+# We use fixed-point arithmetic: 1000 * x / (1000 + |x|)
+func ml_sigmoid(val) {
+    var abs_val = val;
+    if (val < 0) {
+        abs_val = 0 - val;
+    }
+    var denom = 1000 + abs_val;
+    return (1000 * val) / denom;
+}

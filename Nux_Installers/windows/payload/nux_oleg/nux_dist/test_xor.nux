@@ -1,0 +1,15 @@
+func main() {
+    # Write 'H' (72) to memory at address 300
+    poke(300, 72);
+    println(peek(300));   # Should print 72
+    
+    # XOR with 42: 72 xor 42 = 98
+    var x = peek(300);
+    var k = 42;
+    var xored = x xor k;
+    println(xored);       # Should print 98
+    
+    # Poke the result back
+    poke(300, xored);
+    println(peek(300));   # Should print 98
+}

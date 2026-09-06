@@ -1,0 +1,56 @@
+# frameworks::vortex::registry
+# Native Service Discovery for Microservices
+
+import std::collections::List;
+import std::string::String;
+
+class ServiceNode {
+    var name: String;
+    var ip: String;
+    var port: u32;
+    var status: String; # "UP", "DOWN"
+    
+    func init(name: String, ip: String, port: u32) {
+        this.name = name;
+        this.ip = ip;
+        this.port = port;
+        
+        this.status = new String();
+        this.status.init("UP");
+    }
+}
+
+class ServiceRegistry {
+    var nodes: List; # List<ServiceNode>
+    
+    func init() {
+        this.nodes = new List();
+        this.nodes.init();
+    }
+    
+    func register(name: String, ip: String, port: u32) {
+        var node = new ServiceNode();
+        node.init(name, ip, port);
+        this.nodes.append(node);
+    }
+    
+    func discover(name: String) -> ServiceNode {
+        var i = 0;
+        var len = this.nodes.len();
+        
+        while (i < len) {
+            var node = this.nodes.get(i); # typeof ServiceNode
+            if (node.name.equals(name) && node.status.equals_str("UP")) {
+                # Simple round-robin or first available
+                return node; 
+            }
+            i += 1;
+        }
+        
+        # Return dummy node if not found
+        var empty = new ServiceNode();
+        var empty_str = new String(); empty_str.init("");
+        empty.init(empty_str, empty_str, 0);
+        return empty;
+    }
+}

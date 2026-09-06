@@ -1,0 +1,37 @@
+// Target: custom_asic
+// Max RAM: 1 Byte
+
+@[intrinsic]
+func __read_gpio_register() -> u1 { }
+
+@[intrinsic]
+func __write_display_register(val: u7) { }
+
+@[intrinsic]
+func __wrapping_add_u1(a: u1, b: u1) -> u1 { }
+
+@[intrinsic]
+func __wrapping_add_u7(a: u7, b: u7) -> u7 { }
+
+func main() {
+    var state: u1 = 0; // Requires 1 bit of persistent RAM (Bit 0)
+    var count: u7 = 0; // Requires 7 bits of persistent RAM (Bits 1-7)
+    
+    loop {
+        // 'input' is a temporary variable.
+        // In the Liveness Graph, 'input' is only live during this loop iteration.
+        // The Codegen backend will allocate this entirely to a CPU register, 
+        // requiring 0 bytes of RAM.
+        var input: u1 = __read_gpio_register();
+        
+        if (input == 1) {
+            state = __wrapping_add_u1(state, 1);
+            if (state == 1) {
+                count = __wrapping_add_u7(count, 1);
+            }
+        }
+        
+        // Output 'count' to a memory-mapped display register
+        __write_display_register(count);
+    }
+}

@@ -1,0 +1,182 @@
+#* ─────────────────────────────────────────────────────
+   Nux I/O Utilities  (std/io.nuxel)
+
+   Provides:
+     - print_int, print_hex, print_bin
+     - print_bool, print_newline
+     - read_int (placeholder for hardware)
+     - assert_eq, assert_neq, assert_gt, assert_lt
+     - log, log_ok, log_err, log_warn
+   ───────────────────────────────────────────────────── *#
+
+# Print a newline
+pub func println_empty() {
+    print("\n");
+}
+
+# Print integer followed by newline
+pub func println_int(n) {
+    print(n);
+    print("\n");
+}
+
+# Print a boolean as "true" or "false"
+pub func print_bool(b) {
+    if (b != 0) {
+        print("true");
+    } else {
+        print("false");
+    }
+}
+
+pub func println_bool(b) {
+    print_bool(b);
+    print("\n");
+}
+
+# Print integer in hexadecimal (simple, up to 8 hex digits)
+pub func print_hex(n) {
+    print("0x");
+    if (n == 0) {
+        print("0");
+        return;
+    }
+    # Extract up to 8 nibbles
+    *int digits = alloc(8);
+    var len = 0;
+    var v = n;
+    while (v != 0) {
+        var nibble = v - (v // 16) * 16;   # v mod 16
+        poke(digits + len, nibble);
+        v = v // 16;
+        len = len + 1;
+    }
+    # Print in reverse (most significant first)
+    var i = len - 1;
+    while (i >= 0) {
+        var d = peek(digits + i);
+        if (d < 10) {
+            print(d);
+        } else {
+            if (d == 10) { print("a"); }
+            if (d == 11) { print("b"); }
+            if (d == 12) { print("c"); }
+            if (d == 13) { print("d"); }
+            if (d == 14) { print("e"); }
+            if (d == 15) { print("f"); }
+        }
+        i = i - 1;
+    }
+    free(digits);
+}
+
+pub func println_hex(n) {
+    print_hex(n);
+    print("\n");
+}
+
+# Print integer in binary (up to 32 bits shown, trimmed)
+pub func print_bin(n) {
+    print("0b");
+    if (n == 0) {
+        print("0");
+        return;
+    }
+    *int bits = alloc(64);
+    var len = 0;
+    var v = n;
+    while (v != 0) {
+        poke(bits + len, v - (v // 2) * 2);   # v mod 2
+        v = v // 2;
+        len = len + 1;
+    }
+    var i = len - 1;
+    while (i >= 0) {
+        print(peek(bits + i));
+        i = i - 1;
+    }
+    free(bits);
+}
+
+pub func println_bin(n) {
+    print_bin(n);
+    print("\n");
+}
+
+# ── Assertions ───────────────────────────────────────────────
+
+pub func assert_eq(a, b) {
+    if (a != b) {
+        print("[ASSERT FAIL] expected ");
+        print(b);
+        print(" but got ");
+        print(a);
+        print("\n");
+        verify(0);   # halt
+    }
+}
+
+pub func assert_neq(a, b) {
+    if (a == b) {
+        print("[ASSERT FAIL] values should differ but both = ");
+        print(a);
+        print("\n");
+        verify(0);
+    }
+}
+
+pub func assert_gt(a, b) {
+    if (a <= b) {
+        print("[ASSERT FAIL] ");
+        print(a);
+        print(" should be > ");
+        print(b);
+        print("\n");
+        verify(0);
+    }
+}
+
+pub func assert_lt(a, b) {
+    if (a >= b) {
+        print("[ASSERT FAIL] ");
+        print(a);
+        print(" should be < ");
+        print(b);
+        print("\n");
+        verify(0);
+    }
+}
+
+# ── Logging ──────────────────────────────────────────────────
+
+pub func log(msg) {
+    print("[LOG] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_ok(msg) {
+    print("[OK ] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_err(msg) {
+    print("[ERR] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_warn(msg) {
+    print("[WRN] ");
+    print(msg);
+    print("\n");
+}
+
+pub func log_val(label, val) {
+    print("[LOG] ");
+    print(label);
+    print(" = ");
+    print(val);
+    print("\n");
+}

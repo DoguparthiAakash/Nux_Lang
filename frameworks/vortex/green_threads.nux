@@ -1,0 +1,55 @@
+# frameworks::vortex::green_threads
+# Ultra-low memory async concurrency (Goroutines equivalent)
+
+import std::collections::List;
+
+class GreenThread {
+    var id: u32;
+    var state: u32; # 0 = READY, 1 = RUNNING, 2 = SUSPENDED, 3 = DEAD
+    var instruction_pointer: *u8;
+    var stack_pointer: *u8;
+    
+    # We allocate a tiny stack (e.g. 2KB to 8KB) instead of 
+    # OS Thread defaults (2MB+), saving massive RAM.
+    var stack_size: u32; 
+    
+    func init(id: u32, func_ptr: *u8) {
+        this.id = id;
+        this.state = 0;
+        this.instruction_pointer = func_ptr;
+        this.stack_size = 4096; # 4KB Stack
+    }
+}
+
+class ThreadScheduler {
+    var ready_queue: List; # List<GreenThread>
+    var suspended_queue: List;
+    
+    func init() {
+        this.ready_queue = new List();
+        this.ready_queue.init();
+        this.suspended_queue = new List();
+        this.suspended_queue.init();
+    }
+    
+    func spawn(func_ptr: *u8) {
+        var thread = new GreenThread();
+        # ID generation logic omitted
+        thread.init(1, func_ptr);
+        this.ready_queue.append(thread);
+    }
+    
+    func yield() {
+        # Save current thread context (registers, SP, IP)
+        # Move current thread to back of ready_queue
+        # Load next thread context
+    }
+    
+    func run_event_loop() {
+        while (this.ready_queue.len() > 0) {
+            var thread = this.ready_queue.pop_front();
+            # Context switch to `thread`
+            # When thread yields or blocks on IO, it returns here.
+        }
+    }
+}

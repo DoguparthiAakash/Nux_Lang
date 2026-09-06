@@ -1,0 +1,23 @@
+# std::mem
+# Raw memory manipulation, layout, and pluggable allocators.
+
+class GlobalAllocator {
+    # Custom kernels can swap this out to inject their own heap manager.
+    
+    func alloc(layout_size, layout_align) {
+        # Lowered to a call to the active heap manager
+    }
+    
+    func dealloc(ptr, layout_size, layout_align) {
+    }
+}
+
+@[comptime]
+func size_of(type_T) {
+    # Compiler intrinsic that evaluates to the exact byte size of a struct at compile time.
+}
+
+@[comptime]
+func align_of(type_T) {
+    # Compiler intrinsic for memory alignment constraints.
+}

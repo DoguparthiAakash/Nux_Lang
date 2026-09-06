@@ -1,0 +1,2 @@
+#!/bin/bash
+./nux nux_dist/nx.nux "$@"

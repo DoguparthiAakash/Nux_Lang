@@ -1,0 +1,35 @@
+import "sys";
+import "nux.memory";
+import "nux.io";
+
+func main() {
+    println("GC Test");
+    
+    # Set limit small (1KB)
+    Mem_set_limit("1024 bytes");
+    
+    # Alloc loop
+    var i: int = 0;
+    while (i < 20) {
+        # Alloc 128 bytes
+        # 20 * 128 = 2560 bytes > 1024
+        # Without GC, this crashes.
+        # With GC, if we drop reference, it should free.
+        
+        test_alloc();
+        
+        print("Alloc "); print(i); print(" Used: "); print(Mem_get_used()); println("B");
+        i = i + 1;
+    }
+    println("GC Test Passed (No Crash).");
+}
+
+func test_alloc() {
+    var p = Mem_malloc(128);
+    # p goes out of scope here.
+    # Stack scan should NOT find p after return?
+    # EXCEPT: Nux VM might keep stack values if not explicitly popped?
+    # Our function call `RET` pops locals.
+    # So `p` is gone from stack.
+    # GC should reclaim it on next allocation.
+}

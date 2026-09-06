@@ -1,0 +1,16 @@
+class Test {
+    func forward(input_tensor, output_tensor) {
+        if (this.cux_lib >= 0) {
+            cux_call(this.cux_lib, "tensor_matmul", input_tensor.ptr, this.weights.ptr, output_tensor.ptr, 1, this.in_features, this.out_features);
+        } else {
+            tensor_matmul(
+                input_tensor.ptr, 
+                this.weights.ptr, 
+                output_tensor.ptr, 
+                1, 
+                this.in_features, 
+                this.out_features
+            );
+        }
+    }
+}

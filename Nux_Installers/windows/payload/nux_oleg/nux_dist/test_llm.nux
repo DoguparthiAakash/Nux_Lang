@@ -1,0 +1,40 @@
+import "ffi";
+import "nn";
+import "llm";
+
+println("Loading nux_ml backend...");
+var ffi_lib = ffi_load("E:/nux/Nux_Lang/nux_ml/target/release/nux_ml.dll");
+
+var seq_len = 2;
+var embed_dim = 4;
+var num_heads = 2;
+
+println("Creating Embedding Layer...");
+var embedding = new Embedding(10, embed_dim, ffi_lib);
+embedding.set_weight(4, 5); 
+
+println("Creating Transformer Block...");
+var block = new TransformerBlock(embed_dim, num_heads, ffi_lib);
+
+var input_tokens = new Tensor(seq_len, ffi_lib);
+input_tokens.set(0, 1);
+input_tokens.set(1, 2);
+
+var embedded = new Tensor(seq_len * embed_dim, ffi_lib);
+var output = new Tensor(seq_len * embed_dim, ffi_lib);
+
+println("Running Embedding Forward...");
+embedding.forward(input_tokens, seq_len, embedded);
+
+println("Running Transformer Block Forward...");
+block.forward(embedded, seq_len, output);
+
+println("Forward pass successful.");
+
+input_tokens.free();
+embedded.free();
+output.free();
+embedding.free_weights();
+block.free_weights();
+
+println("Done!");

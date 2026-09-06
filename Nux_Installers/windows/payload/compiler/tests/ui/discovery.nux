@@ -1,0 +1,94 @@
+# discovery.nux
+# A Native Nux translation of custom_kernel/core/manager/discovery.rs
+
+import std::collections::List;
+import std::string::String;
+
+# --- Native FFI Boundaries ---
+# These functions compile down directly to C ABI calls via Native AOT.
+@[extern]
+func iokit_get_registry_root();
+
+@[extern]
+func iokit_entry_get_name(entry_ptr);
+
+@[extern]
+func iokit_entry_get_vendor_id(entry_ptr);
+
+@[extern]
+func iokit_entry_get_device_id(entry_ptr);
+
+@[extern]
+func percpu_get_cpu_count();
+# -----------------------------
+
+class DeviceInfo {
+    var name;
+    var vendor_id;
+    var device_id;
+    var kind;
+    
+    func init(n, v, d, k) {
+        this.name = n;
+        this.vendor_id = v;
+        this.device_id = d;
+        this.kind = k;
+    }
+}
+
+func get_all_devices() {
+    var devices = new List();
+    devices.init();
+    
+    # In Rust, this was `let registry = REGISTRY.lock();`
+    # In Nux, we use the FFI to talk to the kernel memory directly.
+    var root_ptr = iokit_get_registry_root();
+    
+    if (root_ptr != 0) {
+        # Assuming FFI returns a linked list for simplicity in this mock
+        var current_entry = root_ptr;
+        
+        while (current_entry != 0) {
+            # FFI Calls to extract properties
+            var raw_name = iokit_entry_get_name(current_entry);
+            var vendor = iokit_entry_get_vendor_id(current_entry);
+            var device = iokit_entry_get_device_id(current_entry);
+            
+            var name = new String(raw_name);
+            var kind;
+            
+            if (name.starts_with("PCI")) {
+                kind = new String("PCI");
+            } else if (name.to_lowercase().contains("usb") || name.contains("ehci") || name.contains("xhci")) {
+                kind = new String("USB");
+            } else {
+                kind = new String("Other");
+            }
+            
+            var info = new DeviceInfo();
+            info.init(name, vendor, device, kind);
+            devices.append(info);
+            
+            # Move to next entry (mocking the iterator)
+            current_entry = 0; # Break loop for mock
+        }
+    }
+    
+    return devices;
+}
+
+func get_cpu_summary() {
+    var cores = percpu_get_cpu_count();
+    # We use std::string formatting to match the Rust alloc::format!
+    var s = new String("ASOA Sovereign CPU: x86_64, ");
+    s.append_int(cores);
+    s.append_str(" Cores, 64-bit Extended Mode");
+    return s;
+}
+
+func main() {
+    # Test our translation
+    var summary = get_cpu_summary();
+    var devices = get_all_devices();
+    return 0;
+}

@@ -1,0 +1,13 @@
+# No import lines needed — binding "py" comes from imports.xml
+
+var = new var;
+
+var.py{
+    import os
+    print("from XML binding:", os.getcwd())
+    print("python version:", __import__('sys').version.split()[0])
+}
+
+if(var==true){
+    println("XML binding worked!");
+}

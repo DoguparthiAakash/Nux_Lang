@@ -1,0 +1,18 @@
+# Nux Standard Time Library
+
+func Sleep(ms) {
+    asm {
+        ms
+        SLEEP
+    }
+}
+
+func Seconds(s) {
+    Sleep(s * 1000);
+}
+
+func Now() {
+    asm {
+        TIME
+    }
+}

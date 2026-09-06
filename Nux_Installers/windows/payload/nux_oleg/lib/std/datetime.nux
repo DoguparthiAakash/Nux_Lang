@@ -1,0 +1,231 @@
+# Date and Time Library
+
+# ============= TIME REPRESENTATION =============
+
+class DateTime {
+    var year: int;
+    var month: int;   # 1-12
+    var day: int;     # 1-31
+    var hour: int;    # 0-23
+    var minute: int;  # 0-59
+    var second: int;  # 0-59
+    var millisecond: int;  # 0-999
+    
+    func now() -> DateTime {
+        var timestamp = syscall_time();
+        return DateTime.from_timestamp(timestamp);
+    }
+    
+    func from_timestamp(ts: int) -> DateTime {
+        # Unix timestamp to DateTime
+        var seconds = ts;
+        var days = seconds / 86400;
+        var remaining = seconds % 86400;
+        
+        var hour = remaining / 3600;
+        remaining = remaining % 3600;
+        var minute = remaining / 60;
+        var second = remaining % 60;
+        
+        # Calculate year, month, day from days since epoch
+        var year: int = 1970;
+        var month: int = 1;
+        var day: int = 1;
+        
+        # Simplified calculation (not accounting for leap years properly)
+        year += days / 365;
+        days = days % 365;
+        
+        var days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        
+        for (var m: int = 0; m < 12; m++) {
+            if (days < days_in_month[m]) {
+                month = m + 1;
+                day = days + 1;
+                break;
+            }
+            days -= days_in_month[m];
+        }
+        
+        return DateTime {
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute,
+            second: second,
+            millisecond: 0
+        };
+    }
+    
+    func to_timestamp() -> int {
+        # DateTime to Unix timestamp
+        var days = (this.year - 1970) * 365;
+        
+        var days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        for (var m: int = 0; m < this.month - 1; m++) {
+            days += days_in_month[m];
+        }
+        
+        days += this.day - 1;
+        
+        var seconds = days * 86400;
+        seconds += this.hour * 3600;
+        seconds += this.minute * 60;
+        seconds += this.second;
+        
+        return seconds;
+    }
+    
+    func format(fmt: string) -> string {
+        var result = fmt;
+        
+        result = str_replace(result, "YYYY", pad_zero(this.year, 4));
+        result = str_replace(result, "MM", pad_zero(this.month, 2));
+        result = str_replace(result, "DD", pad_zero(this.day, 2));
+        result = str_replace(result, "HH", pad_zero(this.hour, 2));
+        result = str_replace(result, "mm", pad_zero(this.minute, 2));
+        result = str_replace(result, "ss", pad_zero(this.second, 2));
+        
+        return result;
+    }
+    
+    func add_days(days: int) -> DateTime {
+        var ts = this.to_timestamp();
+        ts += days * 86400;
+        return DateTime.from_timestamp(ts);
+    }
+    
+    func add_hours(hours: int) -> DateTime {
+        var ts = this.to_timestamp();
+        ts += hours * 3600;
+        return DateTime.from_timestamp(ts);
+    }
+    
+    func add_minutes(minutes: int) -> DateTime {
+        var ts = this.to_timestamp();
+        ts += minutes * 60;
+        return DateTime.from_timestamp(ts);
+    }
+    
+    func diff_seconds(other: DateTime) -> int {
+        return this.to_timestamp() - other.to_timestamp();
+    }
+    
+    func is_before(other: DateTime) -> bool {
+        return this.to_timestamp() < other.to_timestamp();
+    }
+    
+    func is_after(other: DateTime) -> bool {
+        return this.to_timestamp() > other.to_timestamp();
+    }
+}
+
+func pad_zero(n: int, width: int) -> string {
+    var s = json_stringify_int(n);
+    while (s.len() < width) {
+        s = "0" + s;
+    }
+    return s;
+}
+
+# ============= DURATION =============
+
+class Duration {
+    var milliseconds: int;
+    
+    func from_seconds(seconds: int) -> Duration {
+        return Duration { milliseconds: seconds * 1000 };
+    }
+    
+    func from_minutes(minutes: int) -> Duration {
+        return Duration { milliseconds: minutes * 60 * 1000 };
+    }
+    
+    func from_hours(hours: int) -> Duration {
+        return Duration { milliseconds: hours * 3600 * 1000 };
+    }
+    
+    func from_days(days: int) -> Duration {
+        return Duration { milliseconds: days * 86400 * 1000 };
+    }
+    
+    func to_seconds() -> int {
+        return this.milliseconds / 1000;
+    }
+    
+    func to_minutes() -> int {
+        return this.milliseconds / 60000;
+    }
+    
+    func to_hours() -> int {
+        return this.milliseconds / 3600000;
+    }
+    
+    func to_days() -> int {
+        return this.milliseconds / 86400000;
+    }
+}
+
+# ============= TIMER =============
+
+class Timer {
+    var start_time: int;
+    
+    func new() -> Timer {
+        return Timer {
+            start_time: syscall_time_nanos()
+        };
+    }
+    
+    func elapsed_nanos() -> int {
+        return syscall_time_nanos() - this.start_time;
+    }
+    
+    func elapsed_micros() -> int {
+        return this.elapsed_nanos() / 1000;
+    }
+    
+    func elapsed_millis() -> int {
+        return this.elapsed_nanos() / 1000000;
+    }
+    
+    func elapsed_seconds() -> int {
+        return this.elapsed_nanos() / 1000000000;
+    }
+    
+    func reset() {
+        this.start_time = syscall_time_nanos();
+    }
+}
+
+# ============= SLEEP =============
+
+func sleep_seconds(seconds: int) {
+    syscall_sleep(seconds * 1000);
+}
+
+func sleep_millis(millis: int) {
+    syscall_sleep(millis);
+}
+
+# ============= EXAMPLE USAGE =============
+
+func datetime_example() {
+    # Current time
+    var now = DateTime.now();
+    println("Current time: " + now.format("YYYY-MM-DD HH:mm:ss"));
+    
+    # Add time
+    var tomorrow = now.add_days(1);
+    println("Tomorrow: " + tomorrow.format("YYYY-MM-DD"));
+    
+    # Duration
+    var diff = tomorrow.diff_seconds(now);
+    println("Seconds until tomorrow: " + json_stringify_int(diff));
+    
+    # Timer
+    var timer = Timer.new();
+    sleep_millis(100);
+    println("Elapsed: " + json_stringify_int(timer.elapsed_millis()) + "ms");
+}

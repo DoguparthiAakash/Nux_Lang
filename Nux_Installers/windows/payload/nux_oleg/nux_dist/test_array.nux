@@ -1,0 +1,12 @@
+# Test array intrinsics
+int a = arr_new(5);
+arr_set(a, 0, 10);
+arr_set(a, 1, 20);
+arr_set(a, 2, 30);
+arr_set(a, 3, 40);
+arr_set(a, 4, 50);
+
+print(arr_get(a, 0));
+print(arr_get(a, 2));
+print(arr_get(a, 4));
+print(arr_len(a));

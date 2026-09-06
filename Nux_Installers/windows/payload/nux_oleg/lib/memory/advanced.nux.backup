@@ -1,0 +1,389 @@
+// Enhanced Memory Management with Production Features
+
+// ============= OPTIMIZED SMART POINTERS =============
+
+// Unique pointer with move semantics
+class Unique<T> {
+    var ptr: *T;
+    var moved: bool = false;
+    
+    func new(value: T) -> Unique<T> {
+        var ptr = allocate<T>();
+        *ptr = value;
+        return Unique<T> { ptr: ptr };
+    }
+    
+    func get() -> &T {
+        if (this.moved) {
+            throw Error("Use after move");
+        }
+        return this.ptr;
+    }
+    
+    func move() -> Unique<T> {
+        if (this.moved) {
+            throw Error("Double move");
+        }
+        this.moved = true;
+        return Unique<T> { ptr: this.ptr };
+    }
+    
+    func drop() {
+        if (!this.moved && this.ptr != null) {
+            deallocate(this.ptr);
+            this.ptr = null;
+        }
+    }
+}
+
+// Shared pointer with atomic reference counting
+class Shared<T> {
+    var ptr: *T;
+    var ref_count: *atomic<int>;
+    
+    func new(value: T) -> Shared<T> {
+        var ptr = allocate<T>();
+        *ptr = value;
+        
+        var count = allocate<atomic<int>>();
+        atomic_store(count, 1);
+        
+        return Shared<T> {
+            ptr: ptr,
+            ref_count: count
+        };
+    }
+    
+    func clone() -> Shared<T> {
+        atomic_fetch_add(this.ref_count, 1);
+        return Shared<T> {
+            ptr: this.ptr,
+            ref_count: this.ref_count
+        };
+    }
+    
+    func drop() {
+        var old_count = atomic_fetch_sub(this.ref_count, 1);
+        
+        if (old_count == 1) {
+            deallocate(this.ptr);
+            deallocate(this.ref_count);
+        }
+    }
+}
+
+// ============= MEMORY POOL WITH FREELISTS =============
+
+class MemoryPool<T> {
+    var blocks: [*T] = [];
+    var free_list: [*T] = [];
+    var block_size: int = 1024;
+    var allocated: int = 0;
+    
+    func new(block_size: int = 1024) -> MemoryPool<T> {
+        return MemoryPool<T> { block_size: block_size };
+    }
+    
+    func allocate() -> *T {
+        // Try to reuse from free list
+        if (this.free_list.length > 0) {
+            return this.free_list.pop();
+        }
+        
+        // Allocate new block if needed
+        if (this.allocated % this.block_size == 0) {
+            var block = allocate_array<T>(this.block_size);
+            this.blocks.push(block);
+        }
+        
+        var index = this.allocated % this.block_size;
+        var block = this.blocks[this.blocks.length - 1];
+        this.allocated += 1;
+        
+        return &block[index];
+    }
+    
+    func deallocate(ptr: *T) {
+        this.free_list.push(ptr);
+    }
+    
+    func clear() {
+        this.free_list.clear();
+        this.allocated = 0;
+    }
+    
+    func destroy() {
+        for (var block in this.blocks) {
+            deallocate_array(block);
+        }
+        this.blocks.clear();
+        this.free_list.clear();
+    }
+}
+
+// ============= SLAB ALLOCATOR =============
+
+class SlabAllocator<T> {
+    var slabs: [Slab<T>] = [];
+    var current_slab: int = 0;
+    
+    func new() -> SlabAllocator<T> {
+        var allocator = SlabAllocator<T> {};
+        allocator.add_slab();
+        return allocator;
+    }
+    
+    func add_slab() {
+        this.slabs.push(Slab<T>.new(256));
+    }
+    
+    func allocate() -> *T {
+        var slab = this.slabs[this.current_slab];
+        
+        if (slab.is_full()) {
+            this.current_slab += 1;
+            if (this.current_slab >= this.slabs.length) {
+                this.add_slab();
+            }
+            slab = this.slabs[this.current_slab];
+        }
+        
+        return slab.allocate();
+    }
+}
+
+class Slab<T> {
+    var memory: *T;
+    var capacity: int;
+    var used: int = 0;
+    var free_list: [int] = [];
+    
+    func new(capacity: int) -> Slab<T> {
+        return Slab<T> {
+            memory: allocate_array<T>(capacity),
+            capacity: capacity
+        };
+    }
+    
+    func allocate() -> *T {
+        if (this.free_list.length > 0) {
+            var index = this.free_list.pop();
+            return &this.memory[index];
+        }
+        
+        var index = this.used;
+        this.used += 1;
+        return &this.memory[index];
+    }
+    
+    func deallocate(ptr: *T) {
+        var index = (ptr - this.memory) / sizeof<T>();
+        this.free_list.push(index);
+    }
+    
+    func is_full() -> bool {
+        return this.used >= this.capacity && this.free_list.length == 0;
+    }
+}
+
+// ============= GENERATIONAL GARBAGE COLLECTOR =============
+
+class GenerationalGC {
+    var young_gen: [*any] = [];
+    var old_gen: [*any] = [];
+    var marked: Set<*any> = Set.new();
+    var age: Map<*any, int> = Map.new();
+    var promotion_threshold: int = 3;
+    
+    func allocate<T>() -> *T {
+        var ptr = allocate<T>();
+        this.young_gen.push(ptr);
+        this.age[ptr] = 0;
+        return ptr;
+    }
+    
+    func minor_collection(roots: [*any]) {
+        // Mark phase (young generation only)
+        this.marked.clear();
+        for (var root in roots) {
+            this.mark(root);
+        }
+        
+        // Sweep young generation
+        var survivors: [*any] = [];
+        
+        for (var obj in this.young_gen) {
+            if (this.marked.contains(obj)) {
+                this.age[obj] += 1;
+                
+                if (this.age[obj] >= this.promotion_threshold) {
+                    // Promote to old generation
+                    this.old_gen.push(obj);
+                } else {
+                    survivors.push(obj);
+                }
+            } else {
+                deallocate(obj);
+                this.age.remove(obj);
+            }
+        }
+        
+        this.young_gen = survivors;
+    }
+    
+    func major_collection(roots: [*any]) {
+        // Full GC (both generations)
+        this.marked.clear();
+        for (var root in roots) {
+            this.mark(root);
+        }
+        
+        // Sweep both generations
+        this.sweep_generation(this.young_gen);
+        this.sweep_generation(this.old_gen);
+    }
+    
+    func sweep_generation(gen: [*any]) {
+        var survivors: [*any] = [];
+        
+        for (var obj in gen) {
+            if (this.marked.contains(obj)) {
+                survivors.push(obj);
+            } else {
+                deallocate(obj);
+                this.age.remove(obj);
+            }
+        }
+        
+        gen.clear();
+        gen.extend(survivors);
+    }
+}
+
+// ============= MEMORY-MAPPED FILES =============
+
+class MemoryMappedFile {
+    var ptr: *byte;
+    var size: int;
+    var fd: int;
+    
+    static func open(path: string) -> MemoryMappedFile {
+        var fd = syscall_open(path);
+        var size = syscall_filesize(fd);
+        var ptr = syscall_mmap(null, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        
+        return MemoryMappedFile {
+            ptr: ptr,
+            size: size,
+            fd: fd
+        };
+    }
+    
+    func read(offset: int, length: int) -> [byte] {
+        if (offset + length > this.size) {
+            throw Error("Read out of bounds");
+        }
+        
+        var result: [byte] = [];
+        for (var i = 0; i < length; i++) {
+            result.push(this.ptr[offset + i]);
+        }
+        return result;
+    }
+    
+    func write(offset: int, data: [byte]) {
+        if (offset + data.length > this.size) {
+            throw Error("Write out of bounds");
+        }
+        
+        for (var i = 0; i < data.length; i++) {
+            this.ptr[offset + i] = data[i];
+        }
+    }
+    
+    func close() {
+        syscall_munmap(this.ptr, this.size);
+        syscall_close(this.fd);
+    }
+}
+
+// ============= MEMORY PROFILER WITH STACK TRACES =============
+
+class DetailedMemoryProfiler {
+    var allocations: Map<*any, AllocationInfo> = Map.new();
+    var total_allocated: int = 0;
+    var total_freed: int = 0;
+    var peak_usage: int = 0;
+    
+    func track_allocation(ptr: *any, size: int, location: string) {
+        this.allocations[ptr] = AllocationInfo {
+            size: size,
+            location: location,
+            timestamp: Time.now(),
+            stack_trace: get_stack_trace()
+        };
+        
+        this.total_allocated += size;
+        var current = this.total_allocated - this.total_freed;
+        if (current > this.peak_usage) {
+            this.peak_usage = current;
+        }
+    }
+    
+    func track_deallocation(ptr: *any) {
+        if (this.allocations.contains(ptr)) {
+            var info = this.allocations[ptr];
+            this.total_freed += info.size;
+            this.allocations.remove(ptr);
+        }
+    }
+    
+    func report() {
+        println("=== Detailed Memory Profile ===");
+        println("Total allocated: " + format_bytes(this.total_allocated));
+        println("Total freed: " + format_bytes(this.total_freed));
+        println("Current usage: " + format_bytes(this.total_allocated - this.total_freed));
+        println("Peak usage: " + format_bytes(this.peak_usage));
+        println("Active allocations: " + this.allocations.size);
+        
+        if (this.allocations.size > 0) {
+            println("\nMemory leaks detected:");
+            
+            // Group by location
+            var by_location: Map<string, [AllocationInfo]> = Map.new();
+            for (var (ptr, info) in this.allocations) {
+                if (!by_location.contains(info.location)) {
+                    by_location[info.location] = [];
+                }
+                by_location[info.location].push(info);
+            }
+            
+            // Sort by total size
+            var sorted = by_location.to_array().sort_by((a, b) => {
+                var size_a = a.1.map((i) => i.size).sum();
+                var size_b = b.1.map((i) => i.size).sum();
+                return size_b - size_a;
+            });
+            
+            for (var (location, infos) in sorted) {
+                var total_size = infos.map((i) => i.size).sum();
+                println("\n  " + location + ": " + format_bytes(total_size) + 
+                       " (" + infos.length + " allocations)");
+                
+                if (infos.length > 0) {
+                    println("  Stack trace:");
+                    for (var line in infos[0].stack_trace) {
+                        println("    " + line);
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AllocationInfo {
+    var size: int;
+    var location: string;
+    var timestamp: int;
+    var stack_trace: [string];
+}

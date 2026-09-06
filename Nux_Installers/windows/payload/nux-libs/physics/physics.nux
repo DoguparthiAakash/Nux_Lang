@@ -1,0 +1,145 @@
+# Nux Physics Library
+# Pure Nux implementation of fundamental physics formulae
+
+import "std/io";
+import "std/math";
+
+# ==========================================
+# 1. PHYSICAL CONSTANTS
+# ==========================================
+class PhysicsConstants {
+    const G: float = 6.6743e-11;       # Gravitational constant (m^3 kg^-1 s^-2)
+    const C: float = 299792458.0;       # Speed of light (m/s)
+    const H: float = 6.62607e-34;      # Planck constant (J s)
+    const KB: float = 1.38065e-23;     # Boltzmann constant (J/K)
+    const R: float = 8.31446;          # Ideal gas constant (J/(mol K))
+    const G_EARTH: float = 9.80665;    # Gravity on Earth (m/s^2)
+}
+
+# ==========================================
+# 2. KINEMATICS ENGINE
+# ==========================================
+class Kinematics {
+    # Calculates displacement: s = v0 * t + 0.5 * a * t^2
+    func displacement(v0: float, a: float, t: float) -> float {
+        return v0 * t + 0.5 * a * t * t;
+    }
+
+    # Calculates final velocity: v = v0 + a * t
+    func final_velocity(v0: float, a: float, t: float) -> float {
+        return v0 + a * t;
+    }
+
+    # Calculates time needed to accelerate: t = (vf - v0) / a
+    func time_needed(v0: float, vf: float, a: float) -> float {
+        if (a == 0.0) {
+            println("Kinematics: Acceleration cannot be zero!");
+            return 0.0;
+        }
+        return (vf - v0) / a;
+    }
+
+    # Calculates velocity squared: v^2 = v0^2 + 2 * a * s
+    func final_velocity_squared(v0: float, a: float, s: float) -> float {
+        return v0 * v0 + 2.0 * a * s;
+    }
+}
+
+# ==========================================
+# 3. NEWTONIAN DYNAMICS
+# ==========================================
+class Dynamics {
+    # Force: F = m * a
+    func force(mass: float, acceleration: float) -> float {
+        return mass * acceleration;
+    }
+
+    # Momentum: p = m * v
+    func momentum(mass: float, velocity: float) -> float {
+        return mass * velocity;
+    }
+
+    # Kinetic Energy: Ek = 0.5 * m * v^2
+    func kinetic_energy(mass: float, velocity: float) -> float {
+        return 0.5 * mass * velocity * velocity;
+    }
+
+    # Gravitational Force: F = G * m1 * m2 / r^2
+    func gravitational_force(m1: float, m2: float, r: float) -> float {
+        if (r == 0.0) {
+            println("Dynamics: Distance cannot be zero!");
+            return 0.0;
+        }
+        var G = PhysicsConstants.G;
+        return G * m1 * m2 / (r * r);
+    }
+
+    # Escape Velocity: v_esc = sqrt(2 * G * M / r)
+    func escape_velocity(mass: float, radius: float) -> float {
+        if (radius <= 0.0) {
+            println("Dynamics: Radius must be positive!");
+            return 0.0;
+        }
+        var G = PhysicsConstants.G;
+        return Math.sqrt(2.0 * G * mass / radius);
+    }
+}
+
+# ==========================================
+# 4. THERMODYNAMICS
+# ==========================================
+class Thermodynamics {
+    # Ideal Gas Law for Pressure: P = n * R * T / V
+    func ideal_gas_pressure(n: float, T: float, V: float) -> float {
+        if (V <= 0.0) {
+            println("Thermodynamics: Volume must be positive!");
+            return 0.0;
+        }
+        var R = PhysicsConstants.R;
+        return n * R * T / V;
+    }
+
+    # Convert Celsius to Kelvin
+    func celsius_to_kelvin(c: float) -> float {
+        return c + 273.15;
+    }
+
+    # Convert Kelvin to Celsius
+    func kelvin_to_celsius(k: float) -> float {
+        return k - 273.15;
+    }
+}
+
+# ==========================================
+# 5. SPECIAL RELATIVITY
+# ==========================================
+class SpecialRelativity {
+    # Relativistic time dilation: t = t0 / sqrt(1 - v^2 / c^2)
+    func time_dilation(t0: float, velocity: float) -> float {
+        var c = PhysicsConstants.C;
+        if (velocity >= c) {
+            println("SpecialRelativity: Velocity cannot be >= speed of light!");
+            return 0.0;
+        }
+        var beta = velocity / c;
+        var lorentz_factor = 1.0 / Math.sqrt(1.0 - beta * beta);
+        return t0 * lorentz_factor;
+    }
+
+    # Relativistic length contraction: L = L0 * sqrt(1 - v^2 / c^2)
+    func length_contraction(l0: float, velocity: float) -> float {
+        var c = PhysicsConstants.C;
+        if (velocity >= c) {
+            println("SpecialRelativity: Velocity cannot be >= speed of light!");
+            return 0.0;
+        }
+        var beta = velocity / c;
+        return l0 * Math.sqrt(1.0 - beta * beta);
+    }
+
+    # Mass-energy equivalence: E = m * c^2
+    func mass_to_energy(mass: float) -> float {
+        var c = PhysicsConstants.C;
+        return mass * c * c;
+    }
+}

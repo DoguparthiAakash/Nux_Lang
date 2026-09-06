@@ -1,0 +1,64 @@
+{
+    "name": "nux-lang",
+    "displayName": "Nux Language",
+    "description": "Language support for Nux",
+    "version": "0.0.1",
+    "publisher": "NuxLanguage",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nux/nux-lang.git"
+    },
+    "license": "MIT",
+    "icon": "icons/logo.png",
+    "engines": {
+        "vscode": "^1.74.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "configurationDefaults": {
+            "code-runner.executorMap": {
+                "nux": "nux run",
+                "nux-compiled": "nux run"
+            }
+        },
+        "languages": [
+            {
+                "id": "nux",
+                "aliases": [
+                    "Nux",
+                    "nux"
+                ],
+                "extensions": [
+                    ".nux"
+                ],
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./icons/nux_file_icon.png",
+                    "dark": "./icons/nux_file_icon.png"
+                }
+            },
+            {
+                "id": "nux-compiled",
+                "aliases": [
+                    "Nux Compiled Binary"
+                ],
+                "extensions": [
+                    ".nuxc"
+                ],
+                "icon": {
+                    "light": "./icons/nuxc_file_icon.png",
+                    "dark": "./icons/nuxc_file_icon.png"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "nux",
+                "scopeName": "source.nux",
+                "path": "./syntaxes/nux.tmLanguage.json"
+            }
+        ]
+    }
+}

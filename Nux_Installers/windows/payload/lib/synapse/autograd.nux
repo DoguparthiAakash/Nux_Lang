@@ -1,0 +1,27 @@
+# synapse::autograd
+# Reverse-mode automatic differentiation engine.
+
+class GraphNode {
+    var inputs;
+    var name;
+    
+    func backward(gradient) {
+        # Base class logic to be overridden by specific operations (Add, MatMul)
+    }
+}
+
+class AddNode : GraphNode {
+    func backward(gradient) {
+        # Derivative of Addition: pass gradient equally to both inputs
+        this.inputs[0].grad += gradient;
+        this.inputs[1].grad += gradient;
+    }
+}
+
+class MatMulNode : GraphNode {
+    func backward(gradient) {
+        # Derivative of A * B:
+        # dA = gradient * B^T
+        # dB = A^T * gradient
+    }
+}

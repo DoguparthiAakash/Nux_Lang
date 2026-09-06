@@ -1,0 +1,9 @@
+﻿cargo : error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the 
+`default-run` manifest key.
+At line:1 char:1
++ cargo run -- test_lexer.nux > test_output.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (error: `cargo r...` manifest key.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+available binaries: bonfort, compile_asm, dump_asm, nux, nuxpm, nuxvm

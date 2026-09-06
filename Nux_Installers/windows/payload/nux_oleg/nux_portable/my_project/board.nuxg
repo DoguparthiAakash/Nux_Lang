@@ -1,0 +1,4 @@
+@hardware("DefaultBoard")
+
+# Link your hardware libraries here
+# link "lib/gpio.nuxel"

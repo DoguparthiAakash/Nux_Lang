@@ -1,0 +1,61 @@
+import "std.nuxel";
+import "std/math_advanced.nuxel";
+import "std/dataframe.nuxel";
+
+func main() {
+    print("Testing Advanced Math (Results scaled by 1000)...\n");
+    
+    var t1 = alloc(4);
+    poke(t1, 1); poke(t1+1, 2); poke(t1+2, 3); poke(t1+3, 4);
+    
+    var t2 = alloc(4);
+    poke(t2, 2); poke(t2+1, 4); poke(t2+2, 6); poke(t2+3, 8);
+    
+    var m = math_adv_mean(t1, 4);
+    print("Mean of [1, 2, 3, 4] x1000: ");
+    print(m);
+    print("\n");
+    
+    var v = math_adv_variance(t1, 4);
+    print("Variance x1000: ");
+    print(v);
+    print("\n");
+    
+    var s = math_adv_stddev(t1, 4);
+    print("StdDev x1000: ");
+    print(s);
+    print("\n");
+    
+    var corr = math_adv_corrcoef(t1, t2, 4);
+    print("Correlation between [1..4] and [2..8] x1000: ");
+    print(corr);
+    print("\n\n");
+    
+    print("Testing DataFrame...\n");
+    var df = dataframe_new(2, 4);
+    
+    var age_col = alloc(4);
+    poke(age_col, 25); poke(age_col+1, 30); poke(age_col+2, 35); poke(age_col+3, 40);
+    var age_idx = dataframe_add_column(df, age_col, 4);
+    
+    var sal_col = alloc(4);
+    poke(sal_col, 50000); poke(sal_col+1, 60000); poke(sal_col+2, 70000); poke(sal_col+3, 80000);
+    var sal_idx = dataframe_add_column(df, sal_col, 4);
+    
+    dataframe_head(df, 4);
+    
+    print("\nMean Age x1000: ");
+    print(math_adv_mean(dataframe_get_column(df, age_idx), 4));
+    
+    print("\nMean Salary x1000: ");
+    print(math_adv_mean(dataframe_get_column(df, sal_idx), 4));
+    print("\n");
+    
+    dataframe_free(df);
+    free(t1);
+    free(t2);
+    
+    return 0;
+}
+
+main();

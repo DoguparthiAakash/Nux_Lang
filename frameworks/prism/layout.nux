@@ -1,0 +1,34 @@
+# frameworks::prism::layout
+# Flexbox-style positioning engine
+
+import frameworks::prism::widget::Widget;
+import std::collections::List;
+
+class VBox {
+    var spacing: f32;
+    var base_widget: Widget;
+    
+    func init(spacing: f32) {
+        this.spacing = spacing;
+        this.base_widget = new Widget();
+        this.base_widget.init();
+    }
+    
+    func add(child: Widget) {
+        this.base_widget.add_child(child);
+    }
+    
+    func apply_layout() {
+        var len = this.base_widget.children.len();
+        var i = 0;
+        var current_y = this.base_widget.y;
+        
+        while (i < len) {
+            var child = this.base_widget.children.get(i); # typeof Widget
+            child.x = this.base_widget.x;
+            child.y = current_y;
+            current_y = current_y + child.height + this.spacing;
+            i += 1;
+        }
+    }
+}

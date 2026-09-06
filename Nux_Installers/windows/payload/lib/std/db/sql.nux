@@ -1,0 +1,18 @@
+# std::db::sql
+# Standardized SQL Interface for embedded and networked databases.
+
+class SqlConnection {
+    var connection_ptr;
+    
+    func init(dsn_str) {
+        # Lowered to ExternCall for sqlite3_open or PQconnectdb
+    }
+    
+    func execute(query_str, params_list) {
+        # Executes the prepared statement, safe against SQL Injection
+    }
+    
+    func close() {
+        # RAII deterministic cleanup
+    }
+}

@@ -1,0 +1,10 @@
+import "std/math.nuxel";
+
+func main() {
+    print("Start\n");
+    var sq = sqrt_int(16);
+    print(sq);
+    print("\nEnd\n");
+}
+
+main();

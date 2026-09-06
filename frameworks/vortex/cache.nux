@@ -1,0 +1,63 @@
+# frameworks::vortex::cache
+# High-Speed In-Memory LRU Cache for HTTP responses
+
+import std::collections::List;
+import std::string::String;
+import frameworks::vortex::response::Response;
+
+class CacheEntry {
+    var key: String; # usually URL path + params
+    var response: Response;
+    var last_accessed: u64; # timestamp
+    
+    func init(key: String, response: Response, time: u64) {
+        this.key = key;
+        this.response = response;
+        this.last_accessed = time;
+    }
+}
+
+class LRUCache {
+    var max_capacity: u32;
+    var entries: List; # List<CacheEntry>
+    
+    func init(capacity: u32) {
+        this.max_capacity = capacity;
+        this.entries = new List();
+        this.entries.init();
+    }
+    
+    func get(key: String) -> Response {
+        # Search for key
+        var i = 0;
+        var len = this.entries.len();
+        
+        while (i < len) {
+            var entry = this.entries.get(i); # typeof CacheEntry
+            if (entry.key.equals(key)) {
+                # Update last accessed time
+                # entry.last_accessed = std::time::now();
+                return entry.response;
+            }
+            i += 1;
+        }
+        
+        # Cache Miss
+        var empty = new Response();
+        empty.init();
+        empty.set_status(0); # Indicator for cache miss
+        return empty;
+    }
+    
+    func put(key: String, response: Response) {
+        if (this.entries.len() >= this.max_capacity) {
+            # Evict least recently used (lowest timestamp)
+            # this.entries.remove(oldest_index);
+        }
+        
+        var entry = new CacheEntry();
+        # entry.init(key, response, std::time::now());
+        entry.init(key, response, 0); 
+        this.entries.append(entry);
+    }
+}

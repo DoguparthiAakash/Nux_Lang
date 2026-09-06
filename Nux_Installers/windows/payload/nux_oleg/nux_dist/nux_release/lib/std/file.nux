@@ -1,0 +1,16 @@
+func File_read(path) {
+    asm {
+        path
+        FILE_READ
+        return
+    }
+}
+
+func File_write(path, content) {
+    asm {
+        path
+        content
+        FILE_WRITE
+        return
+    }
+}

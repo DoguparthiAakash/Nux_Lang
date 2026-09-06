@@ -1,0 +1,221 @@
+# Crypto Service Example
+# Demonstrates using Rust's high-performance crypto libraries with Nux web server
+
+import std.polyglot
+import std.interop
+import std.webframework
+
+# Import Rust crypto library
+import rust:ring
+import rust:sha2
+
+# Define Rust cryptographic functions
+@rust {
+    use ring::{digest, hmac, rand, signature};
+    use sha2::{Sha256, Digest};
+    
+    #[no_mangle]
+    pub extern "C" func hash_sha256(data: &[u8]) -> Vec<u8> {
+        var mut hasher = Sha256::new();
+        hasher.update(data);
+        hasher.finalize().to_vec()
+    }
+    
+    #[no_mangle]
+    pub extern "C" func hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
+        var key = hmac::Key::new(hmac::HMAC_SHA256, key);
+        var signature = hmac::sign(&key, data);
+        signature.as_ref().to_vec()
+    }
+    
+    #[no_mangle]
+    pub extern "C" func generate_keypair() -> (Vec<u8>, Vec<u8>) {
+        var rng = rand::SystemRandom::new();
+        var pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+        var key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref()).unwrap();
+        
+        var public_key = key_pair.public_key().as_ref().to_vec();
+        var private_key = pkcs8_bytes.as_ref().to_vec();
+        
+        (public_key, private_key)
+    }
+    
+    #[no_mangle]
+    pub extern "C" func sign_message(private_key: &[u8], message: &[u8]) -> Vec<u8> {
+        var key_pair = signature::Ed25519KeyPair::from_pkcs8(private_key).unwrap();
+        var signature = key_pair.sign(message);
+        signature.as_ref().to_vec()
+    }
+    
+    #[no_mangle]
+    pub extern "C" func verify_signature(
+        public_key: &[u8],
+        message: &[u8],
+        signature: &[u8]
+    ) -> bool {
+        var public_key = signature::UnparsedPublicKey::new(
+            &signature::ED25519,
+            public_key
+        );
+        public_key.verify(message, signature).is_ok()
+    }
+}
+
+# Nux web service
+class CryptoService {
+    var server: WebServer
+    var router: Router
+    var keypairs: map
+    
+    func init(port: int) {
+        self.server = WebServer(port)
+        self.router = Router()
+        self.keypairs = {}
+        
+        self.setup_routes()
+    }
+    
+    func setup_routes() {
+        # Hash endpoint
+        self.router.post("/hash", func(req, res) {
+            var data = req.body["data"]
+            var hash = rust.hash_sha256(data.encode())
+            res.json({"hash": hash.hex()})
+        })
+        
+        # HMAC endpoint
+        self.router.post("/hmac", func(req, res) {
+            var key = req.body["key"]
+            var data = req.body["data"]
+            var hmac = rust.hmac_sha256(key.encode(), data.encode())
+            res.json({"hmac": hmac.hex()})
+        })
+        
+        # Generate keypair endpoint
+        self.router.post("/keypair/generate", func(req, res) {
+            var (public_key, private_key) = rust.generate_keypair()
+            
+            var keypair_id = generate_id()
+            self.keypairs[keypair_id] = {
+                "public": public_key,
+                "private": private_key
+            }
+            
+            res.json({
+                "keypair_id": keypair_id,
+                "public_key": public_key.hex()
+            })
+        })
+        
+        # Sign message endpoint
+        self.router.post("/sign", func(req, res) {
+            var keypair_id = req.body["keypair_id"]
+            var message = req.body["message"]
+            
+            if !self.keypairs.has_key(keypair_id) {
+                res.status(404).json({"error": "Keypair not found"})
+                return
+            }
+            
+            var private_key = self.keypairs[keypair_id]["private"]
+            var signature = rust.sign_message(private_key, message.encode())
+            
+            res.json({
+                "signature": signature.hex(),
+                "message": message
+            })
+        })
+        
+        # Verify signature endpoint
+        self.router.post("/verify", func(req, res) {
+            var public_key = req.body["public_key"].decode_hex()
+            var message = req.body["message"]
+            var signature = req.body["signature"].decode_hex()
+            
+            var is_valid = rust.verify_signature(
+                public_key,
+                message.encode(),
+                signature
+            )
+            
+            res.json({
+                "valid": is_valid,
+                "message": message
+            })
+        })
+        
+        # Benchmark endpoint
+        self.router.get("/benchmark", func(req, res) {
+            var results = self.run_benchmark()
+            res.json(results)
+        })
+    }
+    
+    func run_benchmark() -> map {
+        var iterations = 10000
+        var test_data = "Hello, World!".encode()
+        
+        # Benchmark SHA-256 hashing
+        var start_time = time()
+        for i in range(iterations) {
+            rust.hash_sha256(test_data)
+        }
+        var hash_time = time() - start_time
+        
+        # Benchmark HMAC
+        var key = "secret_key".encode()
+        start_time = time()
+        for i in range(iterations) {
+            rust.hmac_sha256(key, test_data)
+        }
+        var hmac_time = time() - start_time
+        
+        # Benchmark signing
+        var (public_key, private_key) = rust.generate_keypair()
+        start_time = time()
+        for i in range(iterations) {
+            rust.sign_message(private_key, test_data)
+        }
+        var sign_time = time() - start_time
+        
+        return {
+            "iterations": iterations,
+            "hash_ops_per_sec": iterations / hash_time,
+            "hmac_ops_per_sec": iterations / hmac_time,
+            "sign_ops_per_sec": iterations / sign_time
+        }
+    }
+    
+    func start() {
+        print("Starting Crypto Service on port " + str(self.server.port))
+        print("Available endpoints:")
+        print("  POST /hash - Hash data with SHA-256")
+        print("  POST /hmac - Generate HMAC-SHA256")
+        print("  POST /keypair/generate - Generate Ed25519 keypair")
+        print("  POST /sign - Sign message")
+        print("  POST /verify - Verify signature")
+        print("  GET /benchmark - Run performance benchmark\n")
+        
+        self.server.use(self.router)
+        self.server.listen()
+    }
+}
+
+# Helper functions
+var next_id = 0
+
+func generate_id() -> string {
+    next_id += 1
+    return "keypair_" + str(next_id)
+}
+
+# Main function
+func main() {
+    print("=== High-Performance Crypto Service with Rust Integration ===\n")
+    
+    var service = CryptoService(8080)
+    service.start()
+}
+
+# Run the service
+main()

@@ -1,0 +1,9 @@
+# Nux Utility Aggregate
+# import "util.math";
+# import "util.random"; # Future
+
+func Util_panic(msg) {
+    print("Panic: ");
+    println(msg); 
+    asm { EXIT }
+}

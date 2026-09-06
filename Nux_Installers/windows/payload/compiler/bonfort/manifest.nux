@@ -1,0 +1,25 @@
+# bonfort::manifest
+# Parses and manages Bonfort.toml manifest files.
+
+class Manifest {
+    var package_name;
+    var version;
+    var dependencies; # Map of name -> version/path
+    var build_target;
+
+    func init() {
+        this.dependencies = new Map();
+        this.dependencies.init();
+    }
+
+    func load(file_path) {
+        # Uses std::fs and TOML parser (comptime generated)
+        # to deserialize Bonfort.toml into this struct.
+    }
+    
+    func resolve_deps() {
+        # 1. Check local cache ~/.bonfort/registry/
+        # 2. Fetch missing from network
+        # 3. Generate Bonfort.lock
+    }
+}

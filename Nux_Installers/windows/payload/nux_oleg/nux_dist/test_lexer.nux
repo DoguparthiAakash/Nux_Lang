@@ -1,0 +1,22 @@
+# Test script for Nux Lexer
+import "std/core";
+import "compiler/lexer";
+
+# A simple program to lex
+var source = "var x = 42; # comment if (x) { print_val(x); }";
+
+var lexer = new Lexer;
+lexer.init(source);
+
+lexer.next_token();
+var t_type = lexer.tk_kind;
+while (t_type != 0) {
+    print("Token Type: ");
+    print(t_type);
+    # Since we can't easily slice strings yet, we just print the type for now
+    println("");
+
+    lexer.next_token();
+    t_type = lexer.tk_kind;
+}
+println("Done lexing!");

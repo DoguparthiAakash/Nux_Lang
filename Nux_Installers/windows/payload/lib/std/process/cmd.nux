@@ -1,0 +1,27 @@
+# std::process::cmd
+# Provides Bash-like ergonomics for subprocess piping in Nux.
+
+class Cmd {
+    var command_str;
+    
+    func init(cmd_str) {
+        this.command_str = cmd_str;
+    }
+    
+    func pipe(next_cmd_str) {
+        # Chains another command for pipe execution
+        # e.g., cmd("ls").pipe("grep nux")
+        return this;
+    }
+    
+    func run() {
+        # Executes the process chain synchronously, 
+        # returning a Result containing the stdout string or an Error.
+    }
+}
+
+func cmd(cmd_str) {
+    var c = new Cmd();
+    c.init(cmd_str);
+    return c;
+}

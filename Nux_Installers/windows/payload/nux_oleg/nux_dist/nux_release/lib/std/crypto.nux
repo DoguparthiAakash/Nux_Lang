@@ -1,0 +1,60 @@
+# crypto.nux - Nux Standard Cryptography Library
+# Implements XOR cipher, hash functions, and basic AES-like substitution
+
+@priority(80)
+@memory_limit(1000000)
+
+# XOR-cipher: encrypts/decrypts buffer in-place using key stream
+func xor_cipher(buf_addr, length, key) {
+    if (length > 2000) {
+        var mid = length / 2;
+        var t1 = spawn xor_cipher(buf_addr, mid, key);
+        var t2 = spawn xor_cipher(buf_addr + mid * 8, length - mid, key);
+        join(t1);
+        join(t2);
+        return 0;
+    }
+    for (var i = 0; i < length; i = i + 1) {
+        var byte_val = peek(buf_addr + i * 8);
+        var key_byte = key - ((key / 256) * 256); # key mod 256
+        poke(buf_addr + i * 8, byte_val xor key_byte);
+        key = key * 6364136223846793005 + 1442695040888963407; # LCG mix
+    }
+    return 0;
+}
+
+# FNV-1a hash of a buffer
+func fnv1a_hash(buf_addr, length) {
+    var hash = 2166136261; # FNV offset basis
+    for (var i = 0; i < length; i = i + 1) {
+        hash = hash xor peek(buf_addr + i * 8);
+        hash = hash * 16777619; # FNV prime
+    }
+    return hash;
+}
+
+# Simple rotate left (32-bit)
+func rotl32(val, shift) {
+    var mask = 4294967295; # 0xFFFFFFFF
+    val = val and mask;
+    return ((val * (1 << shift)) or (val / (1 << (32 - shift)))) and mask;
+}
+
+# Mix bytes using Nux sbox (simplified substitution)
+func sbox_sub(byte_val) {
+    # Simple nonlinear substitution table offset
+    var x = byte_val xor 0x63;
+    x = rotl32(x, 1) xor rotl32(x, 2) xor rotl32(x, 3) xor rotl32(x, 4);
+    return x and 255;
+}
+
+# Block cipher round (operates on 8-word state at addr)
+func cipher_round(state_addr, round_key) {
+    for (var i = 0; i < 8; i = i + 1) {
+        var w = peek(state_addr + i);
+        w = sbox_sub(w and 255) or (sbox_sub((w / 256) and 255) * 256);
+        w = w xor round_key;
+        poke(state_addr + i, w);
+    }
+    return 0;
+}

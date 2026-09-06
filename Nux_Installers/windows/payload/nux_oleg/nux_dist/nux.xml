@@ -1,0 +1,14 @@
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-nux">
+    <comment>Nux Source Code</comment>
+    <glob pattern="*.nux"/>
+    <sub-class-of type="text/plain"/>
+    <alias type="application/x-nux"/>
+    <icon name="text-x-nux"/>
+    <magic priority="50">
+      <match type="string" value="//" offset="0"/>
+      <match type="string" value="module " offset="0"/>
+      <match type="string" value="import " offset="0"/>
+    </magic>
+  </mime-type>
+</mime-info>

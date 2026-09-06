@@ -1,0 +1,7 @@
+import "math";
+import "memory";
+import "io";
+
+print(pow(2, 3));
+print(factorial(5));
+print(abs(0 - 5));

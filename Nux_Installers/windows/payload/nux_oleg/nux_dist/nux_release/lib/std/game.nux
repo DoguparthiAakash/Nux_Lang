@@ -1,0 +1,55 @@
+# game.nux - Nux Game Engine Framework
+# A PyGame-like standard library for interactive 2D graphics and input
+
+import "ui";
+import "io";
+
+@priority(80)
+
+# Initialize the game runtime
+func game_init(title, width, height) {
+    print("Game engine (");
+    print_int(width);
+    print("x");
+    print_int(height);
+    print(")\n");
+    window(title, width, height);
+    return get_fb();
+}
+
+# Clear the screen
+func game_clear(fb, w, h, r, g, b) {
+    draw_rect(fb, 0, 0, w, h, w, r, g, b);
+    return 0;
+}
+
+# Update the display
+func game_update() {
+    render_ui();
+    return 0;
+}
+
+# Input handling
+func game_key_pressed(keycode) {
+    asm {
+        keycode;
+        OP_VBE_GET_KEY;
+    }
+}
+
+# Draw a rectangle easily
+func game_draw_rect(fb, screen_w, x, y, rect_w, rect_h, r, g, b) {
+    draw_rect(fb, x, y, rect_w, rect_h, screen_w, r, g, b);
+    return 0;
+}
+
+# Constants for keys
+func KEY_W() { return 87; }
+func KEY_A() { return 65; }
+func KEY_S() { return 83; }
+func KEY_D() { return 68; }
+func KEY_SPACE() { return 32; }
+func KEY_LEFT() { return 37; }
+func KEY_UP() { return 38; }
+func KEY_RIGHT() { return 39; }
+func KEY_DOWN() { return 40; }

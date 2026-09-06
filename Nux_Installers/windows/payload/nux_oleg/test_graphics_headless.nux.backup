@@ -1,0 +1,51 @@
+# Test Graphics Headless
+# import "external.game.gfxdriver"; 
+# Use lib path relative to nux root if needed, but 'external...' implies lib/external...
+# If running from nux root, lib/ is visible.
+
+func main() {
+    print("Testing Graphics...");
+    
+    # 1. Set Video Mode
+    var width = 800;
+    var height = 600;
+    var bpp = 32;
+    
+    asm {
+        width
+        height
+        bpp
+        OP_VBE_SET_MODE
+    }
+    
+    print("Video Mode Set");
+    
+    # 2. Get Framebuffer and POKE it
+    var color = 16711680;
+    
+    print("Getting Framebuffer...");
+    asm {
+        OP_VBE_GET_FB
+        # Stack: [fb_addr]
+        
+        # We want to POKE(fb_addr, color)
+        # POKE takes (addr, val). Stack needs: [addr, val].
+        # We have [addr].
+        
+        color
+        # Stack: [addr, color]
+        
+        POKE
+    }
+    
+    print("Pixel Written (Blind verification)");
+    
+    # 3. Update
+    asm {
+        OP_VBE_UPDATE
+    }
+    
+    print("Update Called");
+}
+
+main();

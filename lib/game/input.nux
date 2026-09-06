@@ -1,0 +1,25 @@
+# game::input
+# Keyboard, Mouse, and Gamepad input handling.
+
+extern {
+    func nux_gl_is_key_down(keycode: i32) -> bool;
+}
+
+# Common Key Codes (Mapped to generic backend)
+var KEY_SPACE: i32 = 32;
+var KEY_W: i32 = 87;
+var KEY_A: i32 = 65;
+var KEY_S: i32 = 83;
+var KEY_D: i32 = 68;
+var KEY_UP: i32 = 265;
+var KEY_DOWN: i32 = 264;
+var KEY_LEFT: i32 = 263;
+var KEY_RIGHT: i32 = 262;
+
+class Input {
+    func is_key_down(keycode: i32) -> bool {
+        return nux_gl_is_key_down(keycode);
+    }
+}
+
+var keyboard = new Input();

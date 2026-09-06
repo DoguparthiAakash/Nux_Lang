@@ -1,0 +1,79 @@
+# Nux 2D Graphics Standard Library
+
+func _native_window_create(width, height) {
+    asm {
+        width
+        height
+        OP_IMG_ALLOC
+    }
+}
+
+func _native_window_update(handle) {
+    asm {
+        handle
+        "PUSH 0"
+        "PUSH 0"
+        OP_IMG_DRAW
+    }
+}
+
+func _native_gfx_clear(handle, color) {
+    asm {
+        handle
+        color
+        OP_IMG_FILL
+    }
+}
+
+func _native_draw_pixel(handle, x, y, color) {
+    asm {
+        handle
+        x
+        y
+        color
+        OP_IMG_SET
+    }
+}
+
+class Window {
+    var handle;
+    var width;
+    var height;
+    
+    func init(width, height) {
+        this.width = width;
+        this.height = height;
+        this.handle = _native_window_create(width, height);
+        return this;
+    }
+    
+    func update() {
+        _native_window_update(this.handle);
+    }
+    
+    func clear(color) {
+        _native_gfx_clear(this.handle, color);
+    }
+    
+    func draw_pixel(x, y, color) {
+        if (x >= 0) {
+            if (x < this.width) {
+                if (y >= 0) {
+                    if (y < this.height) {
+                        _native_draw_pixel(this.handle, x, y, color);
+                    }
+                }
+            }
+        }
+    }
+}
+class Vector2 {
+    var x;
+    var y;
+    
+    func init(x, y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+}

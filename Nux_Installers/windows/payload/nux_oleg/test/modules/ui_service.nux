@@ -1,0 +1,42 @@
+# UI Service Module
+# Handles GUI operations
+
+import "external.gui.gui";
+
+class UIService {
+    var gui;
+    var main_window;
+    
+    func init(fb) {
+        this.gui = new Gui();
+        this.gui.init(fb);
+    }
+    
+    func create_product_window(products_rs) {
+        var win = new Window();
+        win.init(50, 50, 400, 500, "Product Catalog");
+        
+        var y: int = 20;
+        
+        while (products_rs.next()) {
+            var name = products_rs.get("name");
+            var price = products_rs.get("price"); # Might be int or string
+            
+            var label = new Label();
+            # label.init(10, y, name + ": $" + price); 
+            # Concatenation might require explicit string conversion if price is int
+            # Assuming weak typing or auto-conversion for now
+            label.init(10, y, name); 
+            
+            win.add_child(label);
+            y = y + 25;
+        }
+        
+        this.gui.add_window(win);
+        return win;
+    }
+    
+    func render() {
+        this.gui.render();
+    }
+}

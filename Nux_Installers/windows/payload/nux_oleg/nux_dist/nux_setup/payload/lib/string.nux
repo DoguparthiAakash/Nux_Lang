@@ -1,0 +1,126 @@
+# string.nux - Nux Standard String Library
+# Low-level string operations using raw memory
+
+@priority(15)
+
+# Get length of null-terminated string at addr
+func strlen(addr) {
+    var len = 0;
+    while (peek(addr + len) != 0) {
+        len = len + 1;
+    }
+    return len;
+}
+
+# Compare two null-terminated strings: returns 0 if equal
+func strcmp(a, b) {
+    var i = 0;
+    while (peek(a + i) != 0) {
+        if (peek(a + i) != peek(b + i)) {
+            return peek(a + i) - peek(b + i);
+        }
+        i = i + 1;
+    }
+    return 0 - peek(b + i);
+}
+
+# Copy string from src to dst
+func strcpy(dst, src) {
+    var i = 0;
+    while (peek(src + i) != 0) {
+        poke(dst + i, peek(src + i));
+        i = i + 1;
+    }
+    poke(dst + i, 0); # Null terminate
+    return dst;
+}
+
+# Concatenate src string onto end of dst string
+func strcat(dst, src) {
+    var dst_len = strlen(dst);
+    var i = 0;
+    while (peek(src + i) != 0) {
+        poke(dst + dst_len + i, peek(src + i));
+        i = i + 1;
+    }
+    poke(dst + dst_len + i, 0);
+    return dst;
+}
+
+# Convert uppercase char to lowercase
+func to_lower(c) {
+    if (c >= 65) {
+        if (c <= 90) {
+            return c + 32;
+        }
+    }
+    return c;
+}
+
+# Convert lowercase char to uppercase
+func to_upper(c) {
+    if (c >= 97) {
+        if (c <= 122) {
+            return c - 32;
+        }
+    }
+    return c;
+}
+
+# Check if char is a digit (ASCII 0-9)
+func is_digit(c) {
+    if (c >= 48) {
+        if (c <= 57) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+# Check if char is alphabetic
+func is_alpha(c) {
+    if (c >= 65) {
+        if (c <= 90) {
+            return 1;
+        }
+    }
+    if (c >= 97) {
+        if (c <= 122) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+# Convert integer n to ASCII string at addr, returns length
+func int_to_str(n, addr) {
+    if (n == 0) {
+        poke(addr, 48);
+        poke(addr + 1, 0);
+        return 1;
+    }
+    var tmp_buf = 8000;
+    var len = 0;
+    var neg = 0;
+    if (n < 0) {
+        neg = 1;
+        n = 0 - n;
+    }
+    while (n > 0) {
+        var digit = n - ((n / 10) * 10);
+        poke(tmp_buf + len, digit + 48);
+        len = len + 1;
+        n = n / 10;
+    }
+    var start = 0;
+    if (neg == 1) {
+        poke(addr, 45); # '-'
+        start = 1;
+    }
+    # Reverse copy
+    for (var i = 0; i < len; i = i + 1) {
+        poke(addr + start + i, peek(tmp_buf + len - 1 - i));
+    }
+    poke(addr + start + len, 0);
+    return start + len;
+}

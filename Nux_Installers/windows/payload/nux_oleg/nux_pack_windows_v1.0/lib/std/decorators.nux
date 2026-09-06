@@ -1,0 +1,358 @@
+# Nux Decorators and Metaprogramming
+# Python/TypeScript-style decorators
+
+# ===== DECORATOR SYSTEM =====
+
+func decorator(func) {
+    return func;
+}
+
+# ===== COMMON DECORATORS =====
+
+# @memoize - Cache function results
+func memoize(func) {
+    var cache = {};
+    
+    return func(...args) {
+        var key = json_stringify(args);
+        
+        if (cache[key] != null) {
+            return cache[key];
+        }
+        
+        var result = func(...args);
+        cache[key] = result;
+        return result;
+    };
+}
+
+# @debounce - Delay function execution
+func debounce(func, delayMs) {
+    var timeoutId = null;
+    
+    return func(...args) {
+        if (timeoutId != null) {
+            clearTimeout(timeoutId);
+        }
+        
+        timeoutId = setTimeout(func() {
+            func(...args);
+        }, delayMs);
+    };
+}
+
+# @throttle - Limit function execution rate
+func throttle(func, intervalMs) {
+    var lastCall: int = 0;
+    
+    return func(...args) {
+        var now = date_now();
+        
+        if (now - lastCall >= intervalMs) {
+            lastCall = now;
+            return func(...args);
+        }
+    };
+}
+
+# @retry - Retry on failure
+func retry(maxAttempts, delayMs) {
+    return func(func) {
+        return func(...args) {
+            var attempts: int = 0;
+            
+            while (attempts < maxAttempts) {
+                try {
+                    return func(...args);
+                } catch (e) {
+                    attempts = attempts + 1;
+                    
+                    if (attempts >= maxAttempts) {
+                        throw e;
+                    }
+                    
+                    sleep(delayMs);
+                }
+            }
+        };
+    };
+}
+
+# @timeout - Add timeout to function
+func timeout_decorator(ms) {
+    return func(func) {
+        return func(...args) {
+            return timeout(
+                new Promise(func(resolve, reject) {
+                    resolve(func(...args));
+                }),
+                ms
+            );
+        };
+    };
+}
+
+# @log - Log function calls
+func log(func) {
+    return func(...args) {
+        print("Calling " + func.name + " with args: " + json_stringify(args));
+        var result = func(...args);
+        print("Result: " + json_stringify(result));
+        return result;
+    };
+}
+
+# @trace - Trace execution time
+func trace(func) {
+    return func(...args) {
+        var start = date_now();
+        var result = func(...args);
+        var end = date_now();
+        print(func.name + " took " + (end - start) + "ms");
+        return result;
+    };
+}
+
+# @validate - Validate arguments
+func validate(schema) {
+    return func(func) {
+        return func(...args) {
+            # Validate args against schema
+            var i: int = 0;
+            while (i < arr_length(schema)) {
+                var validator = schema[i];
+                
+                if (!validator(args[i])) {
+                    throw new ValidationError("Argument " + i + " failed validation");
+                }
+                
+                i = i + 1;
+            }
+            
+            return func(...args);
+        };
+    };
+}
+
+# @deprecated - Mark as deprecated
+func deprecated(message) {
+    return func(func) {
+        return func(...args) {
+            print("Warning: " + func.name + " is deprecated. " + message);
+            return func(...args);
+        };
+    };
+}
+
+# @singleton - Ensure single instance
+func singleton(Class) {
+    var instance = null;
+    
+    return class {
+        func constructor(...args) {
+            if (instance == null) {
+                instance = new Class(...args);
+            }
+            return instance;
+        }
+    };
+}
+
+# @readonly - Make property readonly
+func readonly(target, property) {
+    var value = target[property];
+    
+    Object.defineProperty(target, property, {
+        get: func() { return value; },
+        set: func(newValue) {
+            throw new Error("Property " + property + " is readonly");
+        }
+    });
+}
+
+# @sealed - Prevent modifications
+func sealed(Class) {
+    Object.seal(Class.prototype);
+    return Class;
+}
+
+# @frozen - Freeze object
+func frozen(Class) {
+    Object.freeze(Class.prototype);
+    return Class;
+}
+
+# ===== PROPERTY DECORATORS =====
+
+func property(getter, setter) {
+    return {
+        get: getter,
+        set: setter
+    };
+}
+
+func computed(func) {
+    var cache = null;
+    var dirty: bool = true;
+    
+    return {
+        get: func() {
+            if (dirty) {
+                cache = func();
+                dirty = false;
+            }
+            return cache;
+        },
+        invalidate: func() {
+            dirty = true;
+        }
+    };
+}
+
+# ===== METHOD DECORATORS =====
+
+func before(beforeFn) {
+    return func(func) {
+        return func(...args) {
+            beforeFn(...args);
+            return func(...args);
+        };
+    };
+}
+
+func after(afterFn) {
+    return func(func) {
+        return func(...args) {
+            var result = func(...args);
+            afterFn(result);
+            return result;
+        };
+    };
+}
+
+func around(aroundFn) {
+    return func(func) {
+        return func(...args) {
+            return aroundFn(func, args);
+        };
+    };
+}
+
+# ===== ASPECT-ORIENTED PROGRAMMING =====
+
+class Aspect {
+    func constructor() {
+        this.beforeAdvice = [];
+        this.afterAdvice = [];
+        this.aroundAdvice = [];
+    }
+    
+    func before(pointcut, advice) {
+        arr_push(this.beforeAdvice, {pointcut: pointcut, advice: advice});
+    }
+    
+    func after(pointcut, advice) {
+        arr_push(this.afterAdvice, {pointcut: pointcut, advice: advice});
+    }
+    
+    func around(pointcut, advice) {
+        arr_push(this.aroundAdvice, {pointcut: pointcut, advice: advice});
+    }
+    
+    func weave(target) {
+        var methods = obj_keys(target);
+        
+        arr_forEach(methods, func(method) {
+            var original = target[method];
+            
+            if (typeof(original) == "function") {
+                target[method] = this._createProxy(method, original);
+            }
+        });
+    }
+    
+    func _createProxy(methodName, original) {
+        var self = this;
+        
+        return func(...args) {
+            # Before advice
+            arr_forEach(self.beforeAdvice, func(advice) {
+                if (advice.pointcut(methodName)) {
+                    advice.advice(methodName, args);
+                }
+            });
+            
+            # Around advice
+            var proceed = func() { return original(...args); };
+            
+            arr_forEach(self.aroundAdvice, func(advice) {
+                if (advice.pointcut(methodName)) {
+                    proceed = func() {
+                        return advice.advice(methodName, args, proceed);
+                    };
+                }
+            });
+            
+            var result = proceed();
+            
+            # After advice
+            arr_forEach(self.afterAdvice, func(advice) {
+                if (advice.pointcut(methodName)) {
+                    advice.advice(methodName, result);
+                }
+            });
+            
+            return result;
+        };
+    }
+}
+
+# ===== REFLECTION =====
+
+func reflect_getType(value) {
+    return typeof(value);
+}
+
+func reflect_hasProperty(obj, prop) {
+    return obj[prop] != null;
+}
+
+func reflect_getProperty(obj, prop) {
+    return obj[prop];
+}
+
+func reflect_setProperty(obj, prop, value) {
+    obj[prop] = value;
+}
+
+func reflect_getMethods(obj) {
+    var methods = [];
+    
+    obj_forEach(obj, func(key, value) {
+        if (typeof(value) == "function") {
+            arr_push(methods, key);
+        }
+    });
+    
+    return methods;
+}
+
+func reflect_getProperties(obj) {
+    var properties = [];
+    
+    obj_forEach(obj, func(key, value) {
+        if (typeof(value) != "function") {
+            arr_push(properties, key);
+        }
+    });
+    
+    return properties;
+}
+
+func reflect_invoke(obj, method, args) {
+    return obj[method](...args);
+}
+
+func reflect_construct(Class, args) {
+    return new Class(...args);
+}

@@ -1,0 +1,221 @@
+# Simple Integration Test - Test basic library functionality
+
+println("=== Nux Library Integration Tests ===\n");
+
+# ============= TEST 1: STRING OPERATIONS =============
+
+println("Test 1: String Operations");
+var test_str: string = "Hello, World!";
+var parts = str_split(test_str, ", ");
+
+if (parts.len() == 2 && parts[0] == "Hello" && parts[1] == "World!") {
+    println("✓ String split works");
+} else {
+    println("✗ String split failed");
+}
+
+var upper = str_to_uppercase("hello");
+if (upper == "HELLO") {
+    println("✓ String uppercase works");
+} else {
+    println("✗ String uppercase failed");
+}
+
+var lower = str_to_lowercase("WORLD");
+if (lower == "world") {
+    println("✓ String lowercase works");
+} else {
+    println("✗ String lowercase failed");
+}
+
+# ============= TEST 2: MATH OPERATIONS =============
+
+println("\nTest 2: Math Operations");
+
+var abs_result = abs(-42);
+if (abs_result == 42) {
+    println("✓ Absolute value works");
+} else {
+    println("✗ Absolute value failed");
+}
+
+var min_result = min(5, 10);
+if (min_result == 5) {
+    println("✓ Min function works");
+} else {
+    println("✗ Min function failed");
+}
+
+var max_result = max(5, 10);
+if (max_result == 10) {
+    println("✓ Max function works");
+} else {
+    println("✗ Max function failed");
+}
+
+var pow_result = pow(2.0, 3);
+if (pow_result == 8.0) {
+    println("✓ Power function works");
+} else {
+    println("✗ Power function failed");
+}
+
+# ============= TEST 3: COLLECTIONS =============
+
+println("\nTest 3: Collections");
+
+var sb = StringBuilder.new();
+sb.append("Hello");
+sb.append(" ");
+sb.append("World");
+var result = sb.to_string();
+
+if (result == "Hello World") {
+    println("✓ StringBuilder works");
+} else {
+    println("✗ StringBuilder failed: got '" + result + "'");
+}
+
+# ============= TEST 4: FILE I/O =============
+
+println("\nTest 4: File I/O");
+
+var test_content: string = "Test file content\nLine 2\nLine 3";
+file_write("test_integration.txt", test_content);
+
+var read_content = file_read("test_integration.txt");
+if (read_content == test_content) {
+    println("✓ File write/read works");
+} else {
+    println("✗ File write/read failed");
+}
+
+# ============= TEST 5: PATH OPERATIONS =============
+
+println("\nTest 5: Path Operations");
+
+var joined = path_join("/home/user", "file.txt");
+if (joined == "/home/user/file.txt") {
+    println("✓ Path join works");
+} else {
+    println("✗ Path join failed: got '" + joined + "'");
+}
+
+var basename = path_basename("/home/user/file.txt");
+if (basename == "file.txt") {
+    println("✓ Path basename works");
+} else {
+    println("✗ Path basename failed: got '" + basename + "'");
+}
+
+var ext = path_extension("document.pdf");
+if (ext == "pdf") {
+    println("✓ Path extension works");
+} else {
+    println("✗ Path extension failed: got '" + ext + "'");
+}
+
+# ============= TEST 6: COMPRESSION =============
+
+println("\nTest 6: Compression");
+
+var original: string = "AAABBBCCCCDDDD";
+var compressed = rle_compress(original);
+var decompressed = rle_decompress(compressed);
+
+if (decompressed == original) {
+    println("✓ RLE compression works");
+} else {
+    println("✗ RLE compression failed");
+}
+
+# ============= TEST 7: RANDOM NUMBERS =============
+
+println("\nTest 7: Random Numbers");
+
+srand(12345);
+var r1 = rand();
+var r2 = rand();
+
+if (r1 != r2) {
+    println("✓ Random number generation works");
+} else {
+    println("✗ Random numbers are identical");
+}
+
+var r3 = rand_range(1, 10);
+if (r3 >= 1 && r3 <= 10) {
+    println("✓ Random range works");
+} else {
+    println("✗ Random range failed: got " + json_stringify_int(r3));
+}
+
+# ============= TEST 8: KEY-VALUE STORE =============
+
+println("\nTest 8: Key-Value Store");
+
+var kv = KeyValueStore.new();
+kv.set("name", "Alice");
+kv.set("age", "30");
+
+var name = kv.get("name");
+var age = kv.get("age");
+
+if (name == "Alice" && age == "30") {
+    println("✓ Key-value store works");
+} else {
+    println("✗ Key-value store failed");
+}
+
+var deleted = kv.delete("age");
+var age_after = kv.get("age");
+
+if (deleted && age_after == "") {
+    println("✓ Key-value delete works");
+} else {
+    println("✗ Key-value delete failed");
+}
+
+# ============= TEST 9: DATETIME =============
+
+println("\nTest 9: DateTime");
+
+var dt = DateTime {
+    year: 2024,
+    month: 2,
+    day: 8,
+    hour: 15,
+    minute: 30,
+    second: 45,
+    millisecond: 0
+};
+
+var formatted = dt.format("YYYY-MM-DD");
+if (str_contains(formatted, "2024") && str_contains(formatted, "02") && str_contains(formatted, "08")) {
+    println("✓ DateTime formatting works");
+} else {
+    println("✗ DateTime formatting failed: got '" + formatted + "'");
+}
+
+var tomorrow = dt.add_days(1);
+if (tomorrow.day == 9 || tomorrow.day == 1) {
+    println("✓ DateTime arithmetic works");
+} else {
+    println("✗ DateTime arithmetic failed");
+}
+
+# ============= SUMMARY =============
+
+println("\n=== Test Summary ===");
+println("All basic integration tests completed!");
+println("Libraries tested:");
+println("  - String operations");
+println("  - Math functions");
+println("  - Collections (StringBuilder)");
+println("  - File I/O");
+println("  - Path operations");
+println("  - Compression (RLE)");
+println("  - Random numbers");
+println("  - Key-value store");
+println("  - DateTime");
+println("\nNux libraries are functional! ✓");

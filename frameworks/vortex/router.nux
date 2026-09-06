@@ -1,0 +1,56 @@
+# frameworks::vortex::router
+# Routing logic for mapping URLs to controllers
+
+import std::collections::List;
+import std::string::String;
+import frameworks::vortex::request::Request;
+import frameworks::vortex::response::Response;
+
+# Type definition for a handler function
+# func(req: Request, res: Response)
+
+class Route {
+    var method: String;
+    var path: String;
+    var handler: *u8; # function pointer
+    
+    func init(method: String, path: String, handler: *u8) {
+        this.method = method;
+        this.path = path;
+        this.handler = handler;
+    }
+}
+
+class Router {
+    var routes: List;
+    
+    func init() {
+        this.routes = new List();
+        this.routes.init();
+    }
+    
+    func add_route(method: String, path: String, handler: *u8) {
+        var r = new Route();
+        r.init(method, path, handler);
+        this.routes.append(r);
+    }
+    
+    func handle(req: Request, res: Response) {
+        var i = 0;
+        var len = this.routes.len();
+        while (i < len) {
+            var r = this.routes.get(i); # typeof Route
+            if (r.method.equals(req.method) && r.path.equals(req.path)) {
+                # CALL_EXTERN or dynamic dispatch to handler
+                # Call handler(req, res);
+                return;
+            }
+            i += 1;
+        }
+        
+        # 404 Not Found
+        res.set_status(404);
+        var nf = new String(); nf.init("404 Not Found");
+        res.send(nf);
+    }
+}

@@ -1,0 +1,248 @@
+// Cross-Platform System Abstraction Layer
+
+// ============= PLATFORM ABSTRACTION =============
+
+interface PlatformAPI {
+    // File system
+    func file_open(path: string, mode: string) -> int;
+    func file_read(fd: int, buffer: *byte, size: int) -> int;
+    func file_write(fd: int, data: *byte, size: int) -> int;
+    func file_close(fd: int) -> void;
+    
+    // Threading
+    func thread_create(func: func() -> void) -> int;
+    func thread_join(tid: int) -> void;
+    func thread_yield() -> void;
+    
+    // Memory
+    func mem_alloc(size: int) -> *byte;
+    func mem_free(ptr: *byte) -> void;
+    
+    // Time
+    func time_now() -> int;
+    func time_sleep(ms: int) -> void;
+    
+    // Network
+    func net_connect(host: string, port: int) -> int;
+    func net_send(socket: int, data: *byte, size: int) -> int;
+    func net_recv(socket: int, buffer: *byte, size: int) -> int;
+    func net_close(socket: int) -> void;
+}
+
+// ============= LINUX IMPLEMENTATION =============
+
+class LinuxPlatform implements PlatformAPI {
+    func file_open(path: string, mode: string) -> int {
+        var flags = match (mode) {
+            "r" => O_RDONLY,
+            "w" => O_WRONLY | O_CREAT | O_TRUNC,
+            "a" => O_WRONLY | O_CREAT | O_APPEND,
+            _ => O_RDONLY
+        };
+        
+        return syscall(SYS_OPEN, path.as_ptr(), flags, 0644);
+    }
+    
+    func file_read(fd: int, buffer: *byte, size: int) -> int {
+        return syscall(SYS_READ, fd, buffer, size);
+    }
+    
+    func file_write(fd: int, data: *byte, size: int) -> int {
+        return syscall(SYS_WRITE, fd, data, size);
+    }
+    
+    func file_close(fd: int) {
+        syscall(SYS_CLOSE, fd);
+    }
+    
+    func thread_create(func: func() -> void) -> int {
+        var tid: int;
+        pthread_create(&tid, null, func, null);
+        return tid;
+    }
+    
+    func mem_alloc(size: int) -> *byte {
+        return syscall(SYS_MMAP, null, size, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    }
+}
+
+// ============= WINDOWS IMPLEMENTATION =============
+
+class WindowsPlatform implements PlatformAPI {
+    func file_open(path: string, mode: string) -> int {
+        var access = match (mode) {
+            "r" => GENERIC_READ,
+            "w" => GENERIC_WRITE,
+            "a" => GENERIC_WRITE,
+            _ => GENERIC_READ
+        };
+        
+        var creation = match (mode) {
+            "r" => OPEN_EXISTING,
+            "w" => CREATE_ALWAYS,
+            "a" => OPEN_ALWAYS,
+            _ => OPEN_EXISTING
+        };
+        
+        return CreateFileA(path.as_ptr(), access, 0, null, creation, 0, null);
+    }
+    
+    func file_read(fd: int, buffer: *byte, size: int) -> int {
+        var bytes_read: int;
+        ReadFile(fd, buffer, size, &bytes_read, null);
+        return bytes_read;
+    }
+    
+    func file_write(fd: int, data: *byte, size: int) -> int {
+        var bytes_written: int;
+        WriteFile(fd, data, size, &bytes_written, null);
+        return bytes_written;
+    }
+    
+    func file_close(fd: int) {
+        CloseHandle(fd);
+    }
+    
+    func thread_create(func: func() -> void) -> int {
+        return CreateThread(null, 0, func, null, 0, null);
+    }
+    
+    func mem_alloc(size: int) -> *byte {
+        return VirtualAlloc(null, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    }
+}
+
+// ============= MACOS IMPLEMENTATION =============
+
+class MacOSPlatform implements PlatformAPI {
+    // Similar to Linux but with macOS-specific syscalls
+    func file_open(path: string, mode: string) -> int {
+        // Use BSD syscalls
+        return open(path.as_ptr(), parse_mode(mode), 0644);
+    }
+    
+    func thread_create(func: func() -> void) -> int {
+        var tid: int;
+        pthread_create(&tid, null, func, null);
+        return tid;
+    }
+}
+
+// ============= WEBASSEMBLY IMPLEMENTATION =============
+
+class WasmPlatform implements PlatformAPI {
+    func file_open(path: string, mode: string) -> int {
+        // Use WASI (WebAssembly System Interface)
+        return wasi_path_open(path, mode);
+    }
+    
+    func file_read(fd: int, buffer: *byte, size: int) -> int {
+        return wasi_fd_read(fd, buffer, size);
+    }
+    
+    func thread_create(func: func() -> void) -> int {
+        // WebAssembly threads
+        return wasm_thread_spawn(func);
+    }
+    
+    func mem_alloc(size: int) -> *byte {
+        return wasm_memory_grow(size);
+    }
+}
+
+// ============= PLATFORM FACTORY =============
+
+func get_platform() -> PlatformAPI {
+    #if defined(__linux__)
+        return LinuxPlatform.new();
+    #elif defined(_WIN32) || defined(_WIN64)
+        return WindowsPlatform.new();
+    #elif defined(__APPLE__)
+        return MacOSPlatform.new();
+    #elif defined(__wasm__)
+        return WasmPlatform.new();
+    #else
+        compile_error("Unsupported platform");
+    #endif
+}
+
+// ============= UNIFIED FILE API =============
+
+class File {
+    var fd: int;
+    var platform: PlatformAPI;
+    
+    static func open(path: string, mode: string) -> File {
+        var platform = get_platform();
+        var fd = platform.file_open(path, mode);
+        
+        if (fd < 0) {
+            throw Error("Failed to open file: " + path);
+        }
+        
+        return File {
+            fd: fd,
+            platform: platform
+        };
+    }
+    
+    func read(size: int) -> [byte] {
+        var buffer: [byte] = Array.with_capacity(size);
+        var bytes_read = this.platform.file_read(this.fd, buffer.as_ptr(), size);
+        buffer.truncate(bytes_read);
+        return buffer;
+    }
+    
+    func write(data: [byte]) -> int {
+        return this.platform.file_write(this.fd, data.as_ptr(), data.length);
+    }
+    
+    func close() {
+        this.platform.file_close(this.fd);
+    }
+}
+
+// ============= UNIFIED THREAD API =============
+
+class Thread {
+    var tid: int;
+    var platform: PlatformAPI;
+    
+    static func spawn(func: func() -> void) -> Thread {
+        var platform = get_platform();
+        var tid = platform.thread_create(func);
+        
+        return Thread {
+            tid: tid,
+            platform: platform
+        };
+    }
+    
+    func join() {
+        this.platform.thread_join(this.tid);
+    }
+}
+
+// ============= EXAMPLE: CROSS-PLATFORM CODE =============
+
+func cross_platform_example() {
+    // This code works on Linux, Windows, macOS, and WebAssembly!
+    
+    // File I/O
+    var file = File.open("test.txt", "w");
+    file.write("Hello, World!".as_bytes());
+    file.close();
+    
+    // Threading
+    var thread = Thread.spawn(() => {
+        println("Running on thread");
+    });
+    thread.join();
+    
+    // Memory
+    var platform = get_platform();
+    var ptr = platform.mem_alloc(1024);
+    // Use memory...
+    platform.mem_free(ptr);
+}

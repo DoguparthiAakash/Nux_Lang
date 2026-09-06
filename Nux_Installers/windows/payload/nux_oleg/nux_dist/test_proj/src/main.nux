@@ -1,0 +1,4 @@
+import "alloc"
+fn main() {
+    print("Hello, Nux!");
+}

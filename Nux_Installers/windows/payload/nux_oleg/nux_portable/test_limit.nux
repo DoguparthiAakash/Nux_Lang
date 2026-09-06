@@ -1,0 +1,4 @@
+func main() {
+    limit_mem(10);
+    print(8888);
+}

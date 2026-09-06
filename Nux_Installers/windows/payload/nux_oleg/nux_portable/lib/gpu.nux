@@ -1,0 +1,66 @@
+# gpu.nux
+# Nux Standard Library: Hardware Acceleration & GPU Compute
+
+import "lib/memory.nux";
+
+# Tensor abstraction for CPU-SIMD and GPU compute
+class Tensor {
+    var data_ptr: int;
+    var rows: int;
+    var cols: int;
+    var size: int;
+    
+    func init(rows, cols) {
+        this.rows = rows;
+        this.cols = cols;
+        this.size = rows * cols * 8; # 64-bit floats/ints
+        this.data_ptr = alloc(this.size);
+        return this;
+    }
+    
+    # CPU-SIMD optimized Matrix Multiplication (O(N^3) naive fallback in hardware if SIMD unavailable)
+    func matmul(other) {
+        verify(this.cols == other.rows);
+        
+        var result = new Tensor;
+        result.init(this.rows, other.cols);
+        
+        var a = this.data_ptr;
+        var b = other.data_ptr;
+        var c = result.data_ptr;
+        var r1 = this.rows;
+        var c1 = this.cols;
+        var c2 = other.cols;
+        
+        # Push arguments for OP_MATMUL_SIMD: A, B, C, N, M, K
+        asm {
+            a;
+            b;
+            c;
+            r1;
+            c1;
+            c2;
+            "OP_MATMUL_SIMD";
+        }
+        
+        return result;
+    }
+    
+    func dispose() {
+        if (this.data_ptr > 0) {
+            free(this.data_ptr);
+            this.data_ptr = 0;
+        }
+    }
+}
+
+class GPUCompute {
+    # Dispatches a compute shader/kernel to the GPU
+    func dispatch(shader_id, data_ptr) {
+        asm {
+            data_ptr;
+            shader_id;
+            "OP_GPU_DISPATCH";
+        }
+    }
+}

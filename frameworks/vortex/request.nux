@@ -1,0 +1,57 @@
+# frameworks::vortex::request
+# HTTP Request parsing and modeling
+
+import std::collections::List;
+import std::string::String;
+import std::json::JSON;
+
+class Header {
+    var key: String;
+    var value: String;
+    
+    func init(k: String, v: String) {
+        this.key = k;
+        this.value = v;
+    }
+}
+
+class Request {
+    var method: String;
+    var path: String;
+    var headers: List; # List<Header>
+    var body: String;
+    
+    func init(raw_http: String) {
+        this.headers = new List();
+        this.headers.init();
+        # Pseudo-parsing logic
+        # 1. Split by \r\n
+        # 2. Parse first line "GET /path HTTP/1.1"
+        # 3. Parse headers
+        # 4. Parse body
+        this.method = new String(); this.method.init("GET");
+        this.path = new String(); this.path.init("/");
+        this.body = new String(); this.body.init("");
+    }
+    
+    func get_header(key: String) -> String {
+        var len = this.headers.len();
+        var i = 0;
+        while (i < len) {
+            var h = this.headers.get(i); # typeof Header
+            if (h.key.equals(key)) {
+                return h.value;
+            }
+            i += 1;
+        }
+        var empty = new String(); empty.init("");
+        return empty;
+    }
+    
+    func json() -> JSON {
+        # Parse body as JSON
+        var j = new JSON();
+        j.parse(this.body);
+        return j;
+    }
+}

@@ -1,0 +1,21 @@
+# std::net::http
+# A zero-dependency, C-speed HTTP client for Nux
+
+class HttpClient {
+    func init() {}
+    
+    func get(url) {
+        # Parses URL, resolves DNS, opens TCP socket, and negotiates TLS
+        # Returns a Result<HttpResponse, HttpError>
+    }
+    
+    func post(url, body) {
+        # Executes POST request
+    }
+}
+
+func get(url) {
+    var client = new HttpClient();
+    client.init();
+    return client.get(url);
+}

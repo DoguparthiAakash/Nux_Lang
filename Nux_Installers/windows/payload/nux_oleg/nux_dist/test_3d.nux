@@ -1,0 +1,47 @@
+import "engine3d"
+import "ui"
+
+func main() {
+    var width = 640;
+    var height = 480;
+    vbe_set_mode(width, height, 32);
+    var fb = vbe_get_fb();
+    
+    var is_running = 1;
+    var frames = 0;
+    
+    # Simple animation state
+    var offset = 0;
+    
+    while (is_running == 1) {
+        frames = frames + 1;
+        if (frames > 20) { is_running = 0; }
+        
+        clear_screen(fb, width, height, 0x000000);
+        
+        offset = offset + 5;
+        
+        # Project 3D points
+        # Cube corners (simplified)
+        var z1 = 50 + offset;
+        var z2 = 100 + offset;
+        
+        var p1 = project_3d(0 - 50, 0 - 50, z1, 200, 100, width, height);
+        var p2 = project_3d(50, 0 - 50, z1, 200, 100, width, height);
+        var p3 = project_3d(50, 50, z1, 200, 100, width, height);
+        var p4 = project_3d(0 - 50, 50, z1, 200, 100, width, height);
+        
+        var sx1 = p1 / 10000; var sy1 = p1 - (sx1 * 10000);
+        var sx2 = p2 / 10000; var sy2 = p2 - (sx2 * 10000);
+        var sx3 = p3 / 10000; var sy3 = p3 - (sx3 * 10000);
+        var sx4 = p4 / 10000; var sy4 = p4 - (sx4 * 10000);
+        
+        # Draw Front Face
+        draw_line(fb, width, height, sx1, sy1, sx2, sy2, 0xFF0000);
+        draw_line(fb, width, height, sx2, sy2, sx3, sy3, 0x00FF00);
+        draw_line(fb, width, height, sx3, sy3, sx4, sy4, 0x0000FF);
+        draw_line(fb, width, height, sx4, sy4, sx1, sy1, 0xFFFFFF);
+        
+        vbe_update();
+    }
+}

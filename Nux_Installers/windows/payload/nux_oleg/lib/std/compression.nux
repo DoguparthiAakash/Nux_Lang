@@ -1,0 +1,258 @@
+# Compression Library - gzip, deflate, LZ77
+
+# ============= LZ77 COMPRESSION =============
+
+class LZ77 {
+    var window_size: int = 4096;
+    var lookahead_size: int = 18;
+    
+    func compress(data: string) -> [int] {
+        var result: [int] = [];
+        var pos: int = 0;
+        
+        while (pos < data.len()) {
+            var match = this.find_longest_match(data, pos);
+            
+            if (match.length > 3) {
+                # Encode as (distance, length, next_char)
+                result.push(1);  # Flag for match
+                result.push(match.distance);
+                result.push(match.length);
+                result.push(data[pos + match.length]);
+                pos += match.length + 1;
+            } else {
+                # Encode as literal
+                result.push(0);  # Flag for literal
+                result.push(data[pos]);
+                pos++;
+            }
+        }
+        
+        return result;
+    }
+    
+    func decompress(compressed: [int]) -> string {
+        var result: string = "";
+        var i: int = 0;
+        
+        while (i < compressed.len()) {
+            if (compressed[i] == 1) {
+                # Match
+                var distance = compressed[i + 1];
+                var length = compressed[i + 2];
+                var next_char = compressed[i + 3];
+                
+                var start = result.len() - distance;
+                for (var j: int = 0; j < length; j++) {
+                    result += result[start + j];
+                }
+                result += next_char;
+                
+                i += 4;
+            } else {
+                # Literal
+                result += compressed[i + 1];
+                i += 2;
+            }
+        }
+        
+        return result;
+    }
+    
+    func find_longest_match(data: string, pos: int) -> Match {
+        var best_match = Match { distance: 0, length: 0 };
+        
+        var search_start = max(0, pos - this.window_size);
+        var search_end = pos;
+        
+        for (var i = search_start; i < search_end; i++) {
+            var match_len: int = 0;
+            
+            while (match_len < this.lookahead_size &&
+                   pos + match_len < data.len() &&
+                   data[i + match_len] == data[pos + match_len]) {
+                match_len++;
+            }
+            
+            if (match_len > best_match.length) {
+                best_match.distance = pos - i;
+                best_match.length = match_len;
+            }
+        }
+        
+        return best_match;
+    }
+}
+
+struct Match {
+    var distance: int;
+    var length: int;
+}
+
+# ============= RLE COMPRESSION =============
+
+func rle_compress(data: string) -> string {
+    if (data.len() == 0) {
+        return "";
+    }
+    
+    var result: string = "";
+    var i: int = 0;
+    
+    while (i < data.len()) {
+        var current = data[i];
+        var count: int = 1;
+        
+        while (i + count < data.len() && data[i + count] == current && count < 255) {
+            count++;
+        }
+        
+        result += current;
+        result += count;
+        i += count;
+    }
+    
+    return result;
+}
+
+func rle_decompress(compressed: string) -> string {
+    var result: string = "";
+    var i: int = 0;
+    
+    while (i < compressed.len()) {
+        var char = compressed[i];
+        var count = compressed[i + 1];
+        
+        for (var j: int = 0; j < count; j++) {
+            result += char;
+        }
+        
+        i += 2;
+    }
+    
+    return result;
+}
+
+# ============= HUFFMAN CODING =============
+
+class HuffmanNode {
+    var char: char;
+    var freq: int;
+    var left: *HuffmanNode;
+    var right: *HuffmanNode;
+    
+    func is_leaf() -> bool {
+        return this.left == null && this.right == null;
+    }
+}
+
+class Huffman {
+    func build_tree(text: string) -> *HuffmanNode {
+        # Count frequencies
+        var freq: [int] = [];
+        for (var i: int = 0; i < 256; i++) {
+            freq[i] = 0;
+        }
+        
+        for (var i: int = 0; i < text.len(); i++) {
+            freq[text[i]]++;
+        }
+        
+        # Build priority queue (simplified)
+        var nodes: [*HuffmanNode] = [];
+        
+        for (var i: int = 0; i < 256; i++) {
+            if (freq[i] > 0) {
+                var node = new HuffmanNode {
+                    char: i,
+                    freq: freq[i],
+                    left: null,
+                    right: null
+                };
+                nodes.push(node);
+            }
+        }
+        
+        # Build tree
+        while (nodes.len() > 1) {
+            # Find two minimum nodes
+            var min1_idx: int = 0;
+            var min2_idx: int = 1;
+            
+            if (nodes[1].freq < nodes[0].freq) {
+                min1_idx = 1;
+                min2_idx = 0;
+            }
+            
+            for (var i: int = 2; i < nodes.len(); i++) {
+                if (nodes[i].freq < nodes[min1_idx].freq) {
+                    min2_idx = min1_idx;
+                    min1_idx = i;
+                } else if (nodes[i].freq < nodes[min2_idx].freq) {
+                    min2_idx = i;
+                }
+            }
+            
+            # Create parent node
+            var parent = new HuffmanNode {
+                char: 0,
+                freq: nodes[min1_idx].freq + nodes[min2_idx].freq,
+                left: nodes[min1_idx],
+                right: nodes[min2_idx]
+            };
+            
+            # Remove children and add parent
+            var new_nodes: [*HuffmanNode] = [];
+            for (var i: int = 0; i < nodes.len(); i++) {
+                if (i != min1_idx && i != min2_idx) {
+                    new_nodes.push(nodes[i]);
+                }
+            }
+            new_nodes.push(parent);
+            nodes = new_nodes;
+        }
+        
+        return nodes[0];
+    }
+    
+    func build_codes(root: *HuffmanNode) -> [string] {
+        var codes: [string] = [];
+        for (var i: int = 0; i < 256; i++) {
+            codes[i] = "";
+        }
+        
+        this.build_codes_helper(root, "", codes);
+        return codes;
+    }
+    
+    func build_codes_helper(node: *HuffmanNode, code: string, codes: [string]) {
+        if (node == null) {
+            return;
+        }
+        
+        if (node.is_leaf()) {
+            codes[node.char] = code;
+            return;
+        }
+        
+        this.build_codes_helper(node.left, code + "0", codes);
+        this.build_codes_helper(node.right, code + "1", codes);
+    }
+}
+
+# ============= EXAMPLE USAGE =============
+
+func compression_example() {
+    var text: string = "AAABBBCCCCDDDD";
+    
+    # RLE
+    var rle_compressed = rle_compress(text);
+    var rle_decompressed = rle_decompress(rle_compressed);
+    println("RLE: " + text + " -> " + rle_compressed + " -> " + rle_decompressed);
+    
+    # LZ77
+    var lz77 = LZ77.new();
+    var lz77_compressed = lz77.compress(text);
+    var lz77_decompressed = lz77.decompress(lz77_compressed);
+    println("LZ77: " + text + " -> " + lz77_decompressed);
+}

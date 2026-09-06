@@ -1,0 +1,36 @@
+# Simple Graphics Test
+# Tests the new graphics functions
+
+func main() {
+    print("Graphics Test Starting...");
+    
+    # Create a 320x240 canvas
+    var screen = img_alloc(320, 240);
+    
+    # Test 1: Clear screen to blue
+    print("Test 1: Clear screen");
+    gfx_clear(screen, 255);  # Blue (0x0000FF = 255)
+    
+    # Test 2: Draw some pixels
+    print("Test 2: Draw pixels");
+    gfx_pixel(screen, 10, 10, 16711680);  # Red (0xFF0000)
+    gfx_pixel(screen, 20, 10, 65280);     # Green (0x00FF00)
+    gfx_pixel(screen, 30, 10, 16777215);  # White (0xFFFFFF)
+    
+    # Test 3: Draw lines
+    print("Test 3: Draw lines");
+    gfx_line(screen, 50, 50, 150, 50, 16777215);   # Horizontal white line
+    gfx_line(screen, 50, 50, 50, 150, 16711680);   # Vertical red line
+    gfx_line(screen, 50, 50, 150, 150, 65280);     # Diagonal green line
+    
+    # Test 4: Draw circles
+    print("Test 4: Draw circles");
+    gfx_circle(screen, 160, 120, 30, 16776960);  # Yellow (0xFFFF00)
+    gfx_circle(screen, 200, 120, 20, 16711935);  # Magenta (0xFF00FF)
+    
+    # Display
+    print("Displaying...");
+    img_draw(screen, 0, 0);
+    
+    print("Graphics test complete!");
+}

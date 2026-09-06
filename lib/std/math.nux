@@ -1,24 +1,154 @@
-// Nux Standard Library: Math (math.nux)
+/// std::math — Nux Math Standard Library
+///
+/// Basic numeric operations for Nux programs.
+/// Written entirely in Nux — no external dependencies.
+///
+/// Usage:
+///   import std::math;
+///   var x = math::abs(-5);
+///   var y = math::pow(2, 10);    # 1024
+///   var z = math::clamp(x, 0, 100);
 
-func abs(val: int): int {
-    if (val < 0) {
-        return 0 - val;
+@[no_std]
+
+# ─── Basic Arithmetic ─────────────────────────────────────────────────────────
+
+/// Return the absolute value of a signed 32-bit integer.
+func abs(x: u32) -> u32 {
+    # Treating u32 as signed: check the sign bit
+    var sign: u32 = x >> 31;
+    if (sign == 0) {
+        return x;
     }
-    return val;
+    return (~x) + 1;
 }
 
-func min(a: int, b: int): int {
+/// Return the minimum of two values.
+func min(a: u32, b: u32) -> u32 {
     if (a < b) { return a; }
     return b;
 }
 
-func max(a: int, b: int): int {
+/// Return the maximum of two values.
+func max(a: u32, b: u32) -> u32 {
     if (a > b) { return a; }
     return b;
 }
 
-func clamp(val: int, min_val: int, max_val: int): int {
-    if (val < min_val) { return min_val; }
-    if (val > max_val) { return max_val; }
+/// Clamp a value between lo and hi (inclusive).
+func clamp(val: u32, lo: u32, hi: u32) -> u32 {
+    if (val < lo) { return lo; }
+    if (val > hi) { return hi; }
     return val;
+}
+
+# ─── Power & Roots ────────────────────────────────────────────────────────────
+
+/// Integer exponentiation: base^exp. Uses fast repeated squaring.
+func pow(base: u32, exp: u32) -> u32 {
+    var result: u32 = 1;
+    var b = base;
+    var e = exp;
+    while (e > 0) {
+        if ((e & 1) != 0) {
+            result = result * b;
+        }
+        b = b * b;
+        e = e >> 1;
+    }
+    return result;
+}
+
+/// Integer square root (floor). Newton-Raphson.
+func sqrt(n: u32) -> u32 {
+    if (n == 0) { return 0; }
+    if (n == 1) { return 1; }
+    var x = n;
+    var y = (x + 1) / 2;
+    while (y < x) {
+        x = y;
+        y = (x + n / x) / 2;
+    }
+    return x;
+}
+
+/// Floor of log base 2 — position of the highest set bit.
+func log2(n: u32) -> u32 {
+    if (n == 0) { return 0; }
+    var result: u32 = 0;
+    var v = n;
+    while (v > 1) {
+        v = v >> 1;
+        result += 1;
+    }
+    return result;
+}
+
+# ─── Division ─────────────────────────────────────────────────────────────────
+
+/// Ceiling integer division.
+func div_ceil(a: u32, b: u32) -> u32 {
+    return (a + b - 1) / b;
+}
+
+/// Check if n is a power of 2.
+func is_pow2(n: u32) -> bool {
+    if (n == 0) { return false; }
+    return (n & (n - 1)) == 0;
+}
+
+/// Round n up to the nearest power of 2.
+func next_pow2(n: u32) -> u32 {
+    if (n == 0) { return 1; }
+    var v = n - 1;
+    v = v | (v >> 1);
+    v = v | (v >> 2);
+    v = v | (v >> 4);
+    v = v | (v >> 8);
+    v = v | (v >> 16);
+    return v + 1;
+}
+
+# ─── Bit Operations ───────────────────────────────────────────────────────────
+
+/// Count set bits (popcount / Hamming weight).
+func popcount(n: u32) -> u32 {
+    var count: u32 = 0;
+    var v = n;
+    while (v != 0) {
+        count += v & 1;
+        v = v >> 1;
+    }
+    return count;
+}
+
+/// Count leading zeros.
+func clz(n: u32) -> u32 {
+    if (n == 0) { return 32; }
+    var count: u32 = 0;
+    var mask: u32 = 0x80000000;
+    while ((n & mask) == 0) {
+        count += 1;
+        mask = mask >> 1;
+    }
+    return count;
+}
+
+# ─── GCD / LCM ───────────────────────────────────────────────────────────────
+
+/// Greatest Common Divisor (Euclidean algorithm).
+func gcd(a: u32, b: u32) -> u32 {
+    var x = a;
+    var y = b;
+    while (y != 0) {
+        var t = y;
+        y = x % y;
+        x = t;
+    }
+    return x;
+}
+
+/// Least Common Multiple.
+func lcm(a: u32, b: u32) -> u32 {
+    return (a / gcd(a, b)) * b;
 }

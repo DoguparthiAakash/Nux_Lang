@@ -1,0 +1,44 @@
+# quantum::gates
+# Quantum gate definitions (Matrices)
+
+import std::collections::List;
+import quantum::complex::Complex;
+
+class Gate2x2 {
+    var m00: Complex; var m01: Complex;
+    var m10: Complex; var m11: Complex;
+    
+    func init(m00: Complex, m01: Complex, m10: Complex, m11: Complex) {
+        this.m00 = m00; this.m01 = m01;
+        this.m10 = m10; this.m11 = m11;
+    }
+}
+
+func hadamard() -> Gate2x2 {
+    var inv_sqrt2 = 0.70710678; # 1 / sqrt(2)
+    var c = new Complex(); c.init(inv_sqrt2, 0.0);
+    var nc = new Complex(); nc.init(-inv_sqrt2, 0.0);
+    
+    var h = new Gate2x2();
+    h.init(c, c, c, nc);
+    return h;
+}
+
+func pauli_x() -> Gate2x2 {
+    var zero = new Complex(); zero.init(0.0, 0.0);
+    var one = new Complex(); one.init(1.0, 0.0);
+    
+    var x = new Gate2x2();
+    x.init(zero, one, one, zero);
+    return x;
+}
+
+func pauli_z() -> Gate2x2 {
+    var zero = new Complex(); zero.init(0.0, 0.0);
+    var one = new Complex(); one.init(1.0, 0.0);
+    var none = new Complex(); none.init(-1.0, 0.0);
+    
+    var z = new Gate2x2();
+    z.init(one, zero, zero, none);
+    return z;
+}

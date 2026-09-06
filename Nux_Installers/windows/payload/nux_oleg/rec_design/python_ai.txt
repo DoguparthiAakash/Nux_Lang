@@ -1,0 +1,15 @@
+# Standard Python AI Stack
+numpy
+pandas
+matplotlib
+scikit-learn
+torch
+tensorflow
+transformers
+opencv-python
+jupyter
+seaborn
+statsmodels
+nltk
+spacy
+gymnasium

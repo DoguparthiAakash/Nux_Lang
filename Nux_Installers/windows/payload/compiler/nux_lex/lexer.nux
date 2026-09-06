@@ -1,0 +1,98 @@
+# Nux Lexer
+# Produces a Token stream from source text.
+
+class Token {
+    var type;
+    var value;
+    var span; # Uses Span from nux_diagnostics
+
+    func init(t, v, sp) {
+        this.type = t;
+        this.value = v;
+        this.span = sp;
+    }
+}
+
+class Lexer {
+    var source;
+    var length;
+    var position;
+    var file_id;
+    var diagnostics; # Context to report lexical errors
+
+    func init(src, len, f_id, diag_engine) {
+        this.source = src;
+        this.length = len;
+        this.position = 0;
+        this.file_id = f_id;
+        this.diagnostics = diag_engine;
+    }
+    
+    func tokenize() {
+        var tokens = new List();
+        tokens.init();
+        
+        while (this.position < this.length) {
+            var ch = this.peek();
+            
+            if (ch == 32) { # Space
+                this.position = this.position + 1;
+            } else if (ch == 38) { # '&'
+                var start = this.position;
+                this.position = this.position + 1;
+                var span = new Span();
+                span.init(this.file_id, start, this.position);
+                
+                var tok = new Token();
+                tok.init("Ampersand", "&", span);
+                tokens.append(tok);
+            } else if (ch == 39) { # "'" for lifetimes
+                var start = this.position;
+                this.position = this.position + 1;
+                # In real lexer, consume identifier after tick
+                var span = new Span();
+                span.init(this.file_id, start, this.position);
+                
+                var tok = new Token();
+                tok.init("LifetimeTick", "'", span);
+                tokens.append(tok);
+            } else {
+                # Identifier parsing placeholder
+                var start = this.position;
+                this.position = this.position + 1;
+                var span = new Span();
+                span.init(this.file_id, start, this.position);
+                
+                var tok_type = "Identifier";
+                var val = "ident"; # simplified
+                if (ch == 117) { # 'u' for unsafe
+                    tok_type = "KeywordUnsafe";
+                } else if (ch == 109) { # 'm' for mut
+                    tok_type = "KeywordMut";
+                } else if (ch == 101) { # 'e' for extern
+                    tok_type = "KeywordExtern";
+                } else if (ch == 64) { # '@' for intrinsic or kernel attributes
+                    tok_type = "AttributeMarker";
+                    val = "@";
+                } else if (ch == 34) { # '"' for string literal ABI like "C"
+                    tok_type = "StringLiteral";
+                    val = "C"; 
+                }
+                
+                var tok = new Token();
+                tok.init(tok_type, val, span);
+                tokens.append(tok);
+            }
+        }
+        
+        return tokens;
+    }
+    
+    func peek() {
+        if (this.position >= this.length) {
+            return 0;
+        }
+        # Assume mem_read8 is a built-in for the nux runtime
+        return mem_read8(this.source + this.position);
+    }
+}

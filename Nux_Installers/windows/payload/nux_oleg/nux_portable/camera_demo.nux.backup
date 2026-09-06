@@ -1,0 +1,64 @@
+# Camera / Vision Demo
+
+func main() {
+    println("--- Nux Vision System ---");
+    
+    var plat = sys_platform();
+    print("Platform ID: ");
+    println(plat);
+    
+    var cameras = cam_count();
+    print("Cameras Found: ");
+    println(cameras);
+    
+    if (plat == 0) { println("Mode: Headless / Fallback"); }
+    if (plat == 1) { println("Mode: Linux Desktop"); }
+    if (plat == 2) { println("Mode: Windows Desktop"); }
+    if (plat == 3) { println("Mode: MacOS Desktop"); }
+    if (plat == 4) { println("Mode: Ainux Native"); }
+    
+    println("Initializing Camera...");
+
+    # 1. Capture Frame
+    # API: cam_capture(camera_id) -> handle
+    var handle = cam_capture(0);
+    
+    # 2. Display
+    # API: img_draw(handle, x, y)
+    println("Drawing Frame...");
+    img_draw(handle, 0, 0); 
+    
+    println("Loading ML Model (MobileNetV2)...");
+    sleep(500);
+    println("Model Loaded.");
+
+    # Try to open system camera app
+    println("Launching System Camera App...");
+    system("cheese &"); # Common linux cam app
+    # system("fswebcam /tmp/cam.jpg");
+
+    # 3. Video Loop
+    println("Entering Video Loop (5 frames)...");
+    var i = 0;
+    while (i < 5) { 
+        img_free(handle); 
+        handle = cam_capture(0);
+        
+        # ML Task
+        var obj_count = vision_detect(handle); 
+        if (obj_count > 0) {
+             print("ML Detection: Found Person (Confidence 98%)");
+        } else {
+             print("ML Detection: Scanning...");
+        }
+        println("");
+        
+        img_draw(handle, 0, 0);
+        i = i + 1;
+        sleep(500);
+    }
+    
+    println("Done.");
+}
+
+main();

@@ -1,0 +1,283 @@
+# Nux - Advanced Concurrency Models
+# Actor model, CSP, STM, and more!
+
+# Actor Model
+actor class Counter {
+    var count: int = 0;
+    
+    # Message handlers
+    message Increment {
+        this.count += 1;
+    }
+    
+    message Decrement {
+        this.count -= 1;
+    }
+    
+    message GetCount -> int {
+        return this.count;
+    }
+    
+    message Reset {
+        this.count = 0;
+    }
+}
+
+func test_actors() {
+    var counter = spawn Counter.new();
+    
+    # Send messages (async)
+    counter ! Increment;
+    counter ! Increment;
+    counter ! Decrement;
+    
+    # Request-reply
+    var count = counter ? GetCount;
+    println("Count: " + count);
+}
+
+# Communicating Sequential Processes (CSP)
+func producer(ch: Channel<int>) {
+    for (var i: int = 0; i < 10; i++) {
+        ch <- i;  # Send
+    }
+    ch.close();
+}
+
+func consumer(ch: Channel<int>) {
+    while (true) {
+        select {
+            case value <- ch:
+                println("Received: " + value);
+            case ch.closed():
+                break;
+        }
+    }
+}
+
+func test_csp() {
+    var ch = Channel<int>.new();
+    
+    spawn producer(ch);
+    spawn consumer(ch);
+}
+
+# Software Transactional Memory (STM)
+transactional class BankAccount {
+    var balance: int;
+    
+    func transfer(from: BankAccount, to: BankAccount, amount: int) {
+        atomic {
+            if (from.balance >= amount) {
+                from.balance -= amount;
+                to.balance += amount;
+            } else {
+                retry;  # Retry transaction
+            }
+        }
+    }
+}
+
+func test_stm() {
+    var account1 = BankAccount { balance: 1000 };
+    var account2 = BankAccount { balance: 500 };
+    
+    # Concurrent transfers (no race conditions!)
+    parallel {
+        account1.transfer(account1, account2, 100);
+        account2.transfer(account2, account1, 50);
+    }
+}
+
+# Async/Await
+async func fetch_data(url: string) -> string {
+    var response = await http_get(url);
+    return response.body;
+}
+
+async func process_urls(urls: [string]) -> [string] {
+    var futures: [Future<string>] = [];
+    
+    for (var url in urls) {
+        futures.push(fetch_data(url));
+    }
+    
+    # Wait for all
+    return await Future.all(futures);
+}
+
+# Structured Concurrency
+func structured_example() {
+    scope {
+        var task1 = spawn_in_scope {
+            compute_heavy();
+        };
+        
+        var task2 = spawn_in_scope {
+            compute_heavy();
+        };
+        
+        # Scope waits for all tasks to complete
+    }  # All tasks guaranteed to finish here
+}
+
+# Data Parallelism
+func parallel_map<T, U>(arr: [T], f: func(T) -> U) -> [U] {
+    return arr.par_map(f);  # Parallel map
+}
+
+func parallel_reduce<T>(arr: [T], init: T, f: func(T, T) -> T) -> T {
+    return arr.par_reduce(init, f);  # Parallel reduce
+}
+
+# Fork-Join
+func fibonacci_parallel(n: int) -> int {
+    if (n <= 1) return n;
+    
+    var (a, b) = fork_join(
+        () => fibonacci_parallel(n - 1),
+        () => fibonacci_parallel(n - 2)
+    );
+    
+    return a + b;
+}
+
+# Work Stealing
+func parallel_quicksort<T>(arr: [T]) -> [T] {
+    if (arr.length <= 1) return arr;
+    
+    var pivot = arr[arr.length / 2];
+    var (left, right) = partition(arr, pivot);
+    
+    # Parallel recursive calls
+    var (sorted_left, sorted_right) = fork_join(
+        () => parallel_quicksort(left),
+        () => parallel_quicksort(right)
+    );
+    
+    return sorted_left + [pivot] + sorted_right;
+}
+
+# Green Threads (M:N threading)
+func green_thread_example() {
+    var scheduler = Scheduler.new(num_threads: 4);
+    
+    for (var i: int = 0; i < 1000; i++) {
+        scheduler.spawn(() => {
+            # Lightweight task
+            compute();
+        });
+    }
+    
+    scheduler.run();
+}
+
+# Reactive Streams
+stream class DataStream<T> {
+    func map<U>(f: func(T) -> U) -> DataStream<U> {
+        return DataStream<U> {
+            subscribe: (observer) => {
+                this.subscribe((value) => {
+                    observer.next(f(value));
+                });
+            }
+        };
+    }
+    
+    func filter(predicate: func(T) -> bool) -> DataStream<T> {
+        return DataStream<T> {
+            subscribe: (observer) => {
+                this.subscribe((value) => {
+                    if (predicate(value)) {
+                        observer.next(value);
+                    }
+                });
+            }
+        };
+    }
+    
+    func reduce<U>(init: U, f: func(U, T) -> U) -> Future<U> {
+        var acc = init;
+        var future = Future<U>.new();
+        
+        this.subscribe((value) => {
+            acc = f(acc, value);
+        }, () => {
+            future.complete(acc);
+        });
+        
+        return future;
+    }
+}
+
+# Lock-Free Data Structures
+class LockFreeQueue<T> {
+    var head: Atomic<Node<T>>;
+    var tail: Atomic<Node<T>>;
+    
+    func enqueue(value: T) {
+        var node = Node<T>.new(value);
+        
+        while (true) {
+            var tail = this.tail.load();
+            var next = tail.next.load();
+            
+            if (next == null) {
+                if (tail.next.compare_and_swap(null, node)) {
+                    this.tail.compare_and_swap(tail, node);
+                    return;
+                }
+            } else {
+                this.tail.compare_and_swap(tail, next);
+            }
+        }
+    }
+    
+    func dequeue() -> Option<T> {
+        while (true) {
+            var head = this.head.load();
+            var tail = this.tail.load();
+            var next = head.next.load();
+            
+            if (head == tail) {
+                if (next == null) {
+                    return None;
+                }
+                this.tail.compare_and_swap(tail, next);
+            } else {
+                var value = next.value;
+                if (this.head.compare_and_swap(head, next)) {
+                    return Some(value);
+                }
+            }
+        }
+    }
+}
+
+# Dataflow Programming
+dataflow func process_pipeline(input: Stream<int>) -> Stream<int> {
+    return input
+        .map((x) => x * 2)
+        .filter((x) => x > 10)
+        .map((x) => x + 1);
+}
+
+# Event Loop
+class EventLoop {
+    var tasks: Queue<Task> = Queue.new();
+    var running: bool = true;
+    
+    func run() {
+        while (this.running) {
+            if (var task = this.tasks.dequeue()) {
+                task.execute();
+            } else {
+                wait_for_events();
+            }
+        }
+    }
+    
+    func schedule(task: Task) {
+        this.tasks.enqueue(task);
+    }
+}

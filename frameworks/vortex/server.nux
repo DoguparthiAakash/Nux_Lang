@@ -1,0 +1,61 @@
+# frameworks::vortex::server
+# Core Application server for Vortex
+
+import std::string::String;
+import frameworks::vortex::router::Router;
+import frameworks::vortex::request::Request;
+import frameworks::vortex::response::Response;
+
+extern {
+    # System bindings for TCP
+    func tcp_listen(port: u32) -> i32;
+    func tcp_accept(server_fd: i32) -> i32;
+    func tcp_read(client_fd: i32, buffer: *u8, size: u32) -> u32;
+    func tcp_write(client_fd: i32, buffer: *u8, size: u32);
+    func tcp_close(fd: i32);
+}
+
+class VortexApp {
+    var router: Router;
+    
+    func init() {
+        this.router = new Router();
+        this.router.init();
+    }
+    
+    func get(path: String, handler: *u8) {
+        var m = new String(); m.init("GET");
+        this.router.add_route(m, path, handler);
+    }
+    
+    func post(path: String, handler: *u8) {
+        var m = new String(); m.init("POST");
+        this.router.add_route(m, path, handler);
+    }
+    
+    func listen(port: u32) {
+        var server_fd = tcp_listen(port);
+        # std::fmt::println("Vortex Server running on port {}", port);
+        
+        while (true) {
+            var client_fd = tcp_accept(server_fd);
+            
+            # Read request
+            # var buf: [u8; 1024];
+            # var bytes_read = tcp_read(client_fd, buf, 1024);
+            var raw = new String(); raw.init("GET / HTTP/1.1");
+            
+            var req = new Request();
+            req.init(raw);
+            
+            var res = new Response();
+            res.init();
+            
+            this.router.handle(req, res);
+            
+            var res_str = res.build_http_string();
+            tcp_write(client_fd, res_str.c_str(), res_str.len());
+            tcp_close(client_fd);
+        }
+    }
+}

@@ -1,0 +1,48 @@
+# Safe MMIO Wrapper Example
+# Demonstrates how unsafe boundaries encapsulate raw pointer operations
+# allowing the caller to use a 100% safe API.
+
+# repr(transparent) equivalent: ensures memory layout matches the inner usize
+class Mmio {
+    var address; # usize
+    
+    # unsafe fn requires caller to prove address is valid hardware
+    unsafe func init(addr) {
+        this.address = addr;
+    }
+    
+    # Safe method: read takes an immutable borrow
+    func read() {
+        # The unsafe block is the only place we can cast and dereference raw pointers
+        unsafe {
+            var ptr = this.address as *const u32;
+            return *ptr; # Dereference raw pointer
+        }
+    }
+    
+    # Safe method: write takes a mutable borrow, preventing concurrent writes
+    func write(value) {
+        unsafe {
+            var ptr = this.address as *mut u32;
+            *ptr = value;
+        }
+    }
+}
+
+func driver_init() {
+    # The unsafe block encapsulates the hardware-specific knowledge
+    var uart = unsafe { 
+        var m = new Mmio();
+        m.init(0x1000_0000); 
+        return m;
+    };
+    
+    # 100% safe code hereafter
+    uart.write(0xFFFFFFFF);
+    var status = uart.read();
+    
+    # Let's try to break borrowing rules (this will be caught by the borrow checker)
+    # var ref1 = &mut uart;
+    # var ref2 = &uart; # Error: cannot borrow as immutable while mutably borrowed
+    # ref1.write(0x0);
+}

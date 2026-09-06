@@ -6,7 +6,7 @@
 # ============================================================================
 set -euo pipefail
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 PRODUCT="Nux Programming Language"
 INSTALL_DIR_BASE="/usr/local/lib/nux"
 INSTALL_DIR="$INSTALL_DIR_BASE/v$VERSION"
@@ -140,6 +140,7 @@ show_menu() {
     fi
     printf "    %b6)%b  Build .deb package  (Debian/Ubuntu)\n" "$GREEN" "$NC"
     printf "    %b7)%b  Build .rpm package  (Fedora/RHEL)\n" "$GREEN" "$NC"
+    printf "    %b8)%b  Build from Source   %b(Rust/cargo required)%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
     printf "    %b0)%b  Exit\n" "$GREEN" "$NC"
     echo ""
     read -rp "  Enter choice [1]: " choice
@@ -165,56 +166,43 @@ do_install() {
     mkdir -p "$target_dir"
     chmod 755 "$target_dir"
 
-    # --- Download with secure temp file ---
-    nux_print "Downloading" "$CYAN" "nux-linux.tar.gz..."
-    TEMP_TAR=$(mktemp /tmp/nux-download-XXXXXXXX.tar.gz)
-    trap 'rm -f "$TEMP_TAR"' EXIT
-
-    local download_ok=false
-    if command -v curl &>/dev/null; then
-        curl -fSL --connect-timeout 30 --max-time 120 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
-    elif command -v wget &>/dev/null; then
-        wget --timeout=30 -q -O "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
-    fi
-
-    if [ "$download_ok" = true ] && [ -s "$TEMP_TAR" ]; then
-        # Verify checksum before extraction
-        if ! verify_checksum "$TEMP_TAR"; then
-            rm -f "$TEMP_TAR"
-            nux_error "Installation aborted."
-            exit 1
-        fi
-        nux_print "Extracting" "$CYAN" "files..."
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -f "$SCRIPT_DIR/payload.tar.gz" ]; then
+        nux_print "Extracting" "$CYAN" "local payload.tar.gz..."
         rm -f "$target_dir/nux" 2>/dev/null || true
-        tar --no-same-owner -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
+        tar --no-same-owner -xzf "$SCRIPT_DIR/payload.tar.gz" -C "$target_dir" 2>/dev/null || true
+    elif [ -d "$SCRIPT_DIR/payload" ]; then
+        nux_print "Copying" "$CYAN" "local payload directory..."
+        cp -r "$SCRIPT_DIR/payload/"* "$target_dir/"
     else
-        nux_warn "Download unavailable. Attempting to compile from source..."
-        SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-        SRC_DIR="$SCRIPT_DIR/../../nux/nux_oleg/nux_portable/runtime_c"
-        if [ -d "$SRC_DIR" ]; then
-            if command -v gcc &>/dev/null; then
-                nux_print "Compiling" "$CYAN" "using gcc..."
-                gcc -O3 "$SRC_DIR/main.c" "$SRC_DIR/vm.c" "$SRC_DIR/vision/vision.c" -lm -o "$target_dir/nux"
-            elif command -v clang &>/dev/null; then
-                nux_print "Compiling" "$CYAN" "using clang..."
-                clang -O3 "$SRC_DIR/main.c" "$SRC_DIR/vm.c" "$SRC_DIR/vision/vision.c" -lm -o "$target_dir/nux"
-            else
-                nux_error "No C compiler (gcc/clang) found. Installation failed."
+        # --- Download with secure temp file ---
+        nux_print "Downloading" "$CYAN" "nux-linux.tar.gz..."
+        TEMP_TAR=$(mktemp /tmp/nux-download-XXXXXXXX.tar.gz)
+        trap 'rm -f "$TEMP_TAR"' EXIT
+    
+        local download_ok=false
+        if command -v curl &>/dev/null; then
+            curl -fSL --connect-timeout 30 --max-time 120 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
+        elif command -v wget &>/dev/null; then
+            wget --timeout=30 -q -O "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && download_ok=true
+        fi
+
+        if [ "$download_ok" = true ] && [ -s "$TEMP_TAR" ]; then
+            # Verify checksum before extraction
+            if ! verify_checksum "$TEMP_TAR"; then
+                rm -f "$TEMP_TAR"
+                nux_error "Installation aborted."
                 exit 1
             fi
-            # Also ensure compiler.nuxi is copied if available
-            if [ -f "$SRC_DIR/compiler.nuxi" ]; then
-                cp "$SRC_DIR/compiler.nuxi" "$target_dir/"
-            fi
-        elif [ -d "$SCRIPT_DIR/payload" ]; then
-            nux_warn "Source directory not found. Using local payload."
-            cp -r "$SCRIPT_DIR/payload/"* "$target_dir/"
+            nux_print "Extracting" "$CYAN" "files..."
+            rm -f "$target_dir/nux" 2>/dev/null || true
+            tar --no-same-owner -xzf "$TEMP_TAR" -C "$target_dir" 2>/dev/null || true
         else
-            nux_error "No payload or source available. Installation aborted."
+            nux_error "Download unavailable and no local payload found. Installation aborted."
             exit 1
         fi
+        rm -f "$TEMP_TAR"
     fi
-    rm -f "$TEMP_TAR"
 
     if [ "$install_stdlib" = "yes" ]; then
         mkdir -p "$target_dir/lib"
@@ -431,7 +419,8 @@ do_uninstall() {
 do_build_deb() {
     nux_print "Building" "$MAGENTA" "Debian package..."
     ARCH="amd64"
-    PKG_DIR="nux_${VERSION}_${ARCH}"
+    PKG_NAME="nux_${VERSION}_${ARCH}"
+    PKG_DIR="/tmp/$PKG_NAME"
 
     rm -rf "$PKG_DIR"
     mkdir -p "$PKG_DIR/DEBIAN"
@@ -470,10 +459,18 @@ PRERM
         cp -r "$SCRIPT_DIR/payload/"* "$PKG_DIR/usr/local/lib/nux/"
     fi
 
+    # Fix permissions for Debian packaging standard
+    chmod -R 755 "$PKG_DIR"
+    find "$PKG_DIR" -type f -exec chmod 644 {} \;
+    chmod 755 "$PKG_DIR/DEBIAN/postinst" "$PKG_DIR/DEBIAN/prerm"
+    if [ -d "$PKG_DIR/usr/local/lib/nux" ]; then
+        find "$PKG_DIR/usr/local/lib/nux" -type f -executable -exec chmod 755 {} \;
+    fi
+
     if command -v dpkg-deb &>/dev/null; then
-        dpkg-deb --build "$PKG_DIR"
-        printf "       %bâœ”%b  Built %b${PKG_DIR}.deb%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
-        echo "         Install with: sudo dpkg -i ${PKG_DIR}.deb"
+        dpkg-deb --build "$PKG_DIR" "${SCRIPT_DIR}/${PKG_NAME}.deb"
+        printf "       %bâœ”%b  Built %b${PKG_NAME}.deb%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+        echo "         Install with: sudo dpkg -i ${PKG_NAME}.deb"
     else
         nux_error "dpkg-deb not found. Run this on a Debian/Ubuntu system."
     fi
@@ -514,10 +511,58 @@ EOF
 
     if command -v rpmbuild &>/dev/null; then
         rpmbuild -ba rpmbuild/SPECS/nux.spec --define "_topdir $(pwd)/rpmbuild"
-        printf "       %bâœ”%b  RPM built in %brpmbuild/RPMS/%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
+        printf "       %b✓%b  RPM built in %brpmbuild/RPMS/%b\n" "$GREEN" "$NC" "$CYAN" "$NC"
     else
         nux_error "rpmbuild not found. Run this on a Fedora/RHEL system."
     fi
+}
+
+do_build_from_source() {
+    nux_print "Compiling" "$MAGENTA" "Nux from source using Rust/cargo..."
+
+    # Find cargo
+    CARGO_BIN=""
+    if command -v cargo &>/dev/null; then
+        CARGO_BIN="cargo"
+    elif [ -f "$HOME/.cargo/bin/cargo" ]; then
+        CARGO_BIN="$HOME/.cargo/bin/cargo"
+    else
+        nux_error "cargo not found. Install Rust from https://rustup.rs first."
+        exit 1
+    fi
+
+    # Locate the source
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    SRC_DIR="$(realpath "$SCRIPT_DIR/../../nux/nux_oleg/nux_dist" 2>/dev/null || echo '')"
+    if [ ! -f "$SRC_DIR/Cargo.toml" ]; then
+        nux_error "Source directory not found at: $SRC_DIR"
+        nux_error "Run this installer from within the Nux_Lang repository."
+        exit 1
+    fi
+
+    nux_print "Building" "$CYAN" "$SRC_DIR → release binary..."
+    (cd "$SRC_DIR" && "$CARGO_BIN" build --release -q) || { nux_error "Cargo build failed."; exit 1; }
+
+    BUILT_BIN="$SRC_DIR/target/release/nux"
+    if [ ! -f "$BUILT_BIN" ]; then
+        nux_error "Build output not found at $BUILT_BIN"
+        exit 1
+    fi
+
+    # Install to standard location
+    mkdir -p "$INSTALL_DIR"
+    chmod 755 "$INSTALL_DIR"
+    cp "$BUILT_BIN" "$INSTALL_DIR/nux"
+    chmod 755 "$INSTALL_DIR/nux"
+
+    # Symlink to /usr/local/bin/nux
+    ln -snf "$INSTALL_DIR" "$CURRENT_LINK"
+    mkdir -p "$(dirname "$BIN_LINK")"
+    ln -snf "$CURRENT_LINK/nux" "$BIN_LINK"
+
+    echo "$VERSION" > "$INSTALL_DIR/.nux_installed"
+
+    nux_finish "installed" "nux $(nux --version 2>/dev/null || echo '(built from source)') → $BIN_LINK"
 }
 
 # ============================================================================
@@ -545,6 +590,7 @@ case "$choice" in
     5) if is_installed; then do_uninstall; else nux_error "Not installed."; fi ;;
     6) do_build_deb ;;
     7) do_build_rpm ;;
+    8) do_build_from_source ;;
     0) echo "  Exiting."; exit 0 ;;
     *) nux_error "Invalid choice."; exit 1 ;;
 esac

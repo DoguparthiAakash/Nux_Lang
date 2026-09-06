@@ -1,0 +1,33 @@
+# std::gpu::ptx
+# Nvidia GPU specific compute intrinsics and device memory mapping.
+
+class DeviceBuffer {
+    var device_ptr;
+    var size;
+    
+    func init(host_data) {
+        # Lowered to ExternCall: cudaMalloc and cudaMemcpy
+    }
+    
+    func read_to_host() {
+        # Lowered to ExternCall: cudaMemcpy (DeviceToHost)
+    }
+}
+
+# The @[gpu_kernel] macro signals to the compiler that this function
+# must be compiled by the PTX backend, not the standard CPU backend.
+# 
+# Example usage:
+# @[gpu_kernel]
+# func vector_add(a_ptr, b_ptr, c_ptr) {
+#     var idx = thread_idx_x();
+#     c_ptr[idx] = a_ptr[idx] + b_ptr[idx];
+# }
+
+func thread_idx_x() {
+    # Emits PTX instruction `%tid.x`
+}
+
+func block_idx_x() {
+    # Emits PTX instruction `%ctaid.x`
+}

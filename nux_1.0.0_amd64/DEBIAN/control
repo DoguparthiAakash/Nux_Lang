@@ -1,0 +1,10 @@
+Package: nux
+Version: 1.0.0
+Section: devel
+Priority: optional
+Architecture: amd64
+Maintainer: NuxLang Team <nux@nuxlang.org>
+Homepage: https://github.com/DoguparthiAakash/Nux_Lang
+Description: Nux Programming Language
+ An incredibly fast, lightweight, Write-Once-Run-Anywhere
+ programming language with built-in ML, quantum, and 3D support.

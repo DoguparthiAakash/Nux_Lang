@@ -1,0 +1,23 @@
+# std::tensor
+# NumPy-equivalent N-Dimensional arrays for Nux.
+# Supports automatic broadcasting and zero-copy slicing.
+# Uses Native FFI to bind to OpenBLAS or CUDA under the hood!
+
+class Tensor {
+    var shape;
+    var data_ptr; # Backed by raw, safe memory (0-byte heap capable)
+    
+    func init(shape_list) {
+        # Allocates memory based on the target (CPU vs GPU)
+    }
+    
+    func add(other_tensor) {
+        # Applies broadcasting rules and delegates to:
+        # 1. Native JIT SIMD loop (VEC_ADD.4s) OR
+        # 2. C FFI OpenBLAS call
+    }
+    
+    func matmul(other_tensor) {
+        # Matrix multiplication
+    }
+}

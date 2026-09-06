@@ -1,0 +1,7 @@
+import "board.nuxg";
+
+func main() {
+    print(12345);
+}
+
+main();

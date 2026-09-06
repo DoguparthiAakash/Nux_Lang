@@ -1,0 +1,13 @@
+# std::crypto::aes
+# Authenticated Symmetric Encryption (AES-256-GCM)
+# Bound securely to vetted Native FFI.
+
+func encrypt(key_bytes, nonce_bytes, plaintext_bytes) {
+    # Lowered to ExternCall for libsodium crypto_aead_aes256gcm_encrypt
+    # Returns (ciphertext_bytes, mac_tag)
+}
+
+func decrypt(key_bytes, nonce_bytes, ciphertext_bytes, mac_tag) {
+    # Lowered to ExternCall for libsodium crypto_aead_aes256gcm_decrypt
+    # Aborts or returns an Error if the MAC tag is invalid!
+}

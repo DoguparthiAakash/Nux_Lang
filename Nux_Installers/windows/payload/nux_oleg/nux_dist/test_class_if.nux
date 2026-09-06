@@ -1,0 +1,12 @@
+class Test {
+    var ptr;
+    func test_func(t) {
+        if (1 > 0) {
+            cux_call(1, "tensor_matmul", t.ptr);
+        } else {
+            print("false\n");
+        }
+    }
+}
+var t = new Test;
+t.test_func(t);

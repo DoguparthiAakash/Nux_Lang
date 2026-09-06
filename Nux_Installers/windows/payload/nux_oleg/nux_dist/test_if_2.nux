@@ -1,0 +1,8 @@
+func test_func() {
+    if (1 > 0) {
+        print("true\n");
+    } else {
+        print("false\n");
+    }
+}
+test_func();

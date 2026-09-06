@@ -1,0 +1,1 @@
+int x = 5 + 7; printf("Hello from C FFI!\n"); printf("5 + 7 = %d\n", x); return 0;

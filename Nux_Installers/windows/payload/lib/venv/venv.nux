@@ -1,0 +1,286 @@
+# Nux venv — Virtual Environment for Nux
+# Isolated project environments: own packages, own LAG runtimes, own settings.
+# Inspired by Python venv — same concepts, Nux-native implementation.
+#
+# Commands (via bonfort):
+#   bonfort venv create <name>        Create a new venv
+#   bonfort venv activate <name>      Print activation instructions
+#   bonfort venv deactivate           Print deactivation instructions
+#   bonfort venv list                 List all venvs
+#   bonfort venv remove <name>        Delete a venv
+#   bonfort venv info                 Show active venv info
+#   bonfort venv clone <src> <dst>    Clone a venv
+#
+# Usage pattern (same as Python):
+#   bonfort venv create myenv
+#   source .nux/envs/myenv/activate   (or: source $(bonfort venv activate myenv))
+#   bonfort install nux-json          (installs INTO myenv, not system)
+#   bonfort lang add python@3.13      (installs LAG runtime INTO myenv)
+#   nux main.nux                      (runs with myenv isolated packages)
+#   bonfort venv deactivate
+
+import nux.core.types;
+import nux.core.fs;
+import nux.core.process;
+import nux.core.env;
+
+# ======== VENV STRUCTURE ========
+# ~/.nux/envs/<name>/
+#   ├── nux-env.toml      Venv metadata (name, created, nux version)
+#   ├── activate          Shell activation script (bash/zsh)
+#   ├── activate.fish     Fish shell activation
+#   ├── deactivate        Shared deactivate (injected into activate)
+#   ├── packages/         Installed Nux packages (isolated)
+#   ├── runtimes/         LAG language runtimes (isolated)
+#   │   ├── python/
+#   │   ├── rust/
+#   │   └── ...
+#   ├── cache/            Download cache (isolated)
+#   ├── imports.xml       Default imports for this venv
+#   └── Bonfort.lock      Locked dependency versions
+
+class VenvMeta {
+    var name: String;
+    var path: String;          # absolute path to venv dir
+    var nux_version: String;
+    var created_at: String;
+    var python_path: Option[String];  # bundled Python (optional)
+    var active: bool;
+
+    func load(venv_dir: &str) -> Option[@own VenvMeta] {
+        var toml = venv_dir.to_owned() + "/nux-env.toml";
+        if (!fs.exists(&toml)) { return Option.none(); }
+        var lines = fs.read_lines(&toml);
+        var name = String.new();
+        var created = String.new();
+        var ver = String.new();
+        for (var i = 0; i < lines.len; i += 1) {
+            var line = lines.get(i).unwrap().trim();
+            if (line.starts_with("name")) { name = line.split('=').get(1).unwrap().trim().trim_quotes().to_owned(); }
+            if (line.starts_with("created")) { created = line.split('=').get(1).unwrap().trim().trim_quotes().to_owned(); }
+            if (line.starts_with("nux_version")) { ver = line.split('=').get(1).unwrap().trim().trim_quotes().to_owned(); }
+        }
+        return Option.some(VenvMeta {
+            name: name, path: String.from(venv_dir),
+            nux_version: ver, created_at: created,
+            python_path: Option.none(), active: false
+        });
+    }
+
+    func is_valid(venv_dir: &str) -> bool {
+        return fs.exists(&(String.from(venv_dir) + "/nux-env.toml")) &&
+               fs.exists(&(String.from(venv_dir) + "/activate"));
+    }
+}
+
+# ======== VENV MANAGER ========
+class VenvManager {
+    var envs_dir: String;    # ~/.nux/envs/
+    var active_venv: Option[String];  # name of active venv (from NUX_VENV env var)
+
+    func new() -> @own VenvManager {
+        var home = env.home();
+        var ed = home + "/.nux/envs";
+        var active = env.get("NUX_VENV");
+        return VenvManager { envs_dir: ed, active_venv: active };
+    }
+
+    func venv_dir(&self, name: &str) -> String {
+        return self.envs_dir.clone() + "/" + name;
+    }
+
+    # bonfort venv create <name>
+    func create(&self, name: &str) -> Result[String, String] {
+        var vdir = self.venv_dir(name);
+        if (fs.exists(&vdir)) {
+            return Result.err_val(String.from("venv '") + name + "' already exists at " + &vdir);
+        }
+        # Create directory structure
+        fs.mkdir_all(&vdir);
+        fs.mkdir_all(&(vdir.clone() + "/packages"));
+        fs.mkdir_all(&(vdir.clone() + "/runtimes"));
+        fs.mkdir_all(&(vdir.clone() + "/cache"));
+        fs.mkdir_all(&(vdir.clone() + "/bin"));
+        # Write metadata
+        self.write_meta(&vdir, name);
+        # Write activate script
+        self.write_activate(&vdir, name);
+        # Write activate.fish
+        self.write_activate_fish(&vdir, name);
+        # Write default imports.xml
+        self.write_default_imports(&vdir, name);
+        # Write empty Bonfort.lock
+        fs.write_string(&(vdir.clone() + "/Bonfort.lock"), "# Bonfort.lock\nversion = 1\n");
+        return Result.ok_val(vdir);
+    }
+
+    func write_meta(&self, vdir: &str, name: &str) {
+        var ts = time.now_iso();
+        var content = String.from("[venv]\n");
+        content.push_str("name = \""); content.push_str(name); content.push_str("\"\n");
+        content.push_str("nux_version = \"2.0\"\n");
+        content.push_str("created = \""); content.push_str(&ts); content.push_str("\"\n");
+        content.push_str("packages_dir = \"packages\"\n");
+        content.push_str("runtimes_dir = \"runtimes\"\n");
+        fs.write_string(&(String.from(vdir) + "/nux-env.toml"), &content);
+    }
+
+    func write_activate(&self, vdir: &str, name: &str) {
+        # Bash/Zsh activation script (sourced, not executed)
+        var s = String::new();
+        s.push_str("# Nux virtual environment activation\n");
+        s.push_str("# Usage: source "); s.push_str(vdir); s.push_str("/activate\n\n");
+        s.push_str("export NUX_VENV=\""); s.push_str(name); s.push_str("\"\n");
+        s.push_str("export NUX_VENV_DIR=\""); s.push_str(vdir); s.push_str("\"\n");
+        s.push_str("export NUX_PKG_PATH=\""); s.push_str(vdir); s.push_str("/packages\"\n");
+        s.push_str("export NUX_RUNTIME_PATH=\""); s.push_str(vdir); s.push_str("/runtimes\"\n");
+        s.push_str("export NUX_CACHE_DIR=\""); s.push_str(vdir); s.push_str("/cache\"\n");
+        s.push_str("export PATH=\""); s.push_str(vdir); s.push_str("/bin:$PATH\"\n\n");
+        # Prompt marker
+        s.push_str("_NUX_OLD_PS1=\"$PS1\"\n");
+        s.push_str("export PS1=\"(nux:"); s.push_str(name); s.push_str(") $PS1\"\n\n");
+        # deactivate function
+        s.push_str("deactivate() {\n");
+        s.push_str("    unset NUX_VENV NUX_VENV_DIR NUX_PKG_PATH NUX_RUNTIME_PATH NUX_CACHE_DIR\n");
+        s.push_str("    export PATH=\"$(echo $PATH | sed \\\"s|"); s.push_str(vdir); s.push_str("/bin:||\\\")\"\n");
+        s.push_str("    export PS1=\"$_NUX_OLD_PS1\"\n");
+        s.push_str("    unset _NUX_OLD_PS1\n");
+        s.push_str("    unset -f deactivate\n");
+        s.push_str("}\n\n");
+        s.push_str("echo \"[nux] Activated venv '"); s.push_str(name); s.push_str("' — run 'deactivate' to exit\"\n");
+        fs.write_string(&(String.from(vdir) + "/activate"), &s);
+    }
+
+    func write_activate_fish(&self, vdir: &str, name: &str) {
+        var s = String::new();
+        s.push_str("# Nux venv activation for Fish shell\n");
+        s.push_str("set -gx NUX_VENV \""); s.push_str(name); s.push_str("\"\n");
+        s.push_str("set -gx NUX_VENV_DIR \""); s.push_str(vdir); s.push_str("\"\n");
+        s.push_str("set -gx NUX_PKG_PATH \""); s.push_str(vdir); s.push_str("/packages\"\n");
+        s.push_str("set -gx NUX_RUNTIME_PATH \""); s.push_str(vdir); s.push_str("/runtimes\"\n");
+        s.push_str("set -gx fish_prompt_suffix \"(nux:"); s.push_str(name); s.push_str(") \"\n");
+        s.push_str("fish_add_path \""); s.push_str(vdir); s.push_str("/bin\"\n");
+        s.push_str("echo \"[nux] Activated venv '"); s.push_str(name); s.push_str("'\"\n");
+        fs.write_string(&(String.from(vdir) + "/activate.fish"), &s);
+    }
+
+    func write_default_imports(&self, vdir: &str, name: &str) {
+        var xml = String::new();
+        xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        xml.push_str("<nux-imports version=\"2.0\">\n");
+        xml.push_str("  <project><name>"); xml.push_str(name); xml.push_str("</name></project>\n");
+        xml.push_str("  <nux-libs>\n");
+        xml.push_str("    <import pkg=\"nux.core.types\"  as=\"types\"  auto=\"true\" />\n");
+        xml.push_str("    <import pkg=\"nux.core.io\"     as=\"io\"     auto=\"true\" />\n");
+        xml.push_str("  </nux-libs>\n");
+        xml.push_str("  <lag-bindings/>\n");
+        xml.push_str("  <packages/>\n");
+        xml.push_str("</nux-imports>\n");
+        fs.write_string(&(String.from(vdir) + "/imports.xml"), &xml);
+    }
+
+    # bonfort venv list
+    func list(&self) -> Vec[String] {
+        var result = Vec.new();
+        if (!fs.exists(&self.envs_dir)) { return result; }
+        var entries = fs.list_dir(&self.envs_dir);
+        for (var i = 0; i < entries.len; i += 1) {
+            var entry = entries.get(i).unwrap();
+            var vdir = self.envs_dir.clone() + "/" + &entry;
+            if (VenvMeta.is_valid(&vdir)) {
+                result.push(entry);
+            }
+        }
+        return result;
+    }
+
+    # bonfort venv remove <name>
+    func remove(&self, name: &str) -> Result[bool, String] {
+        var vdir = self.venv_dir(name);
+        if (!fs.exists(&vdir)) {
+            return Result.err_val(String.from("venv not found: ") + name);
+        }
+        if (!VenvMeta.is_valid(&vdir)) {
+            return Result.err_val(String.from("Not a valid Nux venv: ") + &vdir);
+        }
+        # Safety: never delete outside ~/.nux/envs/
+        if (!vdir.starts_with(&self.envs_dir)) {
+            return Result.err_val(String.from("Safety error: path outside envs dir"));
+        }
+        fs.remove_all(&vdir);
+        return Result.ok_val(true);
+    }
+
+    # bonfort venv clone <src> <dst>
+    func clone(&self, src: &str, dst: &str) -> Result[String, String] {
+        var src_dir = self.venv_dir(src);
+        var dst_dir = self.venv_dir(dst);
+        if (!fs.exists(&src_dir)) { return Result.err_val(String.from("source venv not found: ") + src); }
+        if (fs.exists(&dst_dir)) { return Result.err_val(String.from("destination already exists: ") + dst); }
+        fs.copy_dir(&src_dir, &dst_dir);
+        # Update metadata name and activation scripts
+        self.write_meta(&dst_dir, dst);
+        self.write_activate(&dst_dir, dst);
+        self.write_activate_fish(&dst_dir, dst);
+        return Result.ok_val(dst_dir);
+    }
+
+    # bonfort venv info
+    func info(&self) {
+        var active = env.get("NUX_VENV");
+        if (active.is_none()) {
+            println("[venv] No active Nux venv. Run: source ~/.nux/envs/<name>/activate");
+            return;
+        }
+        var vdir = env.get("NUX_VENV_DIR").unwrap_or(self.venv_dir(&active.unwrap()));
+        println("[venv] Active:   " + &active.unwrap());
+        println("[venv] Location: " + &vdir);
+        println("[venv] Packages: " + &vdir + "/packages");
+        println("[venv] Runtimes: " + &vdir + "/runtimes");
+        # List installed packages
+        var pkgs = fs.list_dir(&(vdir.clone() + "/packages"));
+        println("[venv] Installed packages: " + int_to_str(pkgs.len));
+        for (var i = 0; i < pkgs.len; i += 1) {
+            println("  " + pkgs.get(i).unwrap());
+        }
+    }
+
+    # Export venv as a portable archive (.nxenv)
+    # Allows sharing complete portable project environments
+    func export(&self, name: &str, out: &str) -> Result[String, String] {
+        var vdir = self.venv_dir(name);
+        if (!fs.exists(&vdir)) { return Result.err_val(String.from("venv not found: ") + name); }
+        var output = if (out.is_empty()) { name.to_owned() + ".nxenv" } else { String.from(out) };
+        # Pack as tar.zst for maximum portability + compression
+        var r = process.run_wait("tar", &["-cf", "-", "-C", &self.envs_dir, name]);
+        if (r != 0) { return Result.err_val(String.from("tar failed")); }
+        println("[venv] Exported " + name + " -> " + &output);
+        return Result.ok_val(output);
+    }
+
+    # Import a .nxenv archive
+    func import_env(&self, path: &str) -> Result[String, String] {
+        if (!fs.exists(path)) { return Result.err_val(String.from("file not found: ") + path); }
+        fs.mkdir_all(&self.envs_dir);
+        var r = process.run_wait("tar", &["-xf", path, "-C", &self.envs_dir]);
+        if (r != 0) { return Result.err_val(String.from("extraction failed")); }
+        return Result.ok_val(String.from("imported into ") + &self.envs_dir);
+    }
+
+    # Check if a venv is active
+    func is_active(&self) -> bool { return env.get("NUX_VENV").is_some(); }
+
+    # Get active package dir (for install commands)
+    func active_pkg_dir(&self) -> String {
+        return env.get("NUX_PKG_PATH")
+            .unwrap_or(env.home() + "/.nux/packages");
+    }
+
+    # Get active runtime dir (for LAG runtime installs)
+    func active_runtime_dir(&self) -> String {
+        return env.get("NUX_RUNTIME_PATH")
+            .unwrap_or(env.home() + "/.nux/runtimes");
+    }
+}
+
+println("Nux venv module loaded.");

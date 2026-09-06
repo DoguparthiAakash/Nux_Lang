@@ -1,0 +1,40 @@
+import "nux.memory";
+import "nux.io";
+import "sys";
+
+func main() {
+    println("--- Memory Limit Test ---");
+    
+    # 1. Set Limit
+    # "512 bytes" -> 512
+    # Note: Malloc overhead is 16 bytes per block.
+    # 512 bytes allows roughly 512 / (16 bytes payload + 16 header) = 16 blocks?
+    
+    Mem_set_limit("512 bytes");
+    print("Limit Set To: "); print(Mem_get_limit()); println(" bytes");
+    
+    # 2. Allocate within limit
+    println("Allocating 128 bytes...");
+    var p1 = Mem_malloc(128); 
+    if (p1 > 0) { println("OK"); }
+    
+    print("Used: "); print(Mem_get_used()); println(" bytes");
+    
+    # 3. Allocate more
+    println("Allocating 256 bytes...");
+    var p2 = Mem_malloc(256);
+    if (p2 > 0) { println("OK"); }
+    
+    print("Used: "); print(Mem_get_used()); println(" bytes");
+    
+    # 4. Exceed Limit
+    # Total Used: 144 + 272 = 416 bytes
+    # Available: 512 - 416 = 96 bytes
+    # Request 100 bytes -> Should Fail (Panic)
+    
+    println("Allocating 100 bytes (Expect Fail)...");
+    # We catch panic? No, Panic halts VM. 
+    # For test, we expect panic.
+    var p3 = Mem_malloc(100);
+    println("Success? (Should not see this)");
+}

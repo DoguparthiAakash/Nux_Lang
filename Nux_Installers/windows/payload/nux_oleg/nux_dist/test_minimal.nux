@@ -1,0 +1,10 @@
+# Minimal tensor test
+import "tensor";
+
+var v = tensor_zeros_1d(3);
+print(tensor_size(v));
+print(arr_len(v));
+print(arr_get(v, 0));
+print(arr_get(v, 1));
+print(arr_get(v, 2));
+print(arr_get(v, 3));

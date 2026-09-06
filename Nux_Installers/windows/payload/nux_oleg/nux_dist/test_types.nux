@@ -1,0 +1,16 @@
+class Node {
+    var val: int;
+    func init(v) {
+        self.val = v;
+    }
+    func print_val() {
+        print(self.val);
+    }
+}
+
+var arr = arr_new(5);
+var n = new Node(42);
+arr_set(arr, 0, n);
+
+var retrieved: Node = arr_get(arr, 0);
+retrieved.print_val();

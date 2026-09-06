@@ -1,0 +1,12 @@
+# std.nux - Nux Standard Library Prelude
+# Provides access to all core Nux functionalities out of the box, similar to Rust's std prelude.
+
+import "core"
+import "alloc"
+import "math"
+import "string"
+import "io"
+import "tensor"
+import "gpu"
+import "dl"
+import "ffi"

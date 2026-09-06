@@ -1,0 +1,322 @@
+// Nux Advanced Threading & Concurrency
+// Multiple threading models for maximum performance
+
+// Thread Pool with Work Stealing
+class ThreadPool {
+    var workers: [Worker];
+    var global_queue: ConcurrentQueue<Task>;
+    var num_threads: int;
+    
+    func new(num_threads: int) -> ThreadPool {
+        var pool = ThreadPool {
+            num_threads: num_threads,
+            global_queue: ConcurrentQueue.new()
+        };
+        
+        // Spawn worker threads
+        for (var i = 0; i < num_threads; i++) {
+            var worker = Worker.spawn(i, pool.global_queue);
+            pool.workers.push(worker);
+        }
+        
+        return pool;
+    }
+    
+    // Submit task to pool
+    func submit<T>(task: func() -> T) -> Future<T> {
+        var future = Future<T>.new();
+        var wrapped = Task {
+            execute: () => {
+                var result = task();
+                future.complete(result);
+            }
+        };
+        
+        this.global_queue.push(wrapped);
+        return future;
+    }
+    
+    // Parallel for loop
+    func parallel_for(start: int, end: int, body: func(int) -> void) {
+        var chunk_size = (end - start) / this.num_threads;
+        var futures: [Future<void>] = [];
+        
+        for (var i = 0; i < this.num_threads; i++) {
+            var chunk_start = start + i * chunk_size;
+            var chunk_end = (i == this.num_threads - 1) ? end : chunk_start + chunk_size;
+            
+            var future = this.submit(() => {
+                for (var j = chunk_start; j < chunk_end; j++) {
+                    body(j);
+                }
+            });
+            
+            futures.push(future);
+        }
+        
+        // Wait for all chunks
+        Future.wait_all(futures);
+    }
+    
+    // Parallel map
+    func parallel_map<T, U>(items: [T], f: func(T) -> U) -> [U] {
+        var results: [U] = Array.with_capacity(items.length);
+        
+        this.parallel_for(0, items.length, (i) => {
+            results[i] = f(items[i]);
+        });
+        
+        return results;
+    }
+    
+    // Parallel reduce
+    func parallel_reduce<T>(items: [T], init: T, f: func(T, T) -> T) -> T {
+        var chunk_size = items.length / this.num_threads;
+        var partial_results: [T] = [];
+        
+        // Parallel reduction in chunks
+        var futures: [Future<T>] = [];
+        for (var i = 0; i < this.num_threads; i++) {
+            var chunk_start = i * chunk_size;
+            var chunk_end = (i == this.num_threads - 1) ? items.length : chunk_start + chunk_size;
+            
+            var future = this.submit(() => {
+                var acc = init;
+                for (var j = chunk_start; j < chunk_end; j++) {
+                    acc = f(acc, items[j]);
+                }
+                return acc;
+            });
+            
+            futures.push(future);
+        }
+        
+        // Collect partial results
+        for (var future in futures) {
+            partial_results.push(future.wait());
+        }
+        
+        // Final reduction
+        var result = init;
+        for (var partial in partial_results) {
+            result = f(result, partial);
+        }
+        
+        return result;
+    }
+}
+
+// Worker with local queue (work stealing)
+class Worker {
+    var id: int;
+    var local_queue: Deque<Task>;
+    var global_queue: ConcurrentQueue<Task>;
+    var thread: Thread;
+    
+    func spawn(id: int, global_queue: ConcurrentQueue<Task>) -> Worker {
+        var worker = Worker {
+            id: id,
+            local_queue: Deque.new(),
+            global_queue: global_queue
+        };
+        
+        worker.thread = Thread.spawn(() => worker.run());
+        return worker;
+    }
+    
+    func run() {
+        while (true) {
+            // Try local queue first
+            if (var task = this.local_queue.pop_bottom()) {
+                task.execute();
+                continue;
+            }
+            
+            // Try global queue
+            if (var task = this.global_queue.pop()) {
+                task.execute();
+                continue;
+            }
+            
+            // Steal from other workers
+            if (var task = this.steal_work()) {
+                task.execute();
+                continue;
+            }
+            
+            // No work, sleep briefly
+            Thread.sleep_ms(1);
+        }
+    }
+    
+    func steal_work() -> Option<Task> {
+        // Try to steal from random worker
+        var victim = Random.range(0, num_workers);
+        return workers[victim].local_queue.pop_top();
+    }
+}
+
+// Fork-Join Framework
+class ForkJoinPool {
+    var pool: ThreadPool;
+    
+    func new(num_threads: int) -> ForkJoinPool {
+        return ForkJoinPool { pool: ThreadPool.new(num_threads) };
+    }
+    
+    // Fork-join task
+    func fork_join<T>(task: func() -> T) -> T {
+        if (should_fork()) {
+            // Fork: execute in parallel
+            var future = this.pool.submit(task);
+            return future.wait();
+        } else {
+            // Execute sequentially
+            return task();
+        }
+    }
+    
+    // Parallel quicksort using fork-join
+    func quicksort<T>(arr: [T]) -> [T] {
+        if (arr.length <= 1) return arr;
+        
+        var pivot = arr[arr.length / 2];
+        var (left, right) = partition(arr, pivot);
+        
+        if (arr.length > 1000) {
+            // Fork: sort in parallel
+            var (sorted_left, sorted_right) = fork_join_pair(
+                () => this.quicksort(left),
+                () => this.quicksort(right)
+            );
+            return sorted_left + [pivot] + sorted_right;
+        } else {
+            // Sequential for small arrays
+            return quicksort_sequential(arr);
+        }
+    }
+}
+
+// Green Threads (M:N threading)
+class GreenThreadScheduler {
+    var os_threads: [OSThread];
+    var green_threads: ConcurrentQueue<GreenThread>;
+    var num_os_threads: int;
+    
+    func new(num_os_threads: int) -> GreenThreadScheduler {
+        var scheduler = GreenThreadScheduler {
+            num_os_threads: num_os_threads,
+            green_threads: ConcurrentQueue.new()
+        };
+        
+        // Spawn OS threads
+        for (var i = 0; i < num_os_threads; i++) {
+            var thread = OSThread.spawn(() => scheduler.run_scheduler());
+            scheduler.os_threads.push(thread);
+        }
+        
+        return scheduler;
+    }
+    
+    // Spawn green thread
+    func spawn(f: func() -> void) -> GreenThreadHandle {
+        var green = GreenThread.new(f);
+        this.green_threads.push(green);
+        return GreenThreadHandle { id: green.id };
+    }
+    
+    // Scheduler loop
+    func run_scheduler() {
+        while (true) {
+            if (var green = this.green_threads.pop()) {
+                // Execute green thread
+                green.resume();
+                
+                // If not finished, re-queue
+                if (!green.finished) {
+                    this.green_threads.push(green);
+                }
+            } else {
+                Thread.yield();
+            }
+        }
+    }
+}
+
+// Async/Await Runtime
+class AsyncRuntime {
+    var executor: ThreadPool;
+    var reactor: Reactor;  // Event loop
+    
+    func new() -> AsyncRuntime {
+        return AsyncRuntime {
+            executor: ThreadPool.new(num_cpus()),
+            reactor: Reactor.new()
+        };
+    }
+    
+    // Spawn async task
+    func spawn<T>(future: Future<T>) -> JoinHandle<T> {
+        var handle = JoinHandle<T>.new();
+        
+        this.executor.submit(() => {
+            var result = future.await();
+            handle.complete(result);
+        });
+        
+        return handle;
+    }
+    
+    // Block on future
+    func block_on<T>(future: Future<T>) -> T {
+        return future.await();
+    }
+}
+
+// Lock-Free Data Structures
+class LockFreeStack<T> {
+    var head: Atomic<Node<T>>;
+    
+    func push(value: T) {
+        var new_node = Node<T>.new(value);
+        
+        while (true) {
+            var old_head = this.head.load();
+            new_node.next = old_head;
+            
+            if (this.head.compare_and_swap(old_head, new_node)) {
+                return;
+            }
+        }
+    }
+    
+    func pop() -> Option<T> {
+        while (true) {
+            var old_head = this.head.load();
+            if (old_head == null) return None;
+            
+            var new_head = old_head.next;
+            
+            if (this.head.compare_and_swap(old_head, new_head)) {
+                return Some(old_head.value);
+            }
+        }
+    }
+}
+
+// Example: Parallel compilation
+func parallel_compile_example() {
+    var pool = ThreadPool.new(num_threads: 16);
+    
+    var files = ["file1.nux", "file2.nux", "file3.nux", ...];
+    
+    // Compile all files in parallel
+    var compiled = pool.parallel_map(files, (file) => {
+        return compile_file(file);
+    });
+    
+    // Link in parallel
+    var binary = pool.parallel_reduce(compiled, empty_binary(), (a, b) => {
+        return link(a, b);
+    });
+}

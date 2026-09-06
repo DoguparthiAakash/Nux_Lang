@@ -1,0 +1,422 @@
+[38;5;242m  issue #[0m[38;5;220m1[0m ┬╖ [38;5;242mUnknown class 'File'[0m
+[38;5;242m  issue #[0m[38;5;220m2[0m ┬╖ [38;5;242mUnknown class 'File'[0m
+[38;5;242m  issue #[0m[38;5;220m3[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m4[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m5[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m6[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m7[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m8[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m9[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m10[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m11[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m12[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m13[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m14[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m15[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m16[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m17[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m18[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m19[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m20[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m21[0m ┬╖ [38;5;242mUnknown class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m22[0m ┬╖ [38;5;242mOnly functions/fields allowed in classes for now[0m
+[38;5;242m  issue #[0m[38;5;220m23[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m24[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m25[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m26[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m27[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m28[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m29[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m30[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m31[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m32[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m33[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m34[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m35[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m36[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m37[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m38[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m39[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m40[0m ┬╖ [38;5;242mUndefined variable 'is_ws'[0m
+[38;5;242m  issue #[0m[38;5;220m41[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m42[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m43[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m44[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m45[0m ┬╖ [38;5;242mUndefined variable 'hit_nl'[0m
+[38;5;242m  issue #[0m[38;5;220m46[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m47[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m48[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m49[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m50[0m ┬╖ [38;5;242mUndefined variable 'first'[0m
+[38;5;242m  issue #[0m[38;5;220m51[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m52[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m53[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m54[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m55[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m56[0m ┬╖ [38;5;242mUndefined variable 'is_hex'[0m
+[38;5;242m  issue #[0m[38;5;220m57[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m58[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m59[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m60[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m61[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m62[0m ┬╖ [38;5;242mUndefined variable 'ok'[0m
+[38;5;242m  issue #[0m[38;5;220m63[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m64[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m65[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m66[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m67[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m68[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m69[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m70[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m71[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m72[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m73[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m74[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m75[0m ┬╖ [38;5;242mUndefined variable 'is_bin'[0m
+[38;5;242m  issue #[0m[38;5;220m76[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m77[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m78[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m79[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m80[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m81[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m82[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m83[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m84[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m85[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m86[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m87[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m88[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m89[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m90[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m91[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m92[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m93[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m94[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m95[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m96[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m97[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m98[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m99[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m100[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m101[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m102[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m103[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m104[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m105[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m106[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m107[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m108[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m109[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m110[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m111[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m112[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m113[0m ┬╖ [38;5;242mUndefined variable 'start'[0m
+[38;5;242m  issue #[0m[38;5;220m114[0m ┬╖ [38;5;242mUndefined variable 'i'[0m
+[38;5;242m  issue #[0m[38;5;220m115[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m116[0m ┬╖ [38;5;242mUndefined variable 'd'[0m
+[38;5;242m  issue #[0m[38;5;220m117[0m ┬╖ [38;5;242mUndefined variable 'd'[0m
+[38;5;242m  issue #[0m[38;5;220m118[0m ┬╖ [38;5;242mUndefined variable 'd'[0m
+[38;5;242m  issue #[0m[38;5;220m119[0m ┬╖ [38;5;242mUndefined variable 'in_frac'[0m
+[38;5;242m  issue #[0m[38;5;220m120[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m121[0m ┬╖ [38;5;242mUndefined variable 'frac_part' (use 'var frac_part' to 
+[38;5;242m  issue #[0m[38;5;220m122[0m ┬╖ [38;5;242mUndefined variable 'frac_div' (use 'var frac_div' to 
+[38;5;242m  issue #[0m[38;5;220m123[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m124[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m125[0m ┬╖ [38;5;242mUndefined variable 'i'[0m
+[38;5;242m  issue #[0m[38;5;220m126[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m127[0m ┬╖ [38;5;242mUndefined variable 'int_part'[0m
+[38;5;242m  issue #[0m[38;5;220m128[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m129[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m130[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m131[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m132[0m ┬╖ [38;5;242mUndefined variable 'start'[0m
+[38;5;242m  issue #[0m[38;5;220m133[0m ┬╖ [38;5;242mUndefined variable 'i'[0m
+[38;5;242m  issue #[0m[38;5;220m134[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m135[0m ┬╖ [38;5;242mUndefined variable 'd'[0m
+[38;5;242m  issue #[0m[38;5;220m136[0m ┬╖ [38;5;242mUndefined variable 'i'[0m
+[38;5;242m  issue #[0m[38;5;220m137[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m138[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m139[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m140[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m141[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m142[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m143[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m144[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m145[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m146[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m147[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m148[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m149[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m150[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m151[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m152[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m153[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m154[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m155[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m156[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m157[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m158[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m159[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m160[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m161[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m162[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m163[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m164[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m165[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m166[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m167[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m168[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m169[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m170[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m171[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m172[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m173[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m174[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m175[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m176[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m177[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m178[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m179[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m180[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m181[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m182[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m183[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m184[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m185[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m186[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m187[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m188[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m189[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m190[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m191[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m192[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m193[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m194[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m195[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m196[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m197[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m198[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m199[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m200[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m201[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m202[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m203[0m ┬╖ [38;5;242mUndefined variable 'nx'[0m
+[38;5;242m  issue #[0m[38;5;220m204[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m205[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m206[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m207[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m208[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m209[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m210[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m211[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m212[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m213[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m214[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m215[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m216[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m217[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m218[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m219[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m220[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m221[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m222[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m223[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m224[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m225[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m226[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m227[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m228[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m229[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m230[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m231[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m232[0m ┬╖ [38;5;242mUndefined variable 'hit_nl'[0m
+[38;5;242m  issue #[0m[38;5;220m233[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m234[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m235[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m236[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m237[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m238[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m239[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m240[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m241[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m242[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m243[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m244[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m245[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m246[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m247[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m248[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m249[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m250[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m251[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m252[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m253[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m254[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m255[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m256[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m257[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m258[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m259[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m260[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m261[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m262[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m263[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m264[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m265[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m266[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m267[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m268[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m269[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m270[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m271[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m272[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m273[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m274[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m275[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m276[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m277[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m278[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m279[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m280[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m281[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m282[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m283[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m284[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m285[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m286[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m287[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m288[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m289[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m290[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m291[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m292[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m293[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m294[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m295[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m296[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m297[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m298[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m299[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m300[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m301[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m302[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m303[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m304[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m305[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m306[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m307[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m308[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m309[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m310[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m311[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m312[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m313[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m314[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m315[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m316[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m317[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m318[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m319[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m320[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m321[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m322[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m323[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m324[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m325[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m326[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m327[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m328[0m ┬╖ [38;5;242mUndefined variable 'nc'[0m
+[38;5;242m  issue #[0m[38;5;220m329[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m330[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m331[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m332[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m333[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m334[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m335[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m336[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m337[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m338[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m339[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m340[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m341[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m342[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m343[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m344[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m345[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m346[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m347[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m348[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m349[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m350[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m351[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m352[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m353[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m354[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m355[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m356[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m357[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m358[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m359[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m360[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m361[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m362[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m363[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m364[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m365[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m366[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m367[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m368[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m369[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m370[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m371[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m372[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m373[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m374[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m375[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m376[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m377[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m378[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m379[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m380[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m381[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m382[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m383[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m384[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m385[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m386[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m387[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m388[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m389[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m390[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m391[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m392[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m393[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m394[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m395[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m396[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m397[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m398[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m399[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m400[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m401[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m402[0m ┬╖ [38;5;242mUnexpected token at top level: Else[0m
+[38;5;242m  issue #[0m[38;5;220m403[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m404[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m405[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m406[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m407[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m408[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m409[0m ┬╖ [38;5;242mUndefined variable 'c'[0m
+[38;5;242m  issue #[0m[38;5;220m410[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m411[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m412[0m ┬╖ [38;5;242mUndefined variable 'this'[0m
+[38;5;242m  issue #[0m[38;5;220m413[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m414[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m
+[38;5;242m  issue #[0m[38;5;220m415[0m ┬╖ [38;5;242mUndefined class 'Lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m416[0m ┬╖ [38;5;242mUndefined variable 'lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m417[0m ┬╖ [38;5;242mUndefined variable 'lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m418[0m ┬╖ [38;5;242mUndefined variable 't_type'[0m
+[38;5;242m  issue #[0m[38;5;220m419[0m ┬╖ [38;5;242mUndefined variable 't_type'[0m
+[38;5;242m  issue #[0m[38;5;220m420[0m ┬╖ [38;5;242mUndefined variable 'lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m421[0m ┬╖ [38;5;242mUndefined variable 'lexer'[0m
+[38;5;242m  issue #[0m[38;5;220m422[0m ┬╖ [38;5;242mUnexpected token at top level: RBrace[0m

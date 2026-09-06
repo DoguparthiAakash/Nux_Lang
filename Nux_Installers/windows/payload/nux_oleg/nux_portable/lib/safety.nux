@@ -1,0 +1,46 @@
+// safety.nux
+// Nux Standard Library: Automatic Reference Counting and Memory Safety
+
+import "memory.nux"; // Requires base allocation routines
+
+// Arc represents an Atomically Reference Counted smart pointer
+class Arc {
+    var ptr: int;
+    
+    // Allocates memory of given size and sets ref count to 1
+    func new(size: int) -> Arc {
+        var this = alloc(size);
+        // OP_RETAIN: Custom VM instruction 0x85
+        asm {
+            this.ptr;
+            "OP_RETAIN"; // OP_RETAIN
+        }
+        return this;
+    }
+    
+    // Retains an existing pointer
+    func retain() {
+        if (this.ptr > 0) {
+            asm {
+                this.ptr;
+                "OP_RETAIN"; // OP_RETAIN
+            }
+        }
+    }
+    
+    // Releases the pointer (VM will handle free if ref_count hits 0)
+    func release() {
+        if (this.ptr > 0) {
+            asm {
+                this.ptr;
+                "OP_RELEASE"; // OP_RELEASE
+            }
+        }
+    }
+    
+    // Safety check - ensures pointer is not null before access
+    func get() -> int {
+        verify(this.ptr > 0);
+        return this.ptr;
+    }
+}

@@ -1,0 +1,39 @@
+[package]
+name = "my-nux-project"
+version = "0.1.0"
+description = "A Nux project"
+author = "Your Name"
+license = "MIT"
+entry = "main.nux"
+# Package ID convention: com.<org>.<project>
+package-id = "com.example.my-nux-project"
+# Optional: path to custom imports XML
+imports = "imports.xml"
+
+[dependencies]
+# Nux packages from Bonfort registry
+# Format: name = "version_constraint"
+# nux-json   = "^1.2"
+# nux-http   = "^2.0"
+# nux-crypto = "^1.0"
+
+[dev-dependencies]
+# nux-test   = "^1.0"
+
+[lang-dependencies]
+# Languages needed for LAG (OVM will verify on startup)
+# python = ">=3.10"
+# rust   = ">=1.70"
+# java   = ">=17"
+
+[build]
+target   = "nxb"       # nxb | native | wasm
+optimize = true
+debug    = false
+simd     = "auto"      # auto | avx2 | neon | rvv | off
+gc       = "generational"
+jit-threshold = 100
+
+[workspace]
+# Multi-project workspace support
+# members = ["core/", "cli/", "server/"]

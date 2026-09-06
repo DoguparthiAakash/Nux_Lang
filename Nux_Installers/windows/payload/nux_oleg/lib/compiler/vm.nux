@@ -1,0 +1,138 @@
+# Nux Compiler - Virtual Machine
+# Bytecode VM for self-hosting compiler
+
+# ===== VM STATE =====
+
+func vm_create() {
+    return {
+        stack: [],
+        sp: 0,
+        ip: 0,
+        bytecode: [],
+        constants: [],
+        locals: [],
+        callStack: []
+    };
+}
+
+func vm_push(vm, value) {
+    vm.stack[vm.sp] = value;
+    vm.sp = vm.sp + 1;
+}
+
+func vm_pop(vm) {
+    vm.sp = vm.sp - 1;
+    return vm.stack[vm.sp];
+}
+
+func vm_peek(vm, offset) {
+    return vm.stack[vm.sp - 1 - offset];
+}
+
+# ===== VM EXECUTION =====
+
+func vm_execute(vm, gen) {
+    vm.bytecode = gen.bytecode;
+    vm.constants = gen.constants;
+    vm.ip = 0;
+    vm.sp = 0;
+    
+    while (vm.ip < arr_length(vm.bytecode)) {
+        var opcode = vm.bytecode[vm.ip];
+        vm.ip = vm.ip + 1;
+        
+        if (opcode == OP_HALT) {
+            break;
+        } else if (opcode == OP_PUSH) {
+            var constIndex = vm_readShort(vm);
+            vm_push(vm, vm.constants[constIndex]);
+        } else if (opcode == OP_POP) {
+            vm_pop(vm);
+        } else if (opcode == OP_ADD) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a + b);
+        } else if (opcode == OP_SUB) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a - b);
+        } else if (opcode == OP_MUL) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a * b);
+        } else if (opcode == OP_DIV) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a / b);
+        } else if (opcode == OP_EQ) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a == b ? 1 : 0);
+        } else if (opcode == OP_NEQ) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a != b ? 1 : 0);
+        } else if (opcode == OP_LT) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a < b ? 1 : 0);
+        } else if (opcode == OP_GT) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, a > b ? 1 : 0);
+        } else if (opcode == OP_JMP) {
+            var offset = vm_readShort(vm);
+            vm.ip = vm.ip + offset;
+        } else if (opcode == OP_JMP_FALSE) {
+            var offset = vm_readShort(vm);
+            var condition = vm_pop(vm);
+            
+            if (!condition || condition == 0) {
+                vm.ip = vm.ip + offset;
+            }
+        } else if (opcode == OP_CALL) {
+            var address = vm_readShort(vm);
+            var numArgs = vm_readByte(vm);
+            
+            # Save return address
+            arr_push(vm.callStack, {
+                returnAddr: vm.ip,
+                frameStart: vm.sp - numArgs
+            });
+            
+            vm.ip = address;
+        } else if (opcode == OP_RET) {
+            var returnValue = vm_pop(vm);
+            
+            var frame = arr_pop(vm.callStack);
+            vm.ip = frame.returnAddr;
+            vm.sp = frame.frameStart;
+            
+            vm_push(vm, returnValue);
+        } else if (opcode == OP_GET_LOCAL) {
+            var index = vm_readByte(vm);
+            vm_push(vm, vm.locals[index]);
+        } else if (opcode == OP_SET_LOCAL) {
+            var index = vm_readByte(vm);
+            vm.locals[index] = vm_peek(vm, 0);
+        } else if (opcode == OP_PRINT) {
+            var value = vm_pop(vm);
+            print(value);
+        }
+    }
+    
+    return vm.sp > 0 ? vm_peek(vm, 0) : null;
+}
+
+func vm_readByte(vm) {
+    var byte = vm.bytecode[vm.ip];
+    vm.ip = vm.ip + 1;
+    return byte;
+}
+
+func vm_readShort(vm) {
+    var high = vm.bytecode[vm.ip];
+    var low = vm.bytecode[vm.ip + 1];
+    vm.ip = vm.ip + 2;
+    return (high << 8) | low;
+}

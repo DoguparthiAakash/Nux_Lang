@@ -1,0 +1,26 @@
+# This is a single-line comment
+
+# paragraph #
+This is a multi-line comment.
+It can span multiple lines.
+You can write long paragraphs here.
+Everything is ignored until the closing #.
+#
+
+x = 2 ** 3;
+print("2 ** 3 = ");
+println(x);
+
+# paragraph #
+Another multi-line comment
+with multiple lines
+#
+
+y = 10 # 3;
+print("10 # 3 = ");
+println(y);
+
+# Regular single-line comment
+z = x + y;
+print("Sum = ");
+println(z);

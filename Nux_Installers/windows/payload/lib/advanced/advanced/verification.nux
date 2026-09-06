@@ -1,0 +1,250 @@
+# Nux - Formal Verification
+# Prove program correctness at compile time!
+
+# Contracts with pre/postconditions
+func binary_search<T>(arr: [T], target: T) -> Option<int>
+    requires is_sorted(arr)  # Precondition
+    ensures match result {
+        Some(i) => arr[i] == target && i >= 0 && i < arr.length,
+        None => forall i in 0..arr.length: arr[i] != target
+    }  # Postcondition
+{
+    var low: int = 0;
+    var high = arr.length - 1;
+    
+    while (low <= high)
+        invariant low >= 0 && high < arr.length  # Loop invariant
+        invariant forall i in 0..low: arr[i] < target
+        invariant forall i in high+1..arr.length: arr[i] > target
+    {
+        var mid = (low + high) / 2;
+        
+        if (arr[mid] == target) {
+            return Some(mid);
+        } else if (arr[mid] < target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    
+    return None;
+}
+
+# Verified sorting
+func insertion_sort<T>(arr: [T]) -> [T]
+    ensures is_sorted(result)
+    ensures is_permutation(arr, result)
+    ensures result.length == arr.length
+{
+    var result = arr.clone();
+    
+    for (var i: int = 1; i < result.length; i++)
+        invariant is_sorted(result[0..i])
+    {
+        var key = result[i];
+        var j = i - 1;
+        
+        while (j >= 0 && result[j] > key)
+            invariant forall k in 0..j: result[k] <= result[k+1]
+        {
+            result[j + 1] = result[j];
+            j -= 1;
+        }
+        
+        result[j + 1] = key;
+    }
+    
+    return result;
+}
+
+# Ghost variables (exist only for verification)
+func sum_array(arr: [int]) -> int
+    ensures result == ghost_sum(arr, 0, arr.length)
+{
+    ghost var partial_sum: int = 0;  # Only for proof
+    var sum: int = 0;
+    
+    for (var i: int = 0; i < arr.length; i++)
+        invariant sum == ghost_sum(arr, 0, i)
+        invariant partial_sum == sum  # Ghost equality
+    {
+        sum += arr[i];
+        ghost partial_sum += arr[i];
+    }
+    
+    return sum;
+}
+
+# Lemmas (helper proofs)
+lemma func sum_associative(a: int, b: int, c: int)
+    ensures (a + b) + c == a + (b + c)
+{
+    # Proof by SMT solver
+}
+
+lemma func sorted_implies_ordered(arr: [int], i: int, j: int)
+    requires is_sorted(arr)
+    requires 0 <= i < j < arr.length
+    ensures arr[i] <= arr[j]
+{
+    # Inductive proof
+}
+
+# Refinement types with proofs
+type NonZero = int where x != 0 proof {
+    # Prove x != 0 at construction
+};
+
+func safe_divide(a: int, b: NonZero) -> int {
+    return a / b;  # No division by zero!
+}
+
+# Dependent pairs (Sigma types)
+class Exists<T, P: T -> bool> {
+    var value: T;
+    ghost var proof: P(value);
+    
+    func new(v: T) -> Exists<T, P>
+        requires P(v)
+    {
+        return Exists<T, P> { value: v, proof: P(v) };
+    }
+}
+
+# Example: even number with proof
+type EvenNumber = Exists<int, (x) => x % 2 == 0>;
+
+func create_even(n: int) -> Option<EvenNumber>
+    ensures match result {
+        Some(e) => e.value % 2 == 0,
+        None => n % 2 != 0
+    }
+{
+    if (n % 2 == 0) {
+        return Some(EvenNumber.new(n));
+    } else {
+        return None;
+    }
+}
+
+# Hoare logic
+@hoare_triple(
+    pre: x >= 0,
+    post: result * result <= x && (result + 1) * (result + 1) > x
+)
+func integer_sqrt(x: int) -> int {
+    var result: int = 0;
+    
+    while ((result + 1) * (result + 1) <= x)
+        invariant result * result <= x
+    {
+        result += 1;
+    }
+    
+    return result;
+}
+
+# Separation logic for memory safety
+func swap<T>(a: &mut T, b: &mut T)
+    requires a != b  # Pointers must be distinct
+    ensures *a == old(*b) && *b == old(*a)
+{
+    var temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+# Termination proofs
+func gcd(a: int, b: int) -> int
+    requires a > 0 && b > 0
+    ensures result > 0
+    ensures a % result == 0 && b % result == 0
+    decreases b  # Termination metric
+{
+    if (b == 0) {
+        return a;
+    } else {
+        return gcd(b, a % b);  # b decreases
+    }
+}
+
+# Inductive proofs
+lemma func sum_n_formula(n: int)
+    requires n >= 0
+    ensures sum_range(0, n) == n * (n + 1) / 2
+    decreases n
+{
+    if (n == 0) {
+        # Base case
+        assert sum_range(0, 0) == 0;
+    } else {
+        # Inductive case
+        sum_n_formula(n - 1);  # Inductive hypothesis
+        assert sum_range(0, n) == sum_range(0, n-1) + n;
+        assert sum_range(0, n-1) == (n-1) * n / 2;
+        assert sum_range(0, n) == (n-1) * n / 2 + n;
+        assert sum_range(0, n) == n * (n + 1) / 2;
+    }
+}
+
+# Abstract interpretation
+@abstract_domain(Interval)
+func abs_value(x: int) -> int
+    ensures result >= 0
+    ensures result == x || result == -x
+{
+    if (x >= 0) {
+        return x;
+    } else {
+        return -x;
+    }
+}
+
+# Model checking
+@model_check(
+    states: [Unlocked, Locked],
+    initial: Unlocked,
+    properties: [
+        "always eventually Unlocked",
+        "never (Locked && Unlocked)"
+    ]
+)
+class Mutex {
+    state Unlocked {
+        func lock(consume this) -> Mutex<Locked> {
+            return Mutex<Locked>.new();
+        }
+    }
+    
+    state Locked {
+        func unlock(consume this) -> Mutex<Unlocked> {
+            return Mutex<Unlocked>.new();
+        }
+    }
+}
+
+# SMT solver integration
+@verify_with_z3
+func max3(a: int, b: int, c: int) -> int
+    ensures result >= a && result >= b && result >= c
+    ensures result == a || result == b || result == c
+{
+    var max_ab = if (a > b) a else b;
+    return if (max_ab > c) max_ab else c;
+}
+
+# Symbolic execution
+@symbolic_execution
+func test_division(x: int, y: int) -> int
+    requires y != 0
+{
+    if (x > 100) {
+        return x / y;
+    } else {
+        return x * 2;
+    }
+    
+    # Symbolic executor explores both paths
+    # Generates test cases automatically
+}

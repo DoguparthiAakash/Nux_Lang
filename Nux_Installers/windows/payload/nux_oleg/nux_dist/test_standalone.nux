@@ -1,0 +1,3 @@
+func main() {
+    print("Running from a standalone executable!");
+}

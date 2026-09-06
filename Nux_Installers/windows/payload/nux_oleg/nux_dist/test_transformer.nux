@@ -1,0 +1,32 @@
+import "nn";
+
+print("Initializing FFI and Loading Native Backend...");
+var ffi = ffi_load("E:/nux/Nux_Lang/nux_ml/target/release/nux_ml.dll");
+print("Native ML Backend Loaded!");
+
+# Hyperparameters for the test
+var embed_dim = 16;
+var heads = 4;
+var seq_len = 1; # Testing a single token sequence for simplicity
+
+print("Initializing TransformerBlock...");
+var transformer = new TransformerBlock(embed_dim, heads, seq_len, ffi);
+
+print("Initializing Input Tensor...");
+var input_tensor = new Tensor(seq_len * embed_dim, ffi);
+var output_tensor = new Tensor(seq_len * embed_dim, ffi);
+
+# Fill dummy data (usually handled by an Embedding layer)
+# We can use the fact that memory is zeroed, but let's just do a quick dummy print
+print("Executing Forward Pass...");
+transformer.forward(input_tensor, output_tensor);
+
+print("Forward Pass Completed Successfully!");
+print("Checking output tensor memory safety...");
+
+# If we get here, it means we didn't crash on any of the FFI calls
+print("All Transformer layers passed Nux integration test.");
+
+# Cleanup
+input_tensor.free();
+output_tensor.free();

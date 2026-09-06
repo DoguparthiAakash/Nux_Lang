@@ -1,0 +1,22 @@
+pub func gpio_mode(pin, mode) {
+    asm {
+        mode
+        pin
+        OP_GPIO_MODE
+    }
+}
+
+pub func gpio_write(pin, val) {
+    asm {
+        val
+        pin
+        OP_GPIO_WRITE
+    }
+}
+
+pub func delay_ms(ms) {
+    asm {
+        ms
+        OP_DELAY_MS
+    }
+}

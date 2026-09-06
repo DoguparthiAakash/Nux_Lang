@@ -1,0 +1,14 @@
+// ============================================================================
+// Nux Standard Library: GUI (Raylib Bindings)
+// ============================================================================
+
+extern fn InitWindow(width: int, height: int, title: string);
+extern fn WindowShouldClose() -> int;
+extern fn BeginDrawing();
+extern fn EndDrawing();
+extern fn ClearBackground(color: int); // We can pass Raylib colors as ints
+extern fn DrawText(text: string, posX: int, posY: int, fontSize: int, color: int);
+extern fn CloseWindow();
+
+// Raylib Colors encoded as RGBA ints for simplicity (e.g. 0xFFFFFFFF for White)
+// In a real implementation, we would define a Color struct mapping to Raylib's Color struct

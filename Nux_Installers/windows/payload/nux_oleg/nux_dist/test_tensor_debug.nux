@@ -1,0 +1,24 @@
+import "tensor";
+func debug_tensor_print(t) {
+    var size = tensor_size(t);
+    var data = arr_get(t, 0);
+    print("Size is: ");
+    print(size);
+    print("Data id is: ");
+    print(data);
+    print("[");
+    for (var i = 0; i < size; i = i + 1) {
+        print(arr_get(data, i));
+        if (i < size - 1) {
+            print(", ");
+        }
+    }
+    print("]\n");
+    return 0;
+}
+var v = tensor_zeros_1d(4);
+tensor_set_1d(v, 0, 11);
+tensor_set_1d(v, 1, 22);
+tensor_set_1d(v, 2, 33);
+tensor_set_1d(v, 3, 44);
+debug_tensor_print(v);

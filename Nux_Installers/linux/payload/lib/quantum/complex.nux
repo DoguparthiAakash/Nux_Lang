@@ -1,0 +1,38 @@
+# quantum::complex
+# Complex number implementation for State Vector simulators
+
+import std::math;
+
+class Complex {
+    var real: f32;
+    var imag: f32;
+    
+    func init(r: f32, i: f32) {
+        this.real = r;
+        this.imag = i;
+    }
+    
+    func add(other: Complex) -> Complex {
+        var c = new Complex();
+        c.init(this.real + other.real, this.imag + other.imag);
+        return c;
+    }
+    
+    func sub(other: Complex) -> Complex {
+        var c = new Complex();
+        c.init(this.real - other.real, this.imag - other.imag);
+        return c;
+    }
+    
+    func mul(other: Complex) -> Complex {
+        var r = (this.real * other.real) - (this.imag * other.imag);
+        var i = (this.real * other.imag) + (this.imag * other.real);
+        var c = new Complex();
+        c.init(r, i);
+        return c;
+    }
+    
+    func magnitude_squared() -> f32 {
+        return (this.real * this.real) + (this.imag * this.imag);
+    }
+}

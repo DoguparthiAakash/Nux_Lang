@@ -1,0 +1,18 @@
+# std::arch::io
+# Hardware Port I/O for direct bus communication (VGA, ATA, Serial)
+
+func inb(port) {
+    # Intercepted by compiler lowering to emit `in al, dx` assembly instruction.
+}
+
+func outb(port, value) {
+    # Intercepted by compiler lowering to emit `out dx, al` assembly instruction.
+}
+
+func inw(port) {
+    # Emits `in ax, dx`
+}
+
+func outw(port, value) {
+    # Emits `out dx, ax`
+}

@@ -1,0 +1,19 @@
+trait Animal {
+    func speak();
+}
+
+class Dog : Animal {
+    func speak() {
+        println("Woof");
+    }
+}
+
+class Cat : Animal {
+    func speak() {
+        println("Meow");
+    }
+}
+
+func main() {
+    println("Compiling Traits works!");
+}

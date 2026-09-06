@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 #  Nux Programming Language — Windows Installer (Version Manager)
 # ============================================================================
 
-$Version = "1.0.0"
+$Version = "1.1.0"
 $InstallDirBase = "$env:LOCALAPPDATA\Nux"
 $InstallDir = "$InstallDirBase\$Version"
 $CurrentJunction = "$InstallDirBase\current"
@@ -67,11 +67,34 @@ function Install-Nux {
     param([string]$TargetDir = $InstallDir, [bool]$AddToPath = $true)
     if (!(Test-Path $TargetDir)) { New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null }
     
-    $TempZip = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "nux-$([guid]::NewGuid()).zip")
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
-    
-    Get-ChildItem $TargetDir -Recurse | Remove-Item -Force -Recurse
-    Expand-Archive -Path $TempZip -DestinationPath $TargetDir -Force
+    if (Test-Path "payload.zip") {
+        Write-Nux "Extracting" "local payload.zip..." "Cyan"
+        Get-ChildItem $TargetDir -Recurse | Remove-Item -Force -Recurse
+        Expand-Archive -Path "payload.zip" -DestinationPath $TargetDir -Force
+    } else {
+        $TempZip = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "nux-$([guid]::NewGuid()).zip")
+        Write-Nux "Downloading" "nux-windows.zip..." "Cyan"
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
+        
+        try {
+            $TempHash = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "nux-$([guid]::NewGuid()).sha256")
+            Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempHash -UseBasicParsing
+            $ExpectedHash = ((Get-Content $TempHash) -split '\s+')[0]
+            Remove-Item $TempHash -Force
+            if (-not (Verify-Checksum $TempZip $ExpectedHash)) {
+                Remove-Item $TempZip -Force
+                Write-NuxError "Installation aborted due to checksum mismatch."
+                exit 1
+            }
+        } catch {
+            Write-Nux "Warning" "Could not download checksum file. Skipping verification." "Yellow"
+        }
+
+        
+        Get-ChildItem $TargetDir -Recurse | Remove-Item -Force -Recurse
+        Expand-Archive -Path $TempZip -DestinationPath $TargetDir -Force
+        Remove-Item $TempZip -Force
+    }
     Remove-Item $TempZip -Force
     
     if (Test-Path $CurrentJunction) { 

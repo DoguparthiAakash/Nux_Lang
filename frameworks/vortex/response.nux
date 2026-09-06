@@ -1,0 +1,50 @@
+# frameworks::vortex::response
+# HTTP Response building
+
+import std::collections::List;
+import std::string::String;
+import std::json::JSON;
+import frameworks::vortex::request::Header;
+
+class Response {
+    var status_code: u32;
+    var headers: List;
+    var body: String;
+    
+    func init() {
+        this.status_code = 200;
+        this.headers = new List();
+        this.headers.init();
+        this.body = new String();
+        this.body.init("");
+    }
+    
+    func set_status(code: u32) {
+        this.status_code = code;
+    }
+    
+    func set_header(key: String, value: String) {
+        var h = new Header();
+        h.init(key, value);
+        this.headers.append(h);
+    }
+    
+    func send(data: String) {
+        this.body = data;
+    }
+    
+    func send_json(json: JSON) {
+        var k = new String(); k.init("Content-Type");
+        var v = new String(); v.init("application/json");
+        this.set_header(k, v);
+        this.body = json.to_string();
+    }
+    
+    func build_http_string() -> String {
+        # Build "HTTP/1.1 200 OK\r\n..."
+        var out = new String();
+        out.init("HTTP/1.1 200 OK\r\n\r\n");
+        out.append(this.body);
+        return out;
+    }
+}

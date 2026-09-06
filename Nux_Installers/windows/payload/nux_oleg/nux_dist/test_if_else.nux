@@ -1,0 +1,15 @@
+class MyClass {
+    var x: int;
+
+    func test() {
+        self.x = 10;
+        if (self.x == 10) {
+            self.x = 20;
+        } else {
+            self.x = 30;
+        }
+    }
+}
+
+var obj: MyClass = new MyClass();
+obj.test();

@@ -1,0 +1,63 @@
+import "game";
+import "io";
+
+func main() {
+    var screen_w = 400;
+    var screen_h = 300;
+    
+    var fb = game_init("Nux PyGame Clone", screen_w, screen_h);
+    
+    # Player state
+    var player_x = 180;
+    var player_y = 130;
+    var player_size = 30;
+    var speed = 3;
+    
+    var running = 1;
+    
+    print("Use W, A, S, D to move the red block.\n");
+    print("Press SPACE to change background color.\n");
+    
+    var bg_r = 30;
+    var bg_g = 30;
+    var bg_b = 50;
+    
+    while (running) {
+        
+        # Input handling
+        if (game_key_pressed(KEY_W())) {
+            player_y = player_y - speed;
+        }
+        if (game_key_pressed(KEY_S())) {
+            player_y = player_y + speed;
+        }
+        if (game_key_pressed(KEY_A())) {
+            player_x = player_x - speed;
+        }
+        if (game_key_pressed(KEY_D())) {
+            player_x = player_x + speed;
+        }
+        if (game_key_pressed(KEY_SPACE())) {
+            bg_r = (bg_r + 5) % 100;
+            bg_g = (bg_g + 2) % 100;
+            bg_b = (bg_b + 7) % 255;
+        }
+        
+        # Screen bounds collision
+        if (player_x < 0) { player_x = 0; }
+        if (player_y < 0) { player_y = 0; }
+        if (player_x > (screen_w - player_size)) { player_x = screen_w - player_size; }
+        if (player_y > (screen_h - player_size)) { player_y = screen_h - player_size; }
+        
+        # Draw Background
+        game_clear(fb, screen_w, screen_h, bg_r, bg_g, bg_b);
+        
+        # Draw Player
+        game_draw_rect(fb, screen_w, player_x, player_y, player_size, player_size, 255, 50, 50);
+        
+        # Swap buffers / Flush to screen
+        game_update();
+    }
+}
+
+main();

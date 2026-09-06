@@ -1,0 +1,22 @@
+func main() {
+    print("Testing Arrays");
+    let arr = [10, 20, 30];
+    print(arr[0]);
+    print(arr[1]);
+    print(arr[2]);
+    arr[1] = 50;
+    print(arr[1]);
+
+    print("Testing Try/Catch");
+    try {
+        print("Inside Try");
+        throw 999;
+        print("This should not print");
+    } catch {
+        print("Caught exception:");
+        # The exception value is pushed to the stack and then caught... wait, how to access the exception value?
+        # The compiler pushes the exception value to the stack. If we don't pop it, it stays there.
+        # Nux doesn't have a way to bind the exception variable yet. I'll just leave it on stack or not use it.
+    }
+    print("End of program");
+}

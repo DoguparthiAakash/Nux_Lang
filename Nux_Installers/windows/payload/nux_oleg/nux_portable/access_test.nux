@@ -1,0 +1,42 @@
+# Test Access Modifiers
+
+public func myPublicFunc() {
+    println("Public Function Executed");
+}
+
+private func myPrivateFunc(val) {
+    println("Private Function Executed");
+    print(val);
+    println("");
+}
+
+protected("secret123") func myProtectedFunc() {
+    println("Protected Function Executed");
+}
+
+func main() {
+    println("--- Access Modifier Test ---");
+
+    # 1. Regular/Public Call
+    myPublicFunc();
+    pub myPublicFunc();
+
+    # 2. Private Call (Requires 'pri')
+    # myPrivateFunc(10); # Should theoretically fail if we enforced it strictly
+    pri myPrivateFunc(42);
+
+    # 3. Protected Call (Requires key)
+    pro("secret123") myProtectedFunc();
+    # pro("wrong") myProtectedFunc(); # Should fail logic
+
+    println("--- ASM Block Test ---");
+    asm {
+        "PUSH 99",
+        "PRINT_VAL" # Print 99
+    }
+    
+    println("");
+    println("Test Complete.");
+}
+
+main();

@@ -1,0 +1,60 @@
+# engine3d.nux - 3D Wireframe Engine
+
+import "ui"
+import "math"
+
+# Basic line drawing with Bresenham's algorithm
+func draw_line(fb, w, h, x0_in, y0_in, x1_in, y1_in, color) {
+    var x0 = x0_in;
+    var y0 = y0_in;
+    var x1 = x1_in;
+    var y1 = y1_in;
+    
+    var dx = abs(x1 - x0);
+    var sx = 0 - 1;
+    if (x0 < x1) { sx = 1; }
+    
+    var dy = 0 - abs(y1 - y0);
+    var sy = 0 - 1;
+    if (y0 < y1) { sy = 1; }
+    
+    var err = dx + dy;
+    
+    var loop = 1;
+    while (loop == 1) {
+        draw_pixel(fb, x0, y0, w, h, color);
+        if (x0 == x1) {
+            if (y0 == y1) {
+                loop = 0;
+            }
+        }
+        
+        if (loop == 1) {
+            var e2 = 2 * err;
+            if (e2 >= dy) {
+                err = err + dy;
+                x0 = x0 + sx;
+            }
+            if (e2 <= dx) {
+                err = err + dx;
+                y0 = y0 + sy;
+            }
+        }
+    }
+}
+
+# 3D to 2D perspective projection
+# Returns packed coordinates to avoid returning arrays 
+# (x_screen * 10000) + y_screen
+func project_3d(x, y, z, fov, viewer_distance, screen_w, screen_h) {
+    # Scale inputs down if using fixed point
+    var factor = fov / (viewer_distance + z);
+    
+    var x_proj = x * factor;
+    var y_proj = y * factor;
+    
+    var screen_x = (screen_w / 2) + x_proj;
+    var screen_y = (screen_h / 2) + y_proj;
+    
+    return (screen_x * 10000) + screen_y;
+}

@@ -1,0 +1,323 @@
+// Graphics & Game Development
+
+// ============= 2D GRAPHICS =============
+
+class Canvas {
+    var width: int;
+    var height: int;
+    var pixels: [[Color]];
+    
+    func new(width: int, height: int) -> Canvas {
+        var pixels: [[Color]] = [];
+        
+        for (var y = 0; y < height; y++) {
+            var row: [Color] = [];
+            for (var x = 0; x < width; x++) {
+                row.push(Color.black());
+            }
+            pixels.push(row);
+        }
+        
+        return Canvas {
+            width: width,
+            height: height,
+            pixels: pixels
+        };
+    }
+    
+    func set_pixel(x: int, y: int, color: Color) {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.pixels[y][x] = color;
+        }
+    }
+    
+    func draw_line(x1: int, y1: int, x2: int, y2: int, color: Color) {
+        // Bresenham's line algorithm
+        var dx = abs(x2 - x1);
+        var dy = abs(y2 - y1);
+        var sx = if (x1 < x2) 1 else -1;
+        var sy = if (y1 < y2) 1 else -1;
+        var err = dx - dy;
+        
+        var x = x1, y = y1;
+        
+        while (true) {
+            this.set_pixel(x, y, color);
+            
+            if (x == x2 && y == y2) break;
+            
+            var e2 = 2 * err;
+            
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+    
+    func draw_circle(cx: int, cy: int, radius: int, color: Color) {
+        // Midpoint circle algorithm
+        var x = 0;
+        var y = radius;
+        var d = 1 - radius;
+        
+        while (x <= y) {
+            this.set_pixel(cx + x, cy + y, color);
+            this.set_pixel(cx - x, cy + y, color);
+            this.set_pixel(cx + x, cy - y, color);
+            this.set_pixel(cx - x, cy - y, color);
+            this.set_pixel(cx + y, cy + x, color);
+            this.set_pixel(cx - y, cy + x, color);
+            this.set_pixel(cx + y, cy - x, color);
+            this.set_pixel(cx - y, cy - x, color);
+            
+            if (d < 0) {
+                d += 2 * x + 3;
+            } else {
+                d += 2 * (x - y) + 5;
+                y -= 1;
+            }
+            
+            x += 1;
+        }
+    }
+    
+    func fill_rect(x: int, y: int, width: int, height: int, color: Color) {
+        for (var dy = 0; dy < height; dy++) {
+            for (var dx = 0; dx < width; dx++) {
+                this.set_pixel(x + dx, y + dy, color);
+            }
+        }
+    }
+}
+
+class Color {
+    var r: byte;
+    var g: byte;
+    var b: byte;
+    var a: byte = 255;
+    
+    static func rgb(r: byte, g: byte, b: byte) -> Color {
+        return Color { r: r, g: g, b: b };
+    }
+    
+    static func black() -> Color { return Color.rgb(0, 0, 0); }
+    static func white() -> Color { return Color.rgb(255, 255, 255); }
+    static func red() -> Color { return Color.rgb(255, 0, 0); }
+    static func green() -> Color { return Color.rgb(0, 255, 0); }
+    static func blue() -> Color { return Color.rgb(0, 0, 255); }
+}
+
+// ============= 3D GRAPHICS =============
+
+class Vector3 {
+    var x: float;
+    var y: float;
+    var z: float;
+    
+    func add(other: Vector3) -> Vector3 {
+        return Vector3 {
+            x: this.x + other.x,
+            y: this.y + other.y,
+            z: this.z + other.z
+        };
+    }
+    
+    func sub(other: Vector3) -> Vector3 {
+        return Vector3 {
+            x: this.x - other.x,
+            y: this.y - other.y,
+            z: this.z - other.z
+        };
+    }
+    
+    func dot(other: Vector3) -> float {
+        return this.x * other.x + this.y * other.y + this.z * other.z;
+    }
+    
+    func cross(other: Vector3) -> Vector3 {
+        return Vector3 {
+            x: this.y * other.z - this.z * other.y,
+            y: this.z * other.x - this.x * other.z,
+            z: this.x * other.y - this.y * other.x
+        };
+    }
+    
+    func length() -> float {
+        return sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+    
+    func normalize() -> Vector3 {
+        var len = this.length();
+        return Vector3 {
+            x: this.x / len,
+            y: this.y / len,
+            z: this.z / len
+        };
+    }
+}
+
+class Matrix4x4 {
+    var data: [[float; 4]; 4];
+    
+    static func identity() -> Matrix4x4 {
+        return Matrix4x4 {
+            data: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]
+            ]
+        };
+    }
+    
+    func multiply(other: Matrix4x4) -> Matrix4x4 {
+        var result = Matrix4x4.identity();
+        
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                result.data[i][j] = 0.0;
+                for (var k = 0; k < 4; k++) {
+                    result.data[i][j] += this.data[i][k] * other.data[k][j];
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    static func translate(x: float, y: float, z: float) -> Matrix4x4 {
+        var m = Matrix4x4.identity();
+        m.data[0][3] = x;
+        m.data[1][3] = y;
+        m.data[2][3] = z;
+        return m;
+    }
+    
+    static func rotate_x(angle: float) -> Matrix4x4 {
+        var m = Matrix4x4.identity();
+        var c = cos(angle);
+        var s = sin(angle);
+        m.data[1][1] = c;
+        m.data[1][2] = -s;
+        m.data[2][1] = s;
+        m.data[2][2] = c;
+        return m;
+    }
+    
+    static func perspective(fov: float, aspect: float, near: float, far: float) -> Matrix4x4 {
+        var f = 1.0 / tan(fov / 2.0);
+        var m = Matrix4x4.identity();
+        
+        m.data[0][0] = f / aspect;
+        m.data[1][1] = f;
+        m.data[2][2] = (far + near) / (near - far);
+        m.data[2][3] = (2.0 * far * near) / (near - far);
+        m.data[3][2] = -1.0;
+        m.data[3][3] = 0.0;
+        
+        return m;
+    }
+}
+
+// ============= GAME ENGINE =============
+
+class GameObject {
+    var position: Vector3;
+    var rotation: Vector3;
+    var scale: Vector3 = Vector3 { x: 1.0, y: 1.0, z: 1.0 };
+    var components: [Component] = [];
+    
+    func add_component<T>(component: T) where T: Component {
+        this.components.push(component);
+    }
+    
+    func update(delta_time: float) {
+        for (var component in this.components) {
+            component.update(delta_time);
+        }
+    }
+}
+
+interface Component {
+    func update(delta_time: float) -> void;
+}
+
+class Transform implements Component {
+    var position: Vector3;
+    var rotation: Vector3;
+    var scale: Vector3;
+    
+    func update(delta_time: float) {
+        // Update transform
+    }
+    
+    func get_matrix() -> Matrix4x4 {
+        var t = Matrix4x4.translate(this.position.x, this.position.y, this.position.z);
+        var r = Matrix4x4.rotate_x(this.rotation.x);
+        return t.multiply(r);
+    }
+}
+
+class RigidBody implements Component {
+    var velocity: Vector3 = Vector3 { x: 0.0, y: 0.0, z: 0.0 };
+    var acceleration: Vector3 = Vector3 { x: 0.0, y: 0.0, z: 0.0 };
+    var mass: float = 1.0;
+    
+    func update(delta_time: float) {
+        this.velocity = this.velocity.add(this.acceleration.scale(delta_time));
+    }
+    
+    func apply_force(force: Vector3) {
+        this.acceleration = this.acceleration.add(force.scale(1.0 / this.mass));
+    }
+}
+
+class Camera {
+    var position: Vector3;
+    var target: Vector3;
+    var up: Vector3 = Vector3 { x: 0.0, y: 1.0, z: 0.0 };
+    var fov: float = 60.0;
+    var aspect: float = 16.0 / 9.0;
+    
+    func get_view_matrix() -> Matrix4x4 {
+        var z = this.position.sub(this.target).normalize();
+        var x = this.up.cross(z).normalize();
+        var y = z.cross(x);
+        
+        // Create view matrix
+        var m = Matrix4x4.identity();
+        // ... (implementation details)
+        return m;
+    }
+    
+    func get_projection_matrix() -> Matrix4x4 {
+        return Matrix4x4.perspective(this.fov, this.aspect, 0.1, 1000.0);
+    }
+}
+
+class Scene {
+    var objects: [GameObject] = [];
+    var camera: Camera;
+    
+    func add_object(obj: GameObject) {
+        this.objects.push(obj);
+    }
+    
+    func update(delta_time: float) {
+        for (var obj in this.objects) {
+            obj.update(delta_time);
+        }
+    }
+    
+    func render() {
+        for (var obj in this.objects) {
+            // Render object
+        }
+    }
+}

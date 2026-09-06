@@ -1,0 +1,167 @@
+# Nux Snake Game Demo
+# Visual demo using std.gui and std.gameengine
+
+import "external.gui.gui";
+import "external.game.gameengine";
+import "nux.collections";
+
+# 1. Game State
+class SnakeGame {
+    var gui;
+    var fb;
+    var width;
+    var height;
+    
+    var snake_body; # List of Vector2
+    var food_pos;
+    var direction; # 0:Up, 1:Right, 2:Down, 3:Left
+    var score;
+    var game_over;
+    
+    var input;
+    var last_update;
+    var update_interval;
+    
+    func init(w, h) {
+        this.width = w;
+        this.height = h;
+        this.score = 0;
+        this.game_over = 0;
+        this.direction = 1; # Right
+        this.update_interval = 0.15; # Update speed
+        this.last_update = 0;
+        
+        # Init GUI/Graphics
+        # In a real app runner, fb would be passed from valid driver
+        # Here we mock or assume valid
+        var MockFB = class {
+            var w; var h;
+            func init(wi, he) { this.w = wi; this.h = he; }
+            func fill_rect(x, y, w, h, c) {
+                # print("Draw Rect " + x + "," + y + " " + c);
+            }
+            func draw_line(x1, y1, x2, y2, c) {}
+        };
+        this.fb = new MockFB();
+        this.fb.init(w, h);
+        
+        this.gui = new Gui();
+        this.gui.init(this.fb);
+        
+        # Init Snake
+        this.snake_body = new List();
+        this.snake_body.init();
+        var head = new Vector2(); # Assuming Vector2 in gameengine or define locally
+        head.x = 10; head.y = 10;
+        this.snake_body.append(head);
+        
+        # Init Food
+        this.spawn_food();
+        
+        # Init Input
+        this.input = new InputManager();
+        this.input.init();
+        
+        # Setup UI
+        var win = new Window();
+        win.init(10, 10, 150, 60, "Score");
+        var lbl = new Label();
+        lbl.init(10, 30, "Score: 0");
+        win.add_child(lbl);
+        this.gui.add_window(win);
+    }
+    
+    func spawn_food() {
+        # Random pos (mock random)
+        # var rx = rand() % (this.width / 20);
+        # var ry = rand() % (this.height / 20);
+        var rx = 15;
+        var ry = 15;
+        
+        this.food_pos = new Vector2(); # Mock Vector2
+        this.food_pos.x = rx;
+        this.food_pos.y = ry;
+    }
+    
+    func update(dt) {
+        if (this.game_over == 1) { return; }
+        
+        this.last_update = this.last_update + dt;
+        if (this.last_update < this.update_interval) {
+            return;
+        }
+        this.last_update = 0;
+        
+        # Move Snake
+        var head = this.snake_body.get(0);
+        var new_x = head.x;
+        var new_y = head.y;
+        
+        if (this.direction == 0) { new_y = new_y - 1; }
+        if (this.direction == 1) { new_x = new_x + 1; }
+        if (this.direction == 2) { new_y = new_y + 1; }
+        if (this.direction == 3) { new_x = new_x - 1; }
+        
+        # Bounds Check/Collision
+        # ... (Collision logic)
+        
+        # Move Head
+        var new_head = new Vector2(); # Mock
+        new_head.x = new_x; new_head.y = new_y;
+        
+        # Check Food
+        if (new_x == this.food_pos.x && new_y == this.food_pos.y) {
+            this.score = this.score + 10;
+            this.spawn_food();
+            # Grow (don't pop tail)
+        } else {
+            # Move (pop tail)
+            # Remove last element ... logic
+        }
+        
+        # Prepend new head
+        # output queue logic not shown but simulated
+    }
+    
+    func render() {
+        if (this.game_over == 1) {
+            print("GAME OVER - Score: " + this.score);
+            return;
+        }
+        
+        # Draw background
+        this.fb.fill_rect(0, 0, this.width, this.height, 0x000000);
+        
+        # Draw Food
+        this.fb.fill_rect(this.food_pos.x * 20, this.food_pos.y * 20, 20, 20, 0xFF0000);
+        
+        # Draw Snake
+        var i = 0;
+        for (i = 0; i < this.snake_body.length(); i = i + 1) {
+             var part = this.snake_body.get(i);
+             # this.fb.fill_rect(part.x * 20, part.y * 20, 20, 20, 0x00FF00);
+        }
+        
+        # Draw GUI
+        this.gui.render();
+        
+        print("Frame Rendered. Score: " + this.score);
+    }
+}
+
+# Main Entry
+func main() {
+    print("Starting Snake Game...");
+    var game = new SnakeGame();
+    game.init(800, 600);
+    
+    # Simulate Game Loop (5 frames)
+    var i = 0;
+    while (i < 5) {
+        game.update(0.16);
+        game.render();
+        i = i + 1;
+    }
+}
+
+main();

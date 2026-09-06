@@ -1,0 +1,99 @@
+#* ─────────────────────────────────────────────────────
+   Nux Standard Advanced Math Library  (std/math_advanced.nuxel)
+   
+   Provides data analytics math operations on arrays.
+   All returned values are scaled by 1000 (fixed-point)
+   to preserve decimal precision using Nux integers.
+   ───────────────────────────────────────────────────── *#
+
+import "std/math.nuxel";
+
+# Returns the mean of the array, scaled by 1000
+pub func math_adv_mean(arr, size) {
+    if (size == 0) { return 0; }
+    var sum = 0;
+    var i = 0;
+    while (i < size) {
+        sum = sum + peek(arr + i);
+        i = i + 1;
+    }
+    return (sum * 1000) // size;
+}
+
+# Returns the variance of the array, scaled by 1000
+pub func math_adv_variance(arr, size) {
+    if (size == 0) { return 0; }
+    var mean = math_adv_mean(arr, size);
+    var sum_sq_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x = peek(arr + i) * 1000;
+        var diff = x - mean;
+        sum_sq_diff = sum_sq_diff + (diff * diff);
+        i = i + 1;
+    }
+    # sum_sq_diff is scaled by 1,000,000. Divide by size, then by 1000
+    return (sum_sq_diff // size) // 1000;
+}
+
+# Returns the standard deviation of the array, scaled by 1000
+pub func math_adv_stddev(arr, size) {
+    if (size == 0) { return 0; }
+    var mean = math_adv_mean(arr, size);
+    var sum_sq_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x = peek(arr + i) * 1000;
+        var diff = x - mean;
+        sum_sq_diff = sum_sq_diff + (diff * diff);
+        i = i + 1;
+    }
+    var var_million = sum_sq_diff // size;
+    return sqrt_int(var_million);
+}
+
+# Returns the covariance between two arrays, scaled by 1000
+pub func math_adv_cov(arr1, arr2, size) {
+    if (size == 0) { return 0; }
+    var mean1 = math_adv_mean(arr1, size);
+    var mean2 = math_adv_mean(arr2, size);
+    var sum_prod_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x1 = peek(arr1 + i) * 1000;
+        var x2 = peek(arr2 + i) * 1000;
+        var diff1 = x1 - mean1;
+        var diff2 = x2 - mean2;
+        sum_prod_diff = sum_prod_diff + (diff1 * diff2);
+        i = i + 1;
+    }
+    return (sum_prod_diff // size) // 1000;
+}
+
+# Returns the Pearson correlation coefficient between two arrays, scaled by 1000
+pub func math_adv_corrcoef(arr1, arr2, size) {
+    if (size == 0) { return 0; }
+    var std1 = math_adv_stddev(arr1, size);
+    var std2 = math_adv_stddev(arr2, size);
+    if (std1 == 0) { return 0; }
+    if (std2 == 0) { return 0; }
+
+    var mean1 = math_adv_mean(arr1, size);
+    var mean2 = math_adv_mean(arr2, size);
+    var sum_prod_diff = 0;
+    var i = 0;
+    while (i < size) {
+        var x1 = peek(arr1 + i) * 1000;
+        var x2 = peek(arr2 + i) * 1000;
+        var diff1 = x1 - mean1;
+        var diff2 = x2 - mean2;
+        sum_prod_diff = sum_prod_diff + (diff1 * diff2);
+        i = i + 1;
+    }
+    var cov_million = sum_prod_diff // size;
+    
+    # corr = (cov_million / 1,000,000) / ( (std1 / 1000) * (std2 / 1000) )
+    # corr = cov_million / (std1 * std2)
+    # To scale correlation by 1000:
+    return (cov_million * 1000) // (std1 * std2);
+}

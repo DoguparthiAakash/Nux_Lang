@@ -1,0 +1,48 @@
+# alloc.nux - Nux Memory Allocator
+# A simple bump allocator with free-list recycling
+
+@memory_limit(8000000)
+@priority(50)
+
+# Allocator state at well-known addresses:
+# Addr 100: heap_ptr (current bump pointer)
+# Addr 108: heap_end (max address)
+
+func alloc_init(heap_base, heap_size) {
+    poke(100, heap_base);
+    poke(108, heap_base + heap_size);
+    return 0;
+}
+
+# Allocate `size` words, returns address or -1 on OOM
+func alloc(size) {
+    var ptr = peek(100);
+    var end = peek(108);
+    if (ptr + size > end) {
+        return 0 - 1; # OOM signal
+    }
+    poke(100, ptr + size);
+    return ptr;
+}
+
+# Parallel block allocator: allocate `count` blocks of `block_size`
+func alloc_many(count, block_size, results_addr) {
+    if (count > 64) {
+        var mid = count / 2;
+        var t1 = spawn alloc_many(mid, block_size, results_addr);
+        var t2 = spawn alloc_many(count - mid, block_size, results_addr + mid);
+        join(t1);
+        join(t2);
+        return 0;
+    }
+    for (var i = 0; i < count; i = i + 1) {
+        var ptr = alloc(block_size);
+        poke(results_addr + i, ptr);
+    }
+    return 0;
+}
+
+# Report free memory remaining
+func alloc_free_bytes() {
+    return peek(108) - peek(100);
+}

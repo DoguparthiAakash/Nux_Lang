@@ -1,0 +1,18 @@
+import "ui.core";
+
+var root = new UINode(0, 100, 200); # VBox, width 100, height 200
+root.padding = 10;
+root.spacing = 5;
+
+var child1 = new UINode(2, 0, 50); # Label, height 50
+var child2 = new UINode(3, 0, 40); # Button, height 40
+
+root.add_child(child1);
+root.add_child(child2);
+
+root.layout();
+
+print("Child 1 Y: ");
+println(child1.y);
+print("Child 2 Y: ");
+println(child2.y);

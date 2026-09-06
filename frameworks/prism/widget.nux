@@ -1,0 +1,43 @@
+# frameworks::prism::widget
+# Base UI Component
+
+import std::collections::List;
+import frameworks::prism::events::MouseEvent;
+import frameworks::prism::events::KeyEvent;
+
+class Widget {
+    var x: f32;
+    var y: f32;
+    var width: f32;
+    var height: f32;
+    var children: List; # List<Widget>
+    
+    func init() {
+        this.x = 0.0;
+        this.y = 0.0;
+        this.width = 100.0;
+        this.height = 100.0;
+        this.children = new List();
+        this.children.init();
+    }
+    
+    func add_child(child: Widget) {
+        this.children.append(child);
+    }
+    
+    func draw() {
+        # Base draw (maybe draw background)
+        # Iterate and draw children
+        var len = this.children.len();
+        var i = 0;
+        while (i < len) {
+            var child = this.children.get(i); # typeof Widget
+            child.draw();
+            i += 1;
+        }
+    }
+    
+    func on_click(evt: MouseEvent) {
+        # Pass to children or handle
+    }
+}
