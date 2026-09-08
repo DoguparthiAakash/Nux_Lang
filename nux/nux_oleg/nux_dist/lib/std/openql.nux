@@ -5,7 +5,7 @@ class QRegister {
 
     func init(s) {
         this.size = s;
-        // Allocate qubits using the new quantum intrinsic
+        # Allocate qubits using the new quantum intrinsic
         q_alloc(s);
     }
     
@@ -29,7 +29,7 @@ class QRegister {
         return q_measure(target);
     }
     
-    // Entangle two qubits (Bell state)
+    # Entangle two qubits (Bell state)
     func entangle(q1, q2) {
         this.h(q1);
         this.cx(q1, q2);

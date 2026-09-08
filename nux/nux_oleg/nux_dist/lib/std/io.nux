@@ -1,7 +1,7 @@
 # io.nux - Nux Standard I/O Library
 # Provides buffered and raw I/O operations
 
-@priority(20)
+# @priority(20)
 
 # Print an integer value as decimal digits
 func print_int(n) {

@@ -1,0 +1,77 @@
+# meendum.nux - Recurrent Neural Networks (RNN) for Nux
+
+import "std/tensor"
+import "std/nn"
+
+class RNNCell {
+    var input_size;
+    var hidden_size;
+    var w_ih; # Input to hidden weights
+    var w_hh; # Hidden to hidden weights
+    var b_ih; # Input bias
+    var b_hh; # Hidden bias
+    var cux_lib;
+
+    func init(in_sz, hid_sz, cux_lib_handle) {
+        self.input_size = in_sz;
+        self.hidden_size = hid_sz;
+        self.cux_lib = cux_lib_handle;
+
+        self.w_ih = new Linear();
+        self.w_ih.init(in_sz, hid_sz, cux_lib_handle);
+        
+        self.w_hh = new Linear();
+        self.w_hh.init(hid_sz, hid_sz, cux_lib_handle);
+    }
+
+    # h_t = tanh(W_ih * x_t + b_ih + W_hh * h_{t-1} + b_hh)
+    func forward(x_t, h_prev, h_out) {
+        var temp_ih = new Tensor();
+        temp_ih.init(self.hidden_size);
+        
+        var temp_hh = new Tensor();
+        temp_hh.init(self.hidden_size);
+        
+        self.w_ih.forward(x_t, temp_ih);
+        self.w_hh.forward(h_prev, temp_hh);
+        
+        # h_out = temp_ih + temp_hh (ignoring biases for MVP)
+        temp_ih.add(temp_hh, h_out);
+        
+        # Non-linearity: ReLU/Tanh
+        h_out.relu(); 
+        
+        temp_ih.mfree();
+        temp_hh.mfree();
+    }
+}
+
+class LSTMCell {
+    var input_size;
+    var hidden_size;
+    
+    # LSTM Gates (Forget, Input, Cell, Output)
+    var w_f; var w_i; var w_c; var w_o;
+    var cux_lib;
+
+    func init(in_sz, hid_sz, cux_lib_handle) {
+        self.input_size = in_sz;
+        self.hidden_size = hid_sz;
+        self.cux_lib = cux_lib_handle;
+        
+        # Combined Input+Hidden size
+        var combined_sz = in_sz + hid_sz;
+        
+        self.w_f = new Linear(); self.w_f.init(combined_sz, hid_sz, cux_lib_handle);
+        self.w_i = new Linear(); self.w_i.init(combined_sz, hid_sz, cux_lib_handle);
+        self.w_c = new Linear(); self.w_c.init(combined_sz, hid_sz, cux_lib_handle);
+        self.w_o = new Linear(); self.w_o.init(combined_sz, hid_sz, cux_lib_handle);
+    }
+
+    func forward(x_t, h_prev, c_prev, h_out, c_out) {
+        # MVP: Mock LSTM Forward Pass
+        # Real implementation involves concatenating [x_t, h_prev] and multiplying against all 4 gate weights,
+        # then applying sigmoid/tanh activations.
+        print("LSTM Forward Pass Executed\n");
+    }
+}

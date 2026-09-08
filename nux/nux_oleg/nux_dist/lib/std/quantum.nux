@@ -6,7 +6,7 @@ import "math"
 
 # Initialize a new qubit in the |0> state
 func q_new() {
-    var q = alloc(16);
+    var q = malloc(16);
     poke(q + 0, 1000); # alpha = 1.0
     poke(q + 8, 0);    # beta = 0.0
     return q;

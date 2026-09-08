@@ -1,7 +1,7 @@
 # string.nux - Nux Standard String Library
 # Low-level string operations using raw memory
 
-@priority(15)
+# @priority(15)
 
 # Get length of null-terminated string at addr
 func strlen(addr) {
@@ -123,4 +123,69 @@ func int_to_str(n, addr) {
     }
     poke(addr + start + len, 0);
     return start + len;
+}
+
+# Find substring 'needle' in 'haystack'. Returns index or -1 if not found.
+func strfind(haystack, needle) {
+    var h_len = strlen(haystack);
+    var n_len = strlen(needle);
+    
+    if (n_len == 0) { return 0; }
+    if (n_len > h_len) { return 0 - 1; }
+    
+    for (var i = 0; i <= h_len - n_len; i = i + 1) {
+        var match = 1;
+        for (var j = 0; j < n_len; j = j + 1) {
+            if (peek(haystack + i + j) != peek(needle + j)) {
+                match = 0;
+            }
+        }
+        if (match == 1) { return i; }
+    }
+    return 0 - 1;
+}
+
+# Splits 'src' by 'delim' char, returns pointer to array of string pointers
+# Requires 'alloc.nux' to be imported in the main program.
+func strsplit(src, delim_char) {
+    var len = strlen(src);
+    var parts_count = 1;
+    
+    # Count delimiters
+    for (var i = 0; i < len; i = i + 1) {
+        if (peek(src + i) == delim_char) {
+            parts_count = parts_count + 1;
+        }
+    }
+    
+    # Allocate array of pointers
+    # Assume malloc() is available globally
+    var ptr_array = malloc(parts_count); 
+    if (ptr_array <= 0) { return 0; }
+    
+    var current_part = malloc(len + 1); # worst case buffer
+    var p_idx = 0;
+    var c_idx = 0;
+    
+    for (var k = 0; k <= len; k = k + 1) {
+        var ch = peek(src + k);
+        if (ch == delim_char) {
+            poke(current_part + c_idx, 0); # terminate current part
+            poke(ptr_array + p_idx, current_part);
+            p_idx = p_idx + 1;
+            current_part = malloc(len + 1); # next buffer
+            c_idx = 0;
+        } else {
+            if (ch == 0) {
+                # End of string
+                poke(current_part + c_idx, 0);
+                poke(ptr_array + p_idx, current_part);
+            } else {
+                poke(current_part + c_idx, ch);
+                c_idx = c_idx + 1;
+            }
+        }
+    }
+    
+    return ptr_array;
 }

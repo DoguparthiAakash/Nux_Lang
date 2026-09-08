@@ -436,6 +436,16 @@ impl Parser {
                                   self.errors.push(CompileError::new(format!("Failed to parse import {}: {}", filename, e.message), self.prev_span));
                              }
                          }
+                         
+                         for (k, v) in sub_parser.classes.into_iter() {
+                             self.classes.insert(k, v);
+                         }
+                         for (k, v) in sub_parser.functions.into_iter() {
+                             self.functions.insert(k, v);
+                         }
+                         for e in sub_parser.errors {
+                             self.errors.push(e);
+                         }
                     } else {
                         self.errors.push(CompileError::new(format!("File not found: {}", filename), self.prev_span));
                     }
@@ -2963,9 +2973,19 @@ OP_IMG_ALLOC
             "vision_detect" => Some("OP_VISION_DETECT".to_string()),
             // Graphics intrinsics
             "gfx_clear" => Some("OP_GFX_CLEAR".to_string()),
-            "gfx_pixel" => Some("OP_DRAW_PIXEL".to_string()),
+            "gfx_pixel" | "gfx_set_pixel" => Some("OP_DRAW_PIXEL".to_string()),
             "gfx_line" => Some("OP_DRAW_LINE".to_string()),
             "gfx_circle" => Some("OP_DRAW_CIRCLE".to_string()),
+            "vbe_set_mode" => Some("OP_VBE_SET_MODE".to_string()),
+            "vbe_get_fb" => Some("OP_VBE_GET_FB".to_string()),
+            "vbe_update" => Some("OP_VBE_UPDATE".to_string()),
+            "vbe_get_key" => Some("OP_VBE_GET_KEY".to_string()),
+            "vbe_mouse_x" => Some("OP_VBE_GET_MOUSE_X".to_string()),
+            "vbe_mouse_y" => Some("OP_VBE_GET_MOUSE_Y".to_string()),
+            "vbe_mouse_down" => Some("OP_VBE_GET_MOUSE_DOWN".to_string()),
+            "peek32" => Some("OP_PEEK32".to_string()),
+            "poke32" => Some("OP_POKE32".to_string()),
+
             _ => None
         }
     }

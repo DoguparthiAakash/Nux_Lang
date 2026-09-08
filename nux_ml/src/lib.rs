@@ -47,16 +47,38 @@ pub extern "C" fn matmul(a_ptr: i64, b_ptr: i64, c_ptr: i64, m: i64, k: i64, n: 
     let b = unsafe { &*(b_ptr as *mut Vec<f32>) };
     let c = unsafe { &mut *(c_ptr as *mut Vec<f32>) };
     
-    // Simple O(N^3) matmul for demonstration (A: m x k, B: k x n, C: m x n)
-    for i in 0..(m as usize) {
-        for j in 0..(n as usize) {
-            let mut sum = 0.0;
-            for p in 0..(k as usize) {
-                sum += a[i * (k as usize) + p] * b[p * (n as usize) + j];
-            }
-            c[i * (n as usize) + j] = sum;
+    // Multi-threaded AMD/Intel CPU matmul (A: m x k, B: k x n, C: m x n)
+    // We use std::thread::scope to spawn workers and compute rows in parallel chunks.
+    let num_threads = 4;
+    std::thread::scope(|s| {
+        let chunk_size = (m as usize / num_threads).max(1);
+        for chunk_idx in 0..num_threads {
+            let start = chunk_idx * chunk_size;
+            let end = if chunk_idx == num_threads - 1 { m as usize } else { start + chunk_size };
+            if start >= m as usize { break; }
+            
+            // Unsafe pointer sharing for threads
+            let c_ptr_raw = c.as_mut_ptr() as usize;
+            let a_ptr_raw = a.as_ptr() as usize;
+            let b_ptr_raw = b.as_ptr() as usize;
+            
+            s.spawn(move || {
+                let local_a = unsafe { std::slice::from_raw_parts(a_ptr_raw as *const f32, (m * k) as usize) };
+                let local_b = unsafe { std::slice::from_raw_parts(b_ptr_raw as *const f32, (k * n) as usize) };
+                let local_c = unsafe { std::slice::from_raw_parts_mut(c_ptr_raw as *mut f32, (m * n) as usize) };
+                
+                for i in start..end {
+                    for j in 0..(n as usize) {
+                        let mut sum = 0.0;
+                        for p in 0..(k as usize) {
+                            sum += local_a[i * (k as usize) + p] * local_b[p * (n as usize) + j];
+                        }
+                        local_c[i * (n as usize) + j] = sum;
+                    }
+                }
+            });
         }
-    }
+    });
     
     0
 }

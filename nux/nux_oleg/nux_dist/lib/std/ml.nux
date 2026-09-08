@@ -1,7 +1,7 @@
 # ml.nux - Machine Learning Core Library
 # Handles vectors, matrices, and basic math routines using fixed-point integer scaling (scale = 1000)
 
-@priority(40)
+# @priority(40)
 
 # Vector Addition: res = a + b
 func ml_vec_add(addr_a, addr_b, addr_res, length) {

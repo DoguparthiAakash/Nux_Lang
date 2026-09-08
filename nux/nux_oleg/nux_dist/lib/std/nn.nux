@@ -29,7 +29,7 @@ class Tensor {
         tensor_relu(this.ptr);
     }
 
-    func free() {
+    func mfree() {
         tensor_free(this.ptr);
     }
 
@@ -38,10 +38,33 @@ class Tensor {
     }
 
     func scale(factor) {
+        tensor_scale(this.ptr, factor);
     }
 
     func copy(dest_tensor) {
         tensor_copy(this.ptr, dest_tensor.ptr);
+    }
+}
+
+class MSELoss {
+    func forward(predictions, targets, output_loss) {
+        # output_loss = (predictions - targets)^2 / size
+        # Wait, for MVP in Nux, we will do raw array math here
+        var size = predictions.size;
+        var sum = 0;
+        for (var i = 0; i < size; i = i + 1) {
+            var diff = predictions.get(i) - targets.get(i);
+            sum = sum + (diff * diff);
+        }
+        output_loss.set(0, sum / size);
+    }
+
+    func backward(predictions, targets, grad_out) {
+        var size = predictions.size;
+        for (var i = 0; i < size; i = i + 1) {
+            var grad = 2 * (predictions.get(i) - targets.get(i)) / size;
+            grad_out.set(i, grad);
+        }
     }
 }
 
@@ -64,7 +87,7 @@ class Linear {
     }
 
     func free_weights() {
-        this.weights.free();
+        this.weights.mfree();
     }
 
     func forward(input_tensor, output_tensor) {
@@ -79,6 +102,24 @@ class Linear {
                 this.in_features, 
                 this.out_features
             );
+        }
+    }
+
+    # Backward pass MVP (updates weights directly based on learning rate)
+    func backward(input_tensor, grad_output, lr) {
+        # grad_weights = input.T @ grad_output
+        # Since this is MVP, we manually compute and subtract lr * grad_weights
+        for (var i = 0; i < this.in_features; i = i + 1) {
+            for (var j = 0; j < this.out_features; j = j + 1) {
+                var in_val = input_tensor.get(i);
+                var grad_val = grad_output.get(j);
+                
+                var weight_idx = i * this.out_features + j;
+                var old_w = this.weights.get(weight_idx);
+                
+                # Gradient step: W = W - (lr * input * grad)
+                this.weights.set(weight_idx, old_w - (lr * in_val * grad_val));
+            }
         }
     }
 }
@@ -117,7 +158,7 @@ class Embedding {
     }
 
     func free_weights() {
-        this.weights.free();
+        this.weights.mfree();
     }
 }
 

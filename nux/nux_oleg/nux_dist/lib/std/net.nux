@@ -46,7 +46,39 @@ class TcpTlsServer {
     }
     
     func close(self) {
+    func close(self) {
         net_close(self.id);
     }
 }
 
+# Advanced Protocol Wrappers
+
+class HttpClient {
+    var client;
+
+    func init(self, url) {
+        # Assuming net_connect resolves host and returns a client id
+        var id = net_connect(url, 80);
+        self.client = new TcpClient();
+        self.client.init(id);
+    }
+
+    func get(self, path, buffer_addr) {
+        # Construct raw HTTP GET request string
+        # format: GET {path} HTTP/1.1\r\n\r\n
+        # (In a real app, we'd use strcat from string.nux)
+        var req = "GET ";
+        self.client.write(req);
+        self.client.write(path);
+        self.client.write(" HTTP/1.1\r\n\r\n");
+        
+        # We would read until end of stream into buffer_addr
+        var res = self.client.read();
+        poke(buffer_addr, res); # MVP: just write raw ptr/val 
+        return 1;
+    }
+
+    func close(self) {
+        self.client.close();
+    }
+}
