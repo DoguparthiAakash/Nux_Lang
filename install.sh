@@ -62,7 +62,7 @@ banner() {
   printf "${RESET}\n"
 
   printf "${CYAN}  ╔══════════════════════════════════╗${RESET}\n"
-  printf "${CYAN}  ║  Nux Language Installer v%s  ║${RESET}\n" "$NUX_VERSION"
+  printf "${CYAN}  ║  Nux Language Installer v%s   ║${RESET}\n" "$NUX_VERSION"
   printf "${CYAN}  ╚══════════════════════════════════╝${RESET}\n\n"
 }
 ok()   { printf "  ${GREEN}✓${RESET}  %s\n" "$*"; }
