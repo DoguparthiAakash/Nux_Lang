@@ -95,6 +95,8 @@ const OP_FFLOORDIV: u8 = 0x47;
 const OP_FSIN: u8 = 0x48;
 const OP_FCOS: u8 = 0x49;
 const OP_FSQRT: u8 = 0x4A;
+const OP_PEEK8: u8 = 0x4B;
+const OP_POKE8: u8 = 0x4C;
 
 const OP_JMP: u8 = 0x60;
 const OP_JE: u8 = 0x61;
@@ -365,8 +367,21 @@ impl NuxVm {
                             state.window = Some(SendWindow(window));
                             state.fb_width = width;
                             state.fb_height = height;
+                            
+                            // Allocate framebuffer in memory heap
+                            let fb_size = width * height * 4;
+                            let fb_addr = state.heap_ptr;
+                            state.heap_ptr += fb_size;
+                            if state.heap_ptr > state.memory.len() {
+                                let new_size = state.heap_ptr + 1024;
+                                state.memory.resize(new_size, 0);
+                            }
+                            state.fb_addr = fb_addr;
                         }
                     }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.pop(); self.pop(); self.pop(); }
+                    self.push(0); // Return value for call convention
                 },
                 0xC1 => { // OP_VBE_GET_FB
                     let addr = {
@@ -398,6 +413,7 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0); // Return value for call convention
                 },
                 0xC3 => { // OP_VBE_GET_KEY
                     #[cfg(feature = "minifb")]
@@ -689,7 +705,9 @@ impl NuxVm {
                      if idx < self.stack.len() {
                          self.push(self.stack[idx]);
                      } else {
-                         println!("Runtime Error: Stack Invalid Access Local {}", offset);
+                         println!("Runtime Error: Stack Invalid Access Local {} (fp={}, idx={}, stack_len={}, ip={})", offset, self.fp, idx, self.stack.len(), self.ip);
+                         println!("Stack: {:?}", &self.stack);
+                         println!("Call stack depth: {}", self.call_stack.len());
                          self.running = false;
                      }
                 },
@@ -1222,6 +1240,7 @@ impl NuxVm {
                             *pixel = color;
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_PIXEL => {
@@ -1241,6 +1260,7 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_LINE => {
@@ -1286,6 +1306,7 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_CIRCLE => {
@@ -1332,9 +1353,48 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 // Memory Ops (Thread-Safe via Mutex)
+                OP_PEEK8 => {
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let val_opt = {
+                        let state = shared.lock();
+                        if addr < 0 || addr as usize >= state.memory.len() {
+                            None
+                        } else {
+                            Some(state.memory[addr as usize] as i64)
+                        }
+                    };
+                    
+                    if let Some(val) = val_opt {
+                        self.push(val);
+                    } else {
+                        println!("Runtime Error: Segfault Read8 {}", addr); 
+                        self.running = false;
+                    }
+                },
+                OP_POKE8 => {
+                    let val = self.pop() as u8;
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let success = {
+                        let mut state = shared.lock();
+                        if addr < 0 || addr as usize >= state.memory.len() {
+                            false
+                        } else {
+                            state.memory[addr as usize] = val;
+                            true
+                        }
+                    };
+                    if !success {
+                        println!("Runtime Error: Segfault Write8 {}", addr);
+                        self.running = false;
+                    }
+                    self.push(0);
+                },
                 0x42 => { // OP_PEEK32
                     let addr = self.pop();
                     let shared = self.shared.clone();
@@ -1372,9 +1432,10 @@ impl NuxVm {
                         }
                     };
                     if !success {
-                        println!("Runtime Error: Segfault Write32 {}", addr);
+                        println!("Runtime Error: Segfault Write32 {} with val {}", addr, val);
                         self.running = false;
                     }
+                    self.push(0);
                 },
                 OP_PEEK => {
                     let addr = self.pop();

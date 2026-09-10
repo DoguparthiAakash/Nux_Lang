@@ -49,7 +49,8 @@ fn main() {
     let target_ext = Path::new(&compile_target).extension().and_then(|e| e.to_str()).unwrap_or("");
     let is_cuda = target_ext == "cu";
 
-    let compiler = if is_cuda { "nvcc" } else { "gcc" };
+    let is_cpp = matches!(target_ext, "cpp" | "cc" | "cxx");
+    let compiler = if is_cuda { "nvcc" } else if is_cpp { "g++" } else { "gcc" };
     
     // For Windows, output is .dll
     #[cfg(target_os = "windows")]
@@ -75,8 +76,8 @@ fn main() {
         }
         Err(e) => {
             println!("\n\x1b[1;31m[-] Failed to execute compiler '{}': {}\x1b[0m", compiler, e);
-            if compiler == "gcc" {
-                println!("\x1b[1;33m[!] Make sure 'gcc' (MinGW or Linux GCC) is in your PATH.\x1b[0m");
+            if compiler == "gcc" || compiler == "g++" {
+                println!("\x1b[1;33m[!] Make sure a C/C++ compiler is in your PATH.\x1b[0m");
             } else if compiler == "nvcc" {
                 println!("\x1b[1;33m[!] Make sure NVIDIA CUDA Toolkit is installed and 'nvcc' is in your PATH.\x1b[0m");
             }

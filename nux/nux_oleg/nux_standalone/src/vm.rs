@@ -43,11 +43,14 @@ const OP_DIV: u8 = 0x13;
 const OP_MOD: u8 = 0x14;
 const OP_POW: u8 = 0x15;
 const OP_FLOORDIV: u8 = 0x16;
+const OP_SWAP: u8 = 0x17;
 const OP_AND: u8 = 0x18;
 const OP_OR:  u8 = 0x19; 
 const OP_XOR: u8 = 0x22;
 const OP_XAND: u8 = 0x23; // XNOR
 const OP_XNOT: u8 = 0x24; // Bitwise NOT 
+const OP_BAND: u8 = 0x25;
+const OP_BOR: u8 = 0x26;
 const OP_EQ: u8 = 0x90;
 const OP_NEQ: u8 = 0x91;
 const OP_LT: u8 = 0x92;
@@ -97,6 +100,16 @@ const OP_UNLOCK: u8 = 0x74; // NEW: Release Lock
 
 const OP_KERNEL_OP: u8 = 0x80;
 const OP_SYSTEM: u8 = 0x81; // NEW: Execute System Command
+const OP_MEM_ALLOC: u8 = 0x82;
+const OP_MEM_FREE: u8 = 0x83;
+const OP_MEM_READ8: u8 = 0x84;
+const OP_MEM_WRITE8: u8 = 0x85;
+const OP_MEM_READ64: u8 = 0x86;
+const OP_MEM_WRITE64: u8 = 0x87;
+const OP_MEM_COPY: u8 = 0x88;
+const OP_MEM_SET: u8 = 0x89;
+const OP_MEM_SIZE: u8 = 0x8A;
+const OP_SYS_PLATFORM: u8 = 0x8B;
 const OP_EXIT: u8 = 0xFF;
 
 // File I/O Ops
@@ -138,10 +151,21 @@ impl<T> SpinLock<T> {
 // Shared State for all threads
 struct SharedState {
     memory: Vec<u8>, // Global Virtual Memory (Heap/Globals)
+    allocations: BTreeMap<usize, usize>,
+    free_blocks: Vec<(usize, usize)>,
+    next_alloc: usize,
     locks: BTreeMap<u64, Arc<SpinLock<()>>>,
     files: BTreeMap<u64, Arc<dyn FileHandle>>, // Open File Handles
     next_fd: u64,
     rng_state: u64,
+}
+
+impl SharedState {
+    fn owns_range(&self, address: usize, length: usize) -> bool {
+        self.allocations.iter().any(|(base, size)| {
+            address >= *base && address.checked_add(length).is_some_and(|end| end <= *base + *size)
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -169,6 +193,9 @@ impl NuxVm {
             code: Arc::new(code),
             shared: Arc::new(SpinLock::new(SharedState {
                 memory: vec![0u8; 1024 * 64], // 64KB Shared Memory
+                allocations: BTreeMap::new(),
+                free_blocks: Vec::new(),
+                next_alloc: 4096,
                 locks: BTreeMap::new(),
                 files: BTreeMap::new(),
                 next_fd: 1,
@@ -267,6 +294,12 @@ impl NuxVm {
                     self.push(dest_addr as i64);
                 },
                 OP_POP => { self.pop(); },
+                OP_SWAP => {
+                    let top = self.pop();
+                    let next = self.pop();
+                    self.push(top);
+                    self.push(next);
+                },
                 OP_ADD => { let b = self.pop(); let a = self.pop(); self.push(a.wrapping_add(b)); },
                 OP_SUB => { let b = self.pop(); let a = self.pop(); self.push(a.wrapping_sub(b)); },
                 OP_MUL => { let b = self.pop(); let a = self.pop(); self.push(a.wrapping_mul(b)); },
@@ -362,6 +395,11 @@ impl NuxVm {
                 
                 OP_AND => { let b = self.pop(); let a = self.pop(); self.push(if a!=0 && b!=0 {1} else {0}); },
                 OP_OR => { let b = self.pop(); let a = self.pop(); self.push(if a!=0 || b!=0 {1} else {0}); },
+                OP_BAND => { let b = self.pop(); let a = self.pop(); self.push(a & b); },
+                OP_BOR => { let b = self.pop(); let a = self.pop(); self.push(a | b); },
+                OP_XOR => { let b = self.pop(); let a = self.pop(); self.push(a ^ b); },
+                OP_XAND => { let b = self.pop(); let a = self.pop(); self.push(!(a ^ b)); },
+                OP_XNOT => { let value = self.pop(); self.push(!value); },
 
                 // GC Ops
                 0x5B => { // OP_VM_STACK_COPY
@@ -649,6 +687,161 @@ impl NuxVm {
                         kprintln!("Runtime Error: Segfault Write {}", addr);
                         self.running = false;
                     }
+                },
+                OP_MEM_ALLOC => {
+                    let requested = self.pop();
+                    if requested <= 0 {
+                        self.push(0);
+                    } else {
+                        let size = (requested as usize).saturating_add(7) & !7;
+                        let mut shared = self.shared.lock();
+                        let mut result = None;
+                        for index in 0..shared.free_blocks.len() {
+                            let (base, available) = shared.free_blocks[index];
+                            if available >= size {
+                                shared.free_blocks.remove(index);
+                                if available > size {
+                                    shared.free_blocks.push((base + size, available - size));
+                                }
+                                shared.allocations.insert(base, size);
+                                result = Some(base);
+                                break;
+                            }
+                        }
+                        if result.is_none() && shared.next_alloc.saturating_add(size) <= shared.memory.len() {
+                            let base = shared.next_alloc;
+                            shared.next_alloc += size;
+                            shared.allocations.insert(base, size);
+                            result = Some(base);
+                        }
+                        drop(shared);
+                        self.push(result.unwrap_or(0) as i64);
+                    }
+                },
+                OP_MEM_FREE => {
+                    let address = self.pop();
+                    let mut shared = self.shared.lock();
+                    let result = if address >= 0 {
+                        if let Some(size) = shared.allocations.remove(&(address as usize)) {
+                            shared.free_blocks.push((address as usize, size));
+                            1
+                        } else {
+                            kprintln!("Runtime Error: invalid or double free {}", address);
+                            0
+                        }
+                    } else { 0 };
+                    drop(shared);
+                    self.push(result);
+                },
+                OP_MEM_READ8 => {
+                    let address = self.pop();
+                    let shared = self.shared.lock();
+                    let result = if address >= 0 && shared.owns_range(address as usize, 1) {
+                        shared.memory[address as usize] as i64
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_read8 {}", address);
+                        self.running = false;
+                        0
+                    };
+                    drop(shared);
+                    self.push(result);
+                },
+                OP_MEM_WRITE8 => {
+                    let value = self.pop();
+                    let address = self.pop();
+                    let mut shared = self.shared.lock();
+                    let success = if address >= 0 && shared.owns_range(address as usize, 1) {
+                        shared.memory[address as usize] = value as u8;
+                        true
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_write8 {}", address);
+                        self.running = false;
+                        false
+                    };
+                    drop(shared);
+                    self.push(if success { 1 } else { 0 });
+                },
+                OP_MEM_READ64 => {
+                    let address = self.pop();
+                    let shared = self.shared.lock();
+                    let result = if address >= 0 && shared.owns_range(address as usize, 8) {
+                        let bytes = &shared.memory[address as usize..address as usize + 8];
+                        i64::from_le_bytes(bytes.try_into().unwrap())
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_read64 {}", address);
+                        self.running = false;
+                        0
+                    };
+                    drop(shared);
+                    self.push(result);
+                },
+                OP_MEM_WRITE64 => {
+                    let value = self.pop();
+                    let address = self.pop();
+                    let mut shared = self.shared.lock();
+                    let success = if address >= 0 && shared.owns_range(address as usize, 8) {
+                        shared.memory[address as usize..address as usize + 8].copy_from_slice(&value.to_le_bytes());
+                        true
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_write64 {}", address);
+                        self.running = false;
+                        false
+                    };
+                    drop(shared);
+                    self.push(if success { 1 } else { 0 });
+                },
+                OP_MEM_COPY => {
+                    let length = self.pop();
+                    let source = self.pop();
+                    let destination = self.pop();
+                    let mut shared = self.shared.lock();
+                    if length >= 0 && source >= 0 && destination >= 0
+                        && shared.owns_range(source as usize, length as usize)
+                        && shared.owns_range(destination as usize, length as usize) {
+                        let source_start = source as usize;
+                        let destination_start = destination as usize;
+                        shared.memory.copy_within(source_start..source_start + length as usize, destination_start);
+                        drop(shared);
+                        self.push(length);
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_copy range");
+                        drop(shared);
+                        self.push(0);
+                        self.running = false;
+                    }
+                },
+                OP_MEM_SET => {
+                    let length = self.pop();
+                    let value = self.pop();
+                    let address = self.pop();
+                    let mut shared = self.shared.lock();
+                    if length >= 0 && address >= 0 && shared.owns_range(address as usize, length as usize) {
+                        shared.memory[address as usize..address as usize + length as usize].fill(value as u8);
+                        drop(shared);
+                        self.push(length);
+                    } else {
+                        kprintln!("Runtime Error: invalid mem_set range");
+                        drop(shared);
+                        self.push(0);
+                        self.running = false;
+                    }
+                },
+                OP_MEM_SIZE => {
+                    let shared = self.shared.lock();
+                    let size = shared.memory.len() as i64;
+                    drop(shared);
+                    self.push(size);
+                },
+                OP_SYS_PLATFORM => {
+                    #[cfg(target_os = "windows")]
+                    let platform = 1;
+                    #[cfg(target_os = "linux")]
+                    let platform = 2;
+                    #[cfg(target_os = "macos")]
+                    let platform = 3;
+                    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+                    let platform = 0;
+                    self.push(platform);
                 },
                 
                 // File I/O Ops

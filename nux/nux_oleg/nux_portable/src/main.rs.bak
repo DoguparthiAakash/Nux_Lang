@@ -109,7 +109,12 @@ fn main() {
                     }
                 },
                 Err(errors) => {
-                    print_temple_errors(&errors, &source, source_path);
+                    let err_count = errors.len();
+                    for e in &errors {
+                        eprintln!("\x1b[1;31merror\x1b[0m: {}", e.message);
+                    }
+                    eprintln!("\x1b[1;31merror\x1b[0m: could not compile `{}` due to {} previous error{}",
+                        source_path, err_count, if err_count == 1 { "" } else { "s" });
                 }
             }
         },
@@ -221,7 +226,52 @@ fn main() {
             let compiled_bytes = match result {
                 Ok(b) => b,
                 Err(errors) => {
-                    print_temple_errors(&errors, &source_content, fname);
+                    let err_count = errors.len();
+                    let lines: Vec<&str> = source_content.lines().collect();
+
+                    eprintln!();
+                    eprintln!("{}╳ nux found {} issue{} in {}{}{}",
+                        red, err_count,
+                        if err_count == 1 { "" } else { "s" },
+                        bold, fname, reset);
+                    eprintln!();
+
+                    for (idx, e) in errors.iter().enumerate() {
+                        // Numbered issue header
+                        eprintln!("{}  issue #{}{}{}{} · {}{}{}",
+                            grey, reset,
+                            gold, idx + 1, reset,
+                            grey, e.message, reset);
+
+                        let mut line_num = e.span.line;
+                        let mut col_num  = e.span.col;
+
+                        if line_num > lines.len() {
+                            line_num = lines.len();
+                            if line_num > 0 { col_num = lines[line_num - 1].len() + 1; }
+                        }
+
+                        if line_num > 0 {
+                            let line_str = lines[line_num - 1];
+                            // Box-drawing source frame
+                            eprintln!("{}  ┌─ {}{}:{}{}", grey, reset, path, line_num, if col_num > 0 { format!(":{}", col_num) } else { String::new() });
+                            eprintln!("{}  │{reset}", grey);
+                            eprintln!("{}  │{reset} {}{:>3}{reset}{grey} ┊{reset}  {}",
+                                grey, grey, line_num, line_str);
+
+                            // Caret squiggle under the token
+                            eprint!("{}  │{reset}      ", grey);
+                            for _ in 0..(col_num.saturating_sub(1)) { eprint!(" "); }
+                            eprintln!("{}^{reset}", red);
+                            eprintln!("{}  └─{reset}", grey);
+                        }
+                        eprintln!();
+                    }
+
+                    // Footer summary
+                    eprintln!("{}  ✗ build stopped — {} issue{} must be resolved{}",
+                        red, err_count, if err_count == 1 { "" } else { "s" }, reset);
+                    eprintln!();
                     return;
                 }
             };
@@ -330,7 +380,6 @@ fn main() {
                  "extreme" => transpiler::TranspileProfile::Extreme,
                  "nano" => transpiler::TranspileProfile::Nano,
                  "legacy" => transpiler::TranspileProfile::Legacy,
-                 "webwasm" => transpiler::TranspileProfile::WebWASM,
                  _ => transpiler::TranspileProfile::Standard,
              };
              
@@ -403,7 +452,7 @@ fn main() {
         },
         "build-native" => {
             if args.len() < 3 {
-                println!("Usage: nux build-native <source.nux> [output_binary] [--profile std|embedded|webwasm]");
+                println!("Usage: nux build-native <source.nux> [output_binary] [--profile std|embedded]");
                 return;
             }
             let source_path = &args[2];
@@ -417,7 +466,6 @@ fn main() {
                      profile = match args[idx+1].as_str() {
                          "embedded" => transpiler::TranspileProfile::Embedded,
                          "extreme" => transpiler::TranspileProfile::Extreme,
-                         "webwasm" => transpiler::TranspileProfile::WebWASM,
                          _ => transpiler::TranspileProfile::Standard,
                      };
                  }
@@ -741,94 +789,4 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
     }
     
     Ok(out)
-}
-
-
-use crate::high_level::CompileError;
-
-fn print_temple_errors(errors: &[CompileError], source_content: &str, file_name: &str) {
-    let quotes = [
-        "Be calm, for every error is just a step towards perfection.",
-        "Peace comes from within. Do not seek it without.",
-        "The mind is everything. What you think you become.",
-        "Patience is the key to paradise.",
-        "Breathe in, breathe out. The bug is transient.",
-        "Do your duty, but do not concern yourself with the results."
-    ];
-    let quote = quotes[std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as usize % quotes.len()];
-
-    let gold = "\x1b[38;5;220m";
-    let orange = "\x1b[38;5;208m";
-    let red = "\x1b[38;5;196m";
-    let reset = "\x1b[0m";
-
-    eprintln!();
-    eprintln!("{}             /\\             {}", orange, reset);
-    eprintln!("{}            /  \\            {}", orange, reset);
-    eprintln!("{}           /____\\           {}", orange, reset);
-    eprintln!("{}           | ॐ  |           {}", orange, reset);
-    eprintln!("{}          /|____|\\          {}", orange, reset);
-    eprintln!("{}         /________\\         {}", orange, reset);
-    eprintln!("{}        ║          ║        {}", orange, reset);
-    eprintln!("{}╔═══════╩══════════╩═══════════════════════════════════╗{}", orange, reset);
-    eprintln!("{}║                   ॐ  SHANTI  ॐ                       ║{}", gold, reset);
-    eprintln!("{}╟──────────────────────────────────────────────────────╢{}", orange, reset);
-    eprintln!("{}║ {}{:<52}{} ║{}", orange, gold, quote, orange, reset);
-    eprintln!("{}╟──────────────────────────────────────────────────────╢{}", orange, reset);
-
-    let lines: Vec<&str> = source_content.lines().collect();
-
-    for (idx, e) in errors.iter().enumerate() {
-        let mut msg_lines = Vec::new();
-        let mut current_line = String::new();
-        for word in e.message.split_whitespace() {
-            if current_line.len() + word.len() + 1 > 50 {
-                msg_lines.push(current_line.clone());
-                current_line = word.to_string();
-            } else {
-                if !current_line.is_empty() { current_line.push(' '); }
-                current_line.push_str(word);
-            }
-        }
-        if !current_line.is_empty() { msg_lines.push(current_line); }
-
-        eprintln!("{}║{} 🛕 ERROR #{:<42}{}║{}", orange, red, idx + 1, orange, reset);
-        for m in msg_lines {
-            eprintln!("{}║{} {:<50}{} ║{}", orange, red, m, orange, reset);
-        }
-
-        let mut line_num = e.span.line;
-        let mut col_num = e.span.col;
-        if line_num > lines.len() {
-            line_num = lines.len();
-            if line_num > 0 { col_num = lines[line_num - 1].len() + 1; }
-        }
-
-        if line_num > 0 {
-            let line_str = lines[line_num - 1];
-            eprintln!("{}║{} 📍 At: {}:{}:{} {:<31} {}║{}", orange, gold, file_name, line_num, col_num, "", orange, reset);
-            
-            // Format the code line to fit inside the box
-            let max_code_len = 48;
-            let code_display = if line_str.len() > max_code_len {
-                format!("{}...", &line_str[..max_code_len - 3])
-            } else {
-                line_str.to_string()
-            };
-            
-            eprintln!("{}║    {:<48}  ║{}", orange, code_display, reset);
-            
-            // Caret
-            let mut caret = String::new();
-            for _ in 0..col_num.saturating_sub(1).min(max_code_len) { caret.push(' '); }
-            caret.push('^');
-            eprintln!("{}║{}    {:<48}{}  ║{}", orange, red, caret, orange, reset);
-        }
-        
-        if idx < errors.len() - 1 {
-            eprintln!("{}╟──────────────────────────────────────────────────────╢{}", orange, reset);
-        }
-    }
-    eprintln!("{}╚══════════════════════════════════════════════════════╝{}", orange, reset);
-    eprintln!();
 }

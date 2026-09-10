@@ -1,0 +1,26 @@
+import "ai.tensor";
+import "ml.linear";
+import "os.runtime";
+import "app.result";
+import "game.vector2";
+
+func main() {
+    var left = tensor_alloc(3);
+    var right = tensor_alloc(3);
+    tensor_set(left, 0, 2);
+    tensor_set(left, 1, 3);
+    tensor_set(left, 2, 4);
+    tensor_set(right, 0, 5);
+    tensor_set(right, 1, 6);
+    tensor_set(right, 2, 7);
+
+    println(tensor_dot(left, right, 3));
+    println(tensor_argmax(left, 3));
+    println(linear_predict(2, 10, 1));
+    println(vec2_distance_squared(0, 0, 3, 4));
+    println(app_clamp(99, 0, 10));
+    println(os_memory_bytes());
+
+    tensor_free(left);
+    tensor_free(right);
+}

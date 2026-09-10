@@ -1,0 +1,25 @@
+import "ai.matrix_basic";
+import "game.collision_basic";
+import "std.bits_basic";
+
+func main() {
+    var left = matrix_alloc(2, 2);
+    var right = matrix_alloc(2, 2);
+    var result = matrix_alloc(2, 2);
+    matrix_set(left, 2, 0, 0, 1);
+    matrix_set(left, 2, 0, 1, 2);
+    matrix_set(left, 2, 1, 0, 3);
+    matrix_set(left, 2, 1, 1, 4);
+    matrix_fill(right, 2, 2, 2);
+    matrix_multiply(left, right, result, 2, 2, 2);
+
+    println(matrix_get(result, 2, 0, 0));
+    println(matrix_get(result, 2, 1, 1));
+    println(collision_aabb(0, 0, 10, 10, 5, 5, 10, 10));
+    println(physics_integrate_velocity(10, 2, 3));
+    println(bits_popcount(bits_set(0, 7)));
+
+    matrix_free(left);
+    matrix_free(right);
+    matrix_free(result);
+}

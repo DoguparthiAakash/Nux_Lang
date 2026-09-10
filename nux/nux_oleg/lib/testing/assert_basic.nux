@@ -1,0 +1,30 @@
+# Lightweight assertions that work without generic Result/Option types.
+
+func assert_equal(actual, expected) {
+    if (actual == expected) {
+        return 1;
+    }
+    println(actual);
+    println(expected);
+    return 0;
+}
+
+func assert_true(condition) {
+    if (condition) {
+        return 1;
+    }
+    return 0;
+}
+
+func assert_nonzero(value) {
+    return assert_true(value != 0);
+}
+
+func assert_report(name, passed) {
+    if (passed) {
+        println(name);
+        return 1;
+    }
+    println(name);
+    return 0;
+}

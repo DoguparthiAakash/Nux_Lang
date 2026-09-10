@@ -1,0 +1,66 @@
+# Practical numeric arrays for the current Nux runtime.
+
+func array_alloc(length) {
+    return mem_alloc(length * 8);
+}
+
+func array_free(array) {
+    return mem_free(array);
+}
+
+func array_get(array, index) {
+    return mem_read64(array + index * 8);
+}
+
+func array_set(array, index, value) {
+    return mem_write64(array + index * 8, value);
+}
+
+func array_fill(array, length, value) {
+    var index = 0;
+    while (index < length) {
+        array_set(array, index, value);
+        index = index + 1;
+    }
+    return length;
+}
+
+func array_sum(array, length) {
+    var index = 0;
+    var total = 0;
+    while (index < length) {
+        total = total + array_get(array, index);
+        index = index + 1;
+    }
+    return total;
+}
+
+func array_max(array, length) {
+    if (length <= 0) {
+        return 0;
+    }
+    var index = 1;
+    var best = array_get(array, 0);
+    while (index < length) {
+        var value = array_get(array, index);
+        if (value > best) {
+            best = value;
+        }
+        index = index + 1;
+    }
+    return best;
+}
+
+func array_reverse(array, length) {
+    var left = 0;
+    var right = length - 1;
+    while (left < right) {
+        var left_value = array_get(array, left);
+        var right_value = array_get(array, right);
+        array_set(array, left, right_value);
+        array_set(array, right, left_value);
+        left = left + 1;
+        right = right - 1;
+    }
+    return array;
+}

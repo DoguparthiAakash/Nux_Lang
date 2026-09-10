@@ -212,8 +212,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_FSIN" => ops.push(0x48),
             "OP_FCOS" => ops.push(0x49),
             "OP_FSQRT" => ops.push(0x4A),
-            "PEEK8" => ops.push(0x42),
-            "POKE8" => ops.push(0x43),
+            "OP_PEEK8" | "PEEK8" => ops.push(0x4B),
+            "OP_POKE8" | "POKE8" => ops.push(0x4C),
             "OP_PEEK32" | "PEEK32" => ops.push(0x42), // Reusing 42/43 for 32-bit peek/poke
             "OP_POKE32" | "POKE32" => ops.push(0x43),
             "OP_ALLOC" => ops.push(0x82),

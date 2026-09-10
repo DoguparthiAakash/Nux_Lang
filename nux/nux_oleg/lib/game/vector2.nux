@@ -1,0 +1,39 @@
+# Nux game foundation: allocation-free 2D vector operations.
+import "app.result";
+
+func vec2_length_squared(x, y) {
+    return x * x + y * y;
+}
+
+func vec2_add_x(ax, bx) {
+    return ax + bx;
+}
+
+func vec2_add_y(ay, by) {
+    return ay + by;
+}
+
+func vec2_sub_x(ax, bx) {
+    return ax - bx;
+}
+
+func vec2_sub_y(ay, by) {
+    return ay - by;
+}
+
+func vec2_dot(ax, ay, bx, by) {
+    return ax * bx + ay * by;
+}
+
+func vec2_distance_squared(ax, ay, bx, by) {
+    var dx = ax - bx;
+    var dy = ay - by;
+    return vec2_length_squared(dx, dy);
+}
+
+func vec2_move_toward(value, target, amount) {
+    if (value < target) {
+        return app_clamp(value + amount, value, target);
+    }
+    return app_clamp(value - amount, target, value);
+}

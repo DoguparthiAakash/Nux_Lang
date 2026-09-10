@@ -1,0 +1,39 @@
+# Fixed-capacity ring buffer for queues, audio, networking, and games.
+
+func ring_alloc(capacity) {
+    var data = mem_alloc(capacity * 8);
+    mem_set(data, 0, capacity * 8);
+    return data;
+}
+
+func ring_free(data) {
+    return mem_free(data);
+}
+
+func ring_push(data, capacity, head, count, value) {
+    var index = (head + count) % capacity;
+    mem_write64(data + index * 8, value);
+    if (count < capacity) {
+        return count + 1;
+    }
+    return count;
+}
+
+func ring_pop(data, capacity, head, count) {
+    if (count <= 0) {
+        return 0;
+    }
+    return mem_read64(data + head * 8);
+}
+
+func ring_next(index, capacity) {
+    return (index + 1) % capacity;
+}
+
+func ring_peek(data, capacity, head, count, offset) {
+    if (offset < 0 || offset >= count) {
+        return 0;
+    }
+    var index = (head + offset) % capacity;
+    return mem_read64(data + index * 8);
+}

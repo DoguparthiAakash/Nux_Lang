@@ -1,0 +1,51 @@
+func main() {
+    var total: int = 0;
+    for (var i: int = 0; i < 5; i++) {
+        if (i == 2) {
+            continue;
+        }
+        total = total + i;
+    }
+
+    var choice: int = 2;
+    match (choice) {
+        case 1: {
+            total = total + 100;
+        }
+        case 2: {
+            total = total + 10;
+        }
+        default: {
+            total = total + 1000;
+        }
+    }
+
+    var countdown: int = 2;
+    do {
+        countdown--;
+    } while (countdown > 0);
+
+    for (;;) {
+        break;
+    }
+
+    var typed_sum: int = 0;
+    for (int j = 0; j < 3; j++) {
+        typed_sum = typed_sum + j;
+    }
+
+    var bare_sum: int = 0;
+    for (bare = 0; bare < 2; bare++) {
+        bare_sum = bare_sum + bare;
+    }
+
+    var range_sum: int = 0;
+    for (k in rangeOf(4)) {
+        range_sum = range_sum + k;
+    }
+
+    println(total);
+    println(typed_sum);
+    println(bare_sum);
+    println(range_sum);
+}

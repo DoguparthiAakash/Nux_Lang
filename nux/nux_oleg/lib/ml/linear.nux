@@ -1,0 +1,15 @@
+# Nux machine learning foundation: integer fixed-point linear models.
+
+func linear_predict(weight, sample, bias) {
+    return weight * sample + bias;
+}
+
+func linear_error(predicted, expected) {
+    return expected - predicted;
+}
+
+func linear_step(weight, sample, bias, expected, learning_rate) {
+    var predicted = linear_predict(weight, sample, bias);
+    var error = linear_error(predicted, expected);
+    return weight + learning_rate * error * sample;
+}
