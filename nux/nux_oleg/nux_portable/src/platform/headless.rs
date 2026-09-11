@@ -103,4 +103,7 @@ impl Platform for HeadlessPlatform {
     fn is_key_down(&self, _key: usize) -> bool {
         false
     }
+
+    fn get_mouse_pos(&self) -> (f32, f32) { (0.0, 0.0) }
+    fn get_mouse_btn(&self, _button: usize) -> bool { false }
 }

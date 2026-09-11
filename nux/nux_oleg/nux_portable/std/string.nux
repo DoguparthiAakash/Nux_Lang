@@ -1,0 +1,34 @@
+# std/string.nux
+# Nux Standard Library: String Class
+# Built on top of the safe memory management system.
+
+import "std/memory.nux"
+
+class String {
+    var length;
+    var ptr;
+    
+    # Initialize from a raw literal or pointer
+    func init(raw_ptr, len) {
+        self.length = len;
+        
+        # Allocate new memory safely
+        self.ptr = sys_alloc(len + 1);
+        
+        # Copy characters
+        var i = 0;
+        while (i < len) {
+            poke(self.ptr + i, peek(raw_ptr + i));
+            i = i + 1;
+        }
+        poke(self.ptr + len, 0); # Null terminator
+    }
+    
+    func print() {
+        var i = 0;
+        while (i < self.length) {
+            print_char(peek(self.ptr + i));
+            i = i + 1;
+        }
+    }
+}

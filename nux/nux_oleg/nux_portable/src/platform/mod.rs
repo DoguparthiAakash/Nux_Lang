@@ -11,4 +11,6 @@ pub trait Platform {
     fn sys_info(&self) -> String;
     fn platform_type(&self) -> u8; // 0=Unk, 1=Linux, 2=Win, 3=Mac, 4=Ainux
     fn is_key_down(&self, key: usize) -> bool;
+    fn get_mouse_pos(&self) -> (f32, f32);
+    fn get_mouse_btn(&self, button: usize) -> bool;
 }

@@ -42,6 +42,11 @@ const OP_GTE: u8 = 0x95;
 
 const OP_DRAW_RECT: u8 = 0x20;
 const OP_DRAW_IMG: u8 = 0x21; // Unused
+const OP_WINDOW_CREATE: u8 = 0x22;
+const OP_WINDOW_UPDATE: u8 = 0x23;
+const OP_GET_MOUSE_X: u8 = 0x24;
+const OP_GET_MOUSE_Y: u8 = 0x25;
+const OP_GET_MOUSE_BTN: u8 = 0x26;
 const OP_SLEEP: u8 = 0x30;
 
 // Vision/Camera Ops
@@ -120,6 +125,8 @@ const OP_ALLOC: u8 = 0x82;
 const OP_FREE: u8 = 0x83;
 const OP_LIMIT_MEM: u8 = 0x84;
 const OP_VISION_DETECT: u8 = 0xB0;
+const OP_HTTP_LISTEN: u8 = 0xC7;
+const OP_HTTP_RESPOND: u8 = 0xC8;
 const OP_EXIT: u8 = 0xFF;
 
 // Memory Safety & GPU Opcodes
@@ -205,6 +212,10 @@ struct SharedState {
     fb_width: usize,
     fb_height: usize,
     fb_addr: usize,
+    
+    http_servers: std::collections::HashMap<i64, Arc<tiny_http::Server>>,
+    http_requests: std::collections::HashMap<i64, tiny_http::Request>,
+    next_http_req_id: i64,
 }
 
 #[derive(Clone)]
@@ -269,6 +280,9 @@ impl NuxVm {
                 fb_width: 640,
                 fb_height: 480,
                 fb_addr: 0,
+                http_servers: std::collections::HashMap::new(),
+                http_requests: std::collections::HashMap::new(),
+                next_http_req_id: 1,
             })),
         }
     }
@@ -493,6 +507,61 @@ impl NuxVm {
                     }
                     #[cfg(not(feature = "minifb"))]
                     { self.push(0); }
+                },
+                OP_HTTP_LISTEN => {
+                    let port = self.pop();
+                    let server_arc = {
+                        let mut state = self.shared.lock();
+                        if !state.http_servers.contains_key(&port) {
+                            if let Ok(server) = tiny_http::Server::http(format!("0.0.0.0:{}", port)) {
+                                state.http_servers.insert(port, Arc::new(server));
+                            }
+                        }
+                        state.http_servers.get(&port).cloned()
+                    };
+                    
+                    if let Some(server) = server_arc {
+                        if let Ok(request) = server.recv() {
+                            let req_id = {
+                                let mut state = self.shared.lock();
+                                let id = state.next_http_req_id;
+                                state.next_http_req_id += 1;
+                                state.http_requests.insert(id, request);
+                                id
+                            };
+                            self.push(req_id);
+                        } else {
+                            self.push(0); // Error receiving
+                        }
+                    } else {
+                        self.push(0); // Failed to bind
+                    }
+                },
+                OP_HTTP_RESPOND => {
+                    let res_ptr = self.pop() as usize; // Address of string response
+                    let req_id = self.pop();
+                    
+                    let req_opt = {
+                        let mut state = self.shared.lock();
+                        state.http_requests.remove(&req_id)
+                    };
+                    
+                    if let Some(request) = req_opt {
+                        let state = self.shared.lock();
+                        // Find length of string at res_ptr
+                        let mut len = 0;
+                        while res_ptr + len < state.memory.len() && state.memory[res_ptr + len] != 0 {
+                            len += 1;
+                        }
+                        let res_str = std::str::from_utf8(&state.memory[res_ptr..res_ptr+len]).unwrap_or("Internal Server Error").to_string();
+                        drop(state); // Drop lock before responding
+                        
+                        let response = tiny_http::Response::from_string(res_str);
+                        let _ = request.respond(response);
+                        self.push(1); // Success
+                    } else {
+                        self.push(0); // Error, request not found
+                    }
                 },
                 OP_PUSH => {
                     let val = self.read_i64_code();
@@ -764,6 +833,87 @@ impl NuxVm {
                          println!("Runtime Error: No Platform Available");
                      }
                      self.push(new_handle);
+                },
+                OP_WINDOW_CREATE => {
+                    let height = self.pop();
+                    let width = self.pop();
+                    let title_ptr = self.pop();
+                    let mut title = String::new();
+                    {
+                        let state = self.shared.lock();
+                        let mut i = title_ptr as usize;
+                        while state.memory[i] != 0 {
+                            title.push(state.memory[i] as char);
+                            i += 1;
+                        }
+                    }
+                    if let Some(plat) = platform.as_deref_mut() {
+                        if let Err(e) = plat.create_window(width as usize, height as usize, &title) {
+                            println!("Runtime Warning: Window Create Failed: {}", e);
+                        }
+                    } else {
+                        println!("Runtime Error: No Platform Available for Window Create");
+                    }
+                },
+                OP_WINDOW_UPDATE => {
+                    let handle = self.pop();
+                    let shared = self.shared.clone();
+                    let state = shared.lock();
+                    if let Some((w, h, data)) = state.images.get(&handle) {
+                        if let Some(plat) = platform.as_deref_mut() {
+                            if let Err(e) = plat.update_window(data, *w as usize, *h as usize) {
+                                println!("Runtime Warning: Window Update Failed: {}", e);
+                            }
+                        }
+                    }
+                },
+                OP_GET_MOUSE_X => {
+                    let mut mx = 0.0;
+                    if let Some(plat) = platform.as_deref() {
+                        let (x, _) = plat.get_mouse_pos();
+                        mx = x;
+                    }
+                    self.push(mx as i64);
+                },
+                OP_GET_MOUSE_Y => {
+                    let mut my = 0.0;
+                    if let Some(plat) = platform.as_deref() {
+                        let (_, y) = plat.get_mouse_pos();
+                        my = y;
+                    }
+                    self.push(my as i64);
+                },
+                OP_GET_MOUSE_BTN => {
+                    let btn = self.pop();
+                    let mut is_down = 0;
+                    if let Some(plat) = platform.as_deref() {
+                        if plat.get_mouse_btn(btn as usize) {
+                            is_down = 1;
+                        }
+                    }
+                    self.push(is_down);
+                },
+                OP_DRAW_RECT => {
+                    let h = self.pop();
+                    let w = self.pop();
+                    let y = self.pop();
+                    let x = self.pop();
+                    let color = self.pop();
+                    let handle = self.pop();
+                    
+                    let shared = self.shared.clone();
+                    let mut state = shared.lock();
+                    if let Some((img_w, img_h, data)) = state.images.get_mut(&handle) {
+                        for row in 0..h {
+                            for col in 0..w {
+                                let py = y + row;
+                                let px = x + col;
+                                if px >= 0 && px < *img_w && py >= 0 && py < *img_h {
+                                    data[(py * *img_w + px) as usize] = color as u32;
+                                }
+                            }
+                        }
+                    }
                 },
                 OP_IS_KEY_DOWN => {
                      let key = self.pop();

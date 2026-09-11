@@ -768,6 +768,7 @@ impl Parser {
         self.advance();
         
         self.enter_scope();
+        let start_local = self.local_offset;
         
         while self.current_token != Token::RBrace && self.current_token != Token::EOF {
              if let Err(e) = self.parse_statement_or_expr(out) {
@@ -775,6 +776,13 @@ impl Parser {
                  self.synchronize();
              }
         }
+        
+        let end_local = self.local_offset;
+        let locals_to_pop = end_local - start_local;
+        for _ in 0..locals_to_pop {
+            out.push_str("POP\n");
+        }
+        self.local_offset = start_local;
         
         self.exit_scope();
         
@@ -1039,6 +1047,66 @@ impl Parser {
                      return Ok(());
                  }
                  
+                 // Intrinsic: UI Window Create
+                 if part1 == "__ui_window_create" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // title string
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // width
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // height
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi { if self.current_token == Token::SemiColon { self.advance(); } } else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_WINDOW_CREATE\n");
+                     return Ok(());
+                 }
+
+                 // Intrinsic: UI Window Update
+                 if part1 == "__ui_window_update" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // img buffer handle
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi { if self.current_token == Token::SemiColon { self.advance(); } } else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_WINDOW_UPDATE\n");
+                     return Ok(());
+                 }
+
+                 // Intrinsic: UI Draw Rect
+                 if part1 == "__ui_draw_rect" {
+                     self.advance();
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // img buffer handle
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // color
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // x
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // y
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // w
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance();
+                     self.parse_expression_and_push(out)?; // h
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi { if self.current_token == Token::SemiColon { self.advance(); } } else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_DRAW_RECT\n");
+                     return Ok(());
+                 }
+
 
                  self.advance(); // skip name
                  if self.current_token == Token::Eq {
@@ -1681,7 +1749,8 @@ impl Parser {
              },
              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
-             Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale => {
+             Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+             Token::HttpListen | Token::HttpRespond => {
                  self.parse_expression_and_push(out)?;
                  // Expression leaves result on stack, discard it for statement
                  out.push_str("POP\n");
@@ -1902,7 +1971,8 @@ impl Parser {
                     ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
                     ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
                     ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
-                     _ => {}
+                    ConstantValue::String(_) => out.push_str(&sub_out),
+                    ConstantValue::None => {}
                  }
                  // Update expr_type based on constant? (Already correct from parser)
              } else {
@@ -2317,9 +2387,8 @@ impl Parser {
                         ConstantValue::Int(i) => out.push_str(&format!("PUSH {}\n", i)),
                         ConstantValue::Float(f) => out.push_str(&format!("PUSH {}\n", f.to_bits() as i64)),
                         ConstantValue::Bool(b) => out.push_str(&format!("PUSH {}\n", if b { 1 } else { 0 })),
-                        // Strings?
-                         ConstantValue::String(_) => {}, // TODO: String support
-                        _ => {}
+                        ConstantValue::String(_) => out.push_str(&sub_out),
+                        ConstantValue::None => {}
                     }
                 } else {
                     out.push_str(&sub_out);
@@ -2794,6 +2863,29 @@ OP_IMG_ALLOC
                  out.push_str("OP_SYS_PLATFORM\n");
                  Ok((Type::Int, None))
             },
+            Token::HttpListen => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression_and_push(out)?; // port
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_HTTP_LISTEN\n");
+                 Ok((Type::Int, None))
+            },
+            Token::HttpRespond => {
+                 self.advance();
+                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                 self.advance();
+                 self.parse_expression_and_push(out)?; // req_id
+                 if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                 self.advance();
+                 self.parse_expression_and_push(out)?; // response string address
+                 if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                 self.advance();
+                 out.push_str("OP_HTTP_RESPOND\n");
+                 Ok((Type::Int, None))
+            },
             Token::CamCount => {
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -2985,6 +3077,14 @@ OP_IMG_ALLOC
             "vbe_mouse_down" => Some("OP_VBE_GET_MOUSE_DOWN".to_string()),
             "peek32" => Some("OP_PEEK32".to_string()),
             "poke32" => Some("OP_POKE32".to_string()),
+            "__ui_get_mouse_x" => Some("OP_GET_MOUSE_X".to_string()),
+            "__ui_get_mouse_y" => Some("OP_GET_MOUSE_Y".to_string()),
+            "__ui_get_mouse_btn" => Some("OP_GET_MOUSE_BTN".to_string()),
+            "__ui_window_create" => Some("OP_WINDOW_CREATE".to_string()),
+            "__ui_window_update" => Some("OP_WINDOW_UPDATE".to_string()),
+            "__ui_draw_rect" => Some("OP_DRAW_RECT".to_string()),
+            "__img_alloc" => Some("OP_IMG_ALLOC".to_string()),
+            "__img_free" => Some("OP_IMG_FREE".to_string()),
 
             _ => None
         }

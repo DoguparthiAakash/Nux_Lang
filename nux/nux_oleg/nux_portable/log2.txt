@@ -1,0 +1,663 @@
+﻿cargo : warning: unused import: `self`
+At line:1 char:1
++ cargo run --features gui -- run ui_demo.nux 2>&1 | Out-File -Encoding ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: unused import: `self`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ --> src\vm.rs:1:23
+  |
+1 | use crate::platform::{self, Platform};
+  |                       ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Read`
+ --> src\vm.rs:3:28
+  |
+3 | use std::io::{self, Write, Read};
+  |                            ^^^^
+
+warning: unused import: `WindowOptions`
+  --> src\vm.rs:10:22
+   |
+10 | use minifb::{Window, WindowOptions};
+   |                      ^^^^^^^^^^^^^
+
+warning: unused import: `std::env`
+ --> src\editor.rs:1:5
+  |
+1 | use std::env;
+  |     ^^^^^^^^
+
+warning: unnecessary parentheses around assigned value
+  --> src\platform\headless.rs:45:34
+   |
+45 |                 let brightness = ((r as usize + g as usize + b as usize) / 3);
+   |                                  ^                                          ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+45 -                 let brightness = ((r as usize + g as usize + b as usize) / 3);
+45 +                 let brightness = (r as usize + g as usize + b as usize) / 3;
+   |
+
+warning: unused import: `std::path::Path`
+ --> src\jit_backend.rs:3:5
+  |
+3 | use std::path::Path;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `std::process::Command`
+ --> src\build_tools.rs:1:5
+  |
+1 | use std::process::Command;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated method `minifb::Window::limit_update_rate`: use set_fps_target instead, this function will 
+be removed in the future.
+   --> src\vm.rs:378:36
+    |
+378 | ...                   window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+    |                              ^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated method `minifb::Window::limit_update_rate`: use set_fps_target instead, this function will 
+be removed in the future.
+  --> src\platform\desktop.rs:29:21
+   |
+29 |                 win.limit_update_rate(Some(std::time::Duration::from_micros(16600))); // ~60fps
+   |                     ^^^^^^^^^^^^^^^^^
+
+warning: unreachable pattern
+    --> src\vm.rs:1308:17
+     |
+ 573 |                 0xB0 => { // 2-byte PUSH
+     |                 ---- matches all the relevant values
+...
+1308 |                 OP_VISION_DETECT => {
+     |                 ^^^^^^^^^^^^^^^^ no value can reach this
+     |
+     = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: unreachable pattern
+    --> src\vm.rs:1372:17
+     |
+1132 |                 OP_TIME => {
+     |                 ------- matches all the relevant values
+...
+1372 |                 OP_TIME => {
+     |                 ^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\vm.rs:1396:17
+     |
+ 702 |                 OP_GTE => { let b = self.pop(); let a = self.pop(); self.push(if a >= b {1} else {0}); },
+     |                 ------ matches all the relevant values
+...
+1396 |                 OP_DRAW_PIXEL => {
+     |                 ^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\vm.rs:1416:17
+     |
+ 700 |                 OP_GT => { let b = self.pop(); let a = self.pop(); self.push(if a > b {1} else {0}); },
+     |                 ----- matches all the relevant values
+...
+1416 |                 OP_DRAW_LINE => {
+     |                 ^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\vm.rs:1462:17
+     |
+ 701 |                 OP_LTE => { let b = self.pop(); let a = self.pop(); self.push(if a <= b {1} else {0}); },
+     |                 ------ matches all the relevant values
+...
+1462 |                 OP_DRAW_CIRCLE => {
+     |                 ^^^^^^^^^^^^^^ no value can reach this
+
+warning: unused variable: `y`
+   --> src\vm.rs:929:25
+    |
+929 |                     let y = self.pop(); // unused by update_window usually
+    |                         ^ help: if this is intentional, prefix it with an underscore: `_y`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `x`
+   --> src\vm.rs:930:25
+    |
+930 |                     let x = self.pop();
+    |                         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: unused variable: `w`
+   --> src\vm.rs:976:34
+    |
+976 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+    |                                  ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: unused variable: `h`
+   --> src\vm.rs:976:37
+    |
+976 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+    |                                     ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `src_idx`
+    --> src\vm.rs:1014:25
+     |
+1014 |                     let src_idx = self.pop() as usize; // Index in global stack? Or relative to FP?
+     |                         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_src_idx`
+
+warning: unused variable: `mode`
+    --> src\vm.rs:1326:26
+     |
+1326 |                      let mode = self.pop();
+     |                          ^^^^ help: if this is intentional, prefix it with an underscore: `_mode`
+
+warning: unused variable: `result_slot`
+    --> src\vm.rs:1328:26
+     |
+1328 |                      let result_slot = self.pop(); // Pop the 0 pushed before?
+     |                          ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_result_slot`
+
+warning: unused variable: `h`
+    --> src\vm.rs:1364:38
+     |
+1364 |                      if let Some((w, h, data)) = state.images.get_mut(&handle) {
+     |                                      ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `w`
+    --> src\vm.rs:1388:34
+     |
+1388 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+     |                                  ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: unused variable: `h`
+    --> src\vm.rs:1388:37
+     |
+1388 |                     if let Some((w, h, data)) = state.images.get_mut(&handle) {
+     |                                     ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `access`
+   --> src\high_level.rs:626:68
+    |
+626 |     fn parse_func(&mut self, out: &mut String, class_prefix: &str, access: AccessModifier) -> Result<(), 
+CompileError> {
+    |                                                                    ^^^^^^ help: if this is intentional, prefix 
+it with an underscore: `_access`
+
+warning: unreachable pattern
+    --> src\high_level.rs:1759:14
+     |
+ 922 |              Token::Asm => {
+     |              ---------- matches all the relevant values
+...
+1759 |              Token::Asm => {
+     |              ^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1797:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1797 |                Token::CamCapture => {
+     |                ^^^^^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1812:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1812 |                Token::ImgDraw => {
+     |                ^^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1831:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1831 |                Token::ImgFree => {
+     |                ^^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1843:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1843 |                Token::ImgFilter => {
+     |                ^^^^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1860:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1860 |                Token::ImgSet => {
+     |                ^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1879:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1879 |                Token::ImgFill => {
+     |                ^^^^^^^^^^^^^^ no value can reach this
+
+warning: unreachable pattern
+    --> src\high_level.rs:1893:14
+     |
+1750 | /              Token::ImgAlloc | Token::ImgFree | Token::ImgDraw | Token::CamCapture | 
+1751 | |              Token::ImgFilter | Token::ImgGet | Token::ImgSet | Token::ImgFill | 
+1752 | |              Token::ImgResize | Token::ImgCrop | Token::ImgGrayscale |
+1753 | |              Token::HttpListen | Token::HttpRespond => {
+     | |___________________________________________________- matches all the relevant values
+...
+1893 |                Token::ImgGet => {
+     |                ^^^^^^^^^^^^^ no value can reach this
+
+warning: unused variable: `info`
+   --> src\high_level.rs:996:34
+    |
+996 |                      if let Some(info) = self.functions.get(&n) {
+    |                                  ^^^^ help: if this is intentional, prefix it with an underscore: `_info`
+
+warning: unused variable: `key`
+    --> src\high_level.rs:1006:26
+     |
+1006 |                      let key = match &self.current_token {
+     |                          ^^^ help: if this is intentional, prefix it with an underscore: `_key`
+
+warning: unused variable: `expr_type`
+    --> src\high_level.rs:1155:41
+     |
+1155 | ...                   let (expr_type, constant) = self.parse_expression(&mut sub_out)?;
+     |                            ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_expr_type`
+
+warning: unused variable: `cname`
+    --> src\high_level.rs:1252:35
+     |
+1252 | ...                   for (cname, cinfo) in &self.classes {
+     |                            ^^^^^ help: if this is intentional, prefix it with an underscore: `_cname`
+
+warning: variable does not need to be mutable
+    --> src\high_level.rs:1963:19
+     |
+1963 |              let (mut expr_type, constant) = self.parse_expression(&mut sub_out)?;
+     |                   ----^^^^^^^^^
+     |                   |
+     |                   help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `val`
+    --> src\high_level.rs:2516:21
+     |
+2516 |         if let Some(val) = &left_const {
+     |                     ^^^ help: if this is intentional, prefix it with an underscore: `_val`
+
+warning: unused variable: `l_val`
+    --> src\high_level.rs:2530:27
+     |
+2530 |              if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+     |                           ^^^^^ help: if this is intentional, prefix it with an underscore: `_l_val`
+
+warning: unused variable: `r_val`
+    --> src\high_level.rs:2530:40
+     |
+2530 |              if let (Some(l_val), Some(r_val)) = (&left_const, &right_const) {
+     |                                        ^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_r_val`
+
+warning: unused variable: `operand_type`
+    --> src\high_level.rs:2601:18
+     |
+2601 |             let (operand_type, constant) = self.parse_unary(&mut sub_out)?;
+     |                  ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_operand_type`
+
+warning: unused variable: `cname`
+    --> src\high_level.rs:2734:35
+     |
+2734 | ...                   for (cname, cinfo) in &self.classes {
+     |                            ^^^^^ help: if this is intentional, prefix it with an underscore: `_cname`
+
+warning: unused variable: `width`
+  --> src\platform\ainux.rs:23:50
+   |
+23 |     fn update_window(&mut self, _buffer: &[u32], width: usize, height: usize) -> Result<(), String> {
+   |                                                  ^^^^^ help: if this is intentional, prefix it with an 
+underscore: `_width`
+
+warning: unused variable: `height`
+  --> src\platform\ainux.rs:23:64
+   |
+23 |     fn update_window(&mut self, _buffer: &[u32], width: usize, height: usize) -> Result<(), String> {
+   |                                                                ^^^^^^ help: if this is intentional, prefix it 
+with an underscore: `_height`
+
+warning: unused variable: `output_path`
+  --> src\backends\llvm_vm.rs:64:37
+   |
+64 |     pub fn compile_to_object(&self, output_path: &str) -> Result<(), String> {
+   |                                     ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_output_path`
+
+warning: unused variable: `obj_file`
+  --> src\build_tools.rs:35:35
+   |
+35 |     pub fn link_executable(&self, obj_file: &str, output_exe: &str) -> Result<(), String> {
+   |                                   ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_obj_file`
+
+warning: unused variable: `gold`
+   --> src\main.rs:199:17
+    |
+199 |             let gold   = "\x1b[38;5;220m";
+    |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_gold`
+
+warning: value assigned to `spath` is never read
+  --> src\main.rs:46:29
+   |
+46 |             let mut spath = String::new();
+   |                             ^^^^^^^^^^^^^ this value is reassigned later and never used
+...
+69 |                 spath = args[2].clone();
+   |                 ----- `spath` is overwritten here before the previous value is read
+   |
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `spath` is never read
+   --> src\main.rs:129:29
+    |
+129 |             let mut spath = String::new();
+    |                             ^^^^^^^^^^^^^ this value is reassigned later and never used
+...
+150 |                 spath = args[file_path_idx].clone();
+    |                 ----- `spath` is overwritten here before the previous value is read
+
+warning: variable does not need to be mutable
+   --> src\main.rs:614:13
+    |
+614 |         let mut trimmed = line.trim();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: constant `OP_DUP` is never used
+  --> src\vm.rs:25:7
+   |
+25 | const OP_DUP: u8 = 0x04;
+   |       ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `OP_DRAW_IMG` is never used
+  --> src\vm.rs:44:7
+   |
+44 | const OP_DRAW_IMG: u8 = 0x21; // Unused
+   |       ^^^^^^^^^^^
+
+warning: constant `OP_FSIN` is never used
+   --> src\vm.rs:100:7
+    |
+100 | const OP_FSIN: u8 = 0x48;
+    |       ^^^^^^^
+
+warning: constant `OP_FCOS` is never used
+   --> src\vm.rs:101:7
+    |
+101 | const OP_FCOS: u8 = 0x49;
+    |       ^^^^^^^
+
+warning: constant `OP_FSQRT` is never used
+   --> src\vm.rs:102:7
+    |
+102 | const OP_FSQRT: u8 = 0x4A;
+    |       ^^^^^^^^
+
+warning: constant `OP_RETAIN` is never used
+   --> src\vm.rs:133:7
+    |
+133 | const OP_RETAIN: u8 = 0x85;
+    |       ^^^^^^^^^
+
+warning: constant `OP_RELEASE` is never used
+   --> src\vm.rs:134:7
+    |
+134 | const OP_RELEASE: u8 = 0x86;
+    |       ^^^^^^^^^^
+
+warning: constant `OP_MATMUL_SIMD` is never used
+   --> src\vm.rs:135:7
+    |
+135 | const OP_MATMUL_SIMD: u8 = 0x87;
+    |       ^^^^^^^^^^^^^^
+
+warning: constant `OP_GPU_DISPATCH` is never used
+   --> src\vm.rs:136:7
+    |
+136 | const OP_GPU_DISPATCH: u8 = 0x88;
+    |       ^^^^^^^^^^^^^^^
+
+warning: fields `locks` and `ref_counts` are never read
+   --> src\vm.rs:200:5
+    |
+194 | struct SharedState {
+    |        ----------- fields in this struct
+...
+200 |     locks: std::collections::HashMap<u64, Arc<SpinLock<()>>>, 
+    |     ^^^^^
+...
+209 |     ref_counts: std::collections::HashMap<usize, usize>,
+    |     ^^^^^^^^^^
+
+warning: struct `CompileResult` is never constructed
+  --> src\high_level.rs:28:12
+   |
+28 | pub struct CompileResult {
+   |            ^^^^^^^^^^^^^
+
+warning: variant `None` is never constructed
+  --> src\high_level.rs:90:5
+   |
+85 | pub enum ConstantValue {
+   |          ------------- variant in this enum
+...
+90 |     None,
+   |     ^^^^
+   |
+   = note: `ConstantValue` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored 
+during dead code analysis
+
+warning: fields `label`, `arg_count`, and `access` are never read
+  --> src\high_level.rs:95:9
+   |
+94 | pub struct FunctionInfo {
+   |            ------------ fields in this struct
+95 |     pub label: String,
+   |         ^^^^^
+96 |     pub arg_count: usize,
+   |         ^^^^^^^^^
+97 |     pub access: AccessModifier,
+   |         ^^^^^^
+   |
+   = note: `FunctionInfo` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored 
+during dead code analysis
+
+warning: method `get_indent_level` is never used
+   --> src\editor.rs:446:8
+    |
+ 88 | impl MiniEditor {
+    | --------------- method in this implementation
+...
+446 |     fn get_indent_level(&self, line_idx: usize) -> usize {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: variants `Asm` and `MicroVM` are never constructed
+ --> src\transpiler.rs:7:5
+  |
+5 | pub enum TranspileTarget {
+  |          --------------- variants in this enum
+6 |     C,
+7 |     Asm, // Native ASM (using GCC as backend for now)
+  |     ^^^
+8 |     MicroVM, // C Micro-interpreter with embedded bytecode
+  |     ^^^^^^^
+
+warning: field `target` is never read
+  --> src\transpiler.rs:22:9
+   |
+21 | pub struct TranspilerConfig {
+   |            ---------------- field in this struct
+22 |     pub target: TranspileTarget,
+   |         ^^^^^^
+
+warning: methods `init` and `sys_info` are never used
+  --> src\platform\mod.rs:6:8
+   |
+ 5 | pub trait Platform {
+   |           -------- methods in this trait
+ 6 |     fn init(&mut self);
+   |        ^^^^
+...
+11 |     fn sys_info(&self) -> String;
+   |        ^^^^^^^^
+
+warning: struct `AinuxPlatform` is never constructed
+ --> src\platform\ainux.rs:4:12
+  |
+4 | pub struct AinuxPlatform;
+  |            ^^^^^^^^^^^^^
+
+warning: associated function `new` is never used
+ --> src\platform\ainux.rs:7:12
+  |
+6 | impl AinuxPlatform {
+  | ------------------ associated function in this implementation
+7 |     pub fn new() -> Self {
+  |            ^^^
+
+warning: field `name` is never read
+  --> src\project.rs:87:9
+   |
+86 | pub struct ProjectConfig {
+   |            ------------- field in this struct
+87 |     pub name: String,
+   |         ^^^^
+
+warning: trait `OSMachine` is never used
+ --> src\os_machine\mod.rs:4:11
+  |
+4 | pub trait OSMachine {
+  |           ^^^^^^^^^
+
+warning: function `get_machine` is never used
+  --> src\os_machine\mod.rs:22:8
+   |
+22 | pub fn get_machine() -> Box<dyn OSMachine> {
+   |        ^^^^^^^^^^^
+
+warning: struct `WindowsMachine` is never constructed
+ --> src\os_machine\windows.rs:3:12
+  |
+3 | pub struct WindowsMachine {
+  |            ^^^^^^^^^^^^^^
+
+warning: associated function `new` is never used
+ --> src\os_machine\windows.rs:8:12
+  |
+7 | impl WindowsMachine {
+  | ------------------- associated function in this implementation
+8 |     pub fn new() -> Self {
+  |            ^^^
+
+warning: struct `LinuxMachine` is never constructed
+ --> src\os_machine\linux.rs:3:12
+  |
+3 | pub struct LinuxMachine {
+  |            ^^^^^^^^^^^^
+
+warning: associated function `new` is never used
+ --> src\os_machine\linux.rs:8:12
+  |
+7 | impl LinuxMachine {
+  | ----------------- associated function in this implementation
+8 |     pub fn new() -> Self {
+  |            ^^^
+
+warning: enum `LinkerType` is never used
+ --> src\build_tools.rs:3:10
+  |
+3 | pub enum LinkerType {
+  |          ^^^^^^^^^^
+
+warning: struct `BuildToolchain` is never constructed
+ --> src\build_tools.rs:9:12
+  |
+9 | pub struct BuildToolchain {
+  |            ^^^^^^^^^^^^^^
+
+warning: associated items `detect` and `link_executable` are never used
+  --> src\build_tools.rs:14:12
+   |
+13 | impl BuildToolchain {
+   | ------------------- associated items in this implementation
+14 |     pub fn detect() -> Self {
+   |            ^^^^^^
+...
+35 |     pub fn link_executable(&self, obj_file: &str, output_exe: &str) -> Result<(), String> {
+   |            ^^^^^^^^^^^^^^^
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src\vm.rs:155:17
+    |
+155 |     pub fn lock(&self) -> SpinLockGuard<T> {
+    |                 ^^^^^     ^^^^^^^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+155 |     pub fn lock(&self) -> SpinLockGuard<'_, T> {
+    |                                         +++
+
+warning: `nux` (bin "nux") generated 81 warnings (run `cargo fix --bin "nux" -p nux` to apply 35 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running `target\debug\nux.exe run ui_demo.nux`
+[38;5;242mΓò¡ΓöÇ [1;38;5;81mΓùå nux[38;5;242m 
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ[0m
+[38;5;242mΓöé[0m  [1mui_demo.nux[0m  [38;5;242m┬╖  building ...[0m
+[38;5;242mΓò░ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇ[0m
+[38;5;242mΓö£ΓöÇ [1;38;5;78mΓ£ª compiled[0m  ui_demo.nux  [38;5;242m(memory only)[0m
+[38;5;242mΓò░ΓöÇ [1;38;5;81mΓû╢ running[0m  [1mui_demo.nux[0m
+
+Runtime Error: Stack Invalid Access Local 3 (fp=0, idx=3, stack_len=3, ip=200)
+Stack: [0, 800, 600]
+Call stack depth: 3

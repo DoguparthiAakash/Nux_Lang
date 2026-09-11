@@ -1,6 +1,7 @@
 pub mod xtensa;
 pub mod riscv;
 pub mod avr;
+pub mod llvm_vm;
 
 pub trait NativeEmitter {
     /// Emit initialization/bootloader code

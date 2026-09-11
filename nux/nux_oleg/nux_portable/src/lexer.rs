@@ -37,6 +37,8 @@ pub enum Token {
     Free,   // NEW: Manual Free
     Break,  // NEW: Loop Control
     Continue, // NEW: Loop Control
+    HttpListen,
+    HttpRespond,
     At,
     Hardware,
     Link,
@@ -355,6 +357,8 @@ impl Lexer {
             "free" => Token::Free,
             "break" => Token::Break,
             "continue" => Token::Continue,
+            "http_listen" => Token::HttpListen,
+            "http_respond" => Token::HttpRespond,
             // "class" => Token::Class, // Already matched above
             
             // Types

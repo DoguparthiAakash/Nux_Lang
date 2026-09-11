@@ -1,0 +1,31 @@
+# Nux Standard UI Library
+# Uses functional API with window handles
+
+func window_new(title: String, w: Int, h: Int) -> Int {
+    return __ui_window_create(title, w, h);
+}
+
+func window_update(handle: Int) {
+    __ui_window_update(handle);
+}
+
+func window_clear(handle: Int, w: Int, h: Int, color: Int) {
+    __ui_draw_rect(handle, color, 0, 0, w, h);
+}
+
+func window_draw_rect(handle: Int, color: Int, x: Int, y: Int, w: Int, h: Int) {
+    __ui_draw_rect(handle, color, x, y, w, h);
+}
+
+# IMGUI style input
+func mouse_x() -> Int {
+    return __ui_get_mouse_x();
+}
+
+func mouse_y() -> Int {
+    return __ui_get_mouse_y();
+}
+
+func mouse_down(btn: Int) -> Int {
+    return __ui_get_mouse_btn(btn);
+}

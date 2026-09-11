@@ -1,0 +1,21 @@
+# std/memory.nux
+# Nux Standard Library: Memory Management
+# Provides Rust-like safe memory wrappers around raw allocation and an optional garbage collector.
+
+class MemoryManager {
+    # Low-level system allocation (calls into OS Machine layer)
+    func raw_alloc(size) {
+        return sys_alloc(size);
+    }
+    
+    # Low-level system free
+    func raw_free(ptr) {
+        return sys_free(ptr);
+    }
+}
+
+# Optional explicit Garbage Collection
+func gc_run() {
+    # Calls into the LLVM VM to trace and free unreachable memory regions
+    sys_gc_run();
+}

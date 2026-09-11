@@ -11,6 +11,8 @@ mod flasher;
 mod jit_backend;
 pub mod backends;
 mod project;
+mod os_machine;
+mod build_tools;
 
 use std::env;
 use std::fs;

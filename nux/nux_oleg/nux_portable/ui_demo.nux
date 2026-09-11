@@ -1,0 +1,50 @@
+import "std/ui.nux";
+
+func main() {
+    var w = 800;
+    var h = 600;
+    var win = window_new("Nux UI Demo", w, h);
+    
+    # UI Loop
+    while (1 == 1) {
+        # Clear background to dark gray
+        window_clear(win, w, h, 2236962);
+        
+        var ix = mouse_x();
+        var iy = mouse_y();
+        var mdown = mouse_down(0); # 0 = Left button
+        
+        # Draw a button (IMGUI style logic)
+        var btn_x = 300;
+        var btn_y = 250;
+        var btn_w = 200;
+        var btn_h = 100;
+        
+        var btn_color = 4473924; # Normal
+        
+        # Simple AABB collision for hover
+        if (ix >= btn_x) {
+            if (ix <= btn_x + btn_w) {
+                if (iy >= btn_y) {
+                    if (iy <= btn_y + btn_h) {
+                        if (mdown == 1) {
+                            btn_color = 65280; # Green when clicked
+                        } else {
+                            btn_color = 6710886; # Hover
+                        }
+                    }
+                }
+            }
+        }
+        
+        # Draw button
+        window_draw_rect(win, btn_color, btn_x, btn_y, btn_w, btn_h);
+        
+        # Draw a small red square at mouse position
+        window_draw_rect(win, 16711680, ix - 5, iy - 5, 10, 10);
+        
+        window_update(win);
+        sleep(16); # ~60 FPS
+    }
+}
+main();

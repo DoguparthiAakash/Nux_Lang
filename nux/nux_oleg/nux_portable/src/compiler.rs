@@ -79,6 +79,11 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "LTE" => ops.push(0x94),
             "GTE" => ops.push(0x95),
             "OP_DRAW_RECT" => ops.push(0x20),
+            "OP_WINDOW_CREATE" => ops.push(0x22),
+            "OP_WINDOW_UPDATE" => ops.push(0x23),
+            "OP_GET_MOUSE_X" => ops.push(0x24),
+            "OP_GET_MOUSE_Y" => ops.push(0x25),
+            "OP_GET_MOUSE_BTN" => ops.push(0x26),
             "OP_SLEEP" => ops.push(0x30),
             
             // Vision
@@ -253,6 +258,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_RELEASE" => ops.push(0x86),
             "OP_MATMUL_SIMD" => ops.push(0x87),
             "OP_GPU_DISPATCH" => ops.push(0x88),
+            "OP_HTTP_LISTEN" => ops.push(0xC7),
+            "OP_HTTP_RESPOND" => ops.push(0xC8),
             _ => return Err(format!("Unknown instruction: {} (full line: {})", mnemonic, line)),
         }
     }
