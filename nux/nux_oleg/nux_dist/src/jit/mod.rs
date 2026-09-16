@@ -5,8 +5,10 @@ use crate::nvm::bytecode::{Opcode, BytecodeChunk};
 use std::collections::HashMap;
 
 pub mod optimizer;
+pub mod llvm_translator;
 
 pub use optimizer::{AdvancedOptimizer, OptimizationStats, RegisterAllocator, Register};
+pub use llvm_translator::LlvmTranslator;
 
 /// JIT Compiler with tiered compilation
 pub struct JitCompiler {

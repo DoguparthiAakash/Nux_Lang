@@ -45,6 +45,7 @@ num-complex = "0.4.6"
 rand = "0.10.1"
 dirs = "6.0.0"
 regex = "1.13.1"
+inkwell = { version = "0.10.0", features = ["llvm15-0"] }
 
 [features]
 default = ["minifb"]
