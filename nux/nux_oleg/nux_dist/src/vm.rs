@@ -143,6 +143,7 @@ pub struct NuxVm {
     call_stack: Vec<(usize, usize)>, // (ret_ip, base_pointer)
     catch_stack: Vec<(usize, usize, usize)>, // (catch_ip, call_stack_len, stack_len)
     base_pointer: usize,
+    pub trace: Vec<(usize, u8)>,
     
     shared: Arc<SharedVmState>,
     
@@ -188,6 +189,8 @@ impl NuxVm {
             // We'll allow it with a warning for now so standard dev works.
             // eprintln!("WARNING: Running unsigned Nux bytecode.");
         }
+        
+        std::fs::write("scratch/bytecode.bin", &code).unwrap();
 
         Self {
             stack: Stack::new(),
@@ -213,6 +216,7 @@ impl NuxVm {
             fb_height: 480,
             fb_addr: 0,
             is_unsafe: false,
+            trace: Vec::new(),
         }
     }
     
@@ -238,9 +242,12 @@ impl NuxVm {
             }
         }
 
-        loop {
-            if self.ip >= self.code.len() { break; }
+        while self.ip < self.code.len() {
             let op = self.read_u8();
+            self.trace.push((self.ip - 1, op));
+            if self.trace.len() > 100 {
+                self.trace.remove(0);
+            }
 
             match op {
                 0xFF => break, // EXIT
@@ -648,14 +655,19 @@ impl NuxVm {
                      self.stack.push((a.powf(b)).to_bits() as i64);
                 },
                 0x40 => { // PEEK
-                     let addr = self.stack.pop().unwrap() as usize;
-                     let mut memory = self.shared.memory.write().unwrap();
-                     if addr + 8 > memory.len() {
-                         let new_len = (addr + 8).max(memory.len() * 2);
-                         memory.resize(new_len, 0);
-                     }
-                     let bytes: [u8; 8] = memory[addr..addr+8].try_into().unwrap();
-                     self.stack.push(i64::from_le_bytes(bytes));
+                    let addr = self.stack.pop().unwrap() as usize;
+                    if addr > 1000000 {
+                        println!("HUGE PEEK ADDR {} AT IP {}", addr, self.ip - 1);
+                        println!("TRACE: {:?}", self.trace);
+                        panic!("HUGE PEEK");
+                    }
+                    let mut memory = self.shared.memory.write().unwrap();
+                    if addr + 8 > memory.len() {
+                        let new_len = (addr + 8).max(memory.len() * 2);
+                        memory.resize(new_len, 0);
+                    }
+                    let bytes: [u8; 8] = memory[addr..addr+8].try_into().unwrap();
+                    self.stack.push(i64::from_le_bytes(bytes));
                 },
                 0x41 => { // POKE
                      let val = self.stack.pop().unwrap();
@@ -871,6 +883,7 @@ impl NuxVm {
                         fb_height: self.fb_height,
                         fb_addr: self.fb_addr,
                         is_unsafe: self.is_unsafe,
+                        trace: Vec::new(),
                     };
                     
                     let args_start = self.stack.len() - num_args;

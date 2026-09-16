@@ -73,7 +73,7 @@ pub enum Type {
 
 #[derive(Clone, Debug)]
 pub struct ClassInfo {
-    pub fields: BTreeMap<String, u32>,
+    pub fields: BTreeMap<String, (u32, Type)>,
     pub size: u32,
 }
 
@@ -92,7 +92,7 @@ pub struct Parser {
     bound_types: BTreeMap<String, (i64, i64)>,
     classes: BTreeMap<String, ClassInfo>,
     current_class_name: Option<String>,
-    current_class_fields: BTreeMap<String, u32>,
+    current_class_fields: BTreeMap<String, (u32, Type)>,
     pub in_unsafe_block: bool,
     pub enums: BTreeMap<String, BTreeMap<String, i64>>,
     pub traits: BTreeMap<String, Vec<String>>,
@@ -571,13 +571,22 @@ impl Parser {
                     _ => return self.error("Expected field name".to_string())
                 };
                 self.advance();
-                self.current_class_fields.insert(field_name.clone(), offset);
-                fields.insert(field_name, offset);
-                offset += 1; 
+                let mut field_type = Type::Unknown;
                 if self.current_token == Token::Colon {
                     self.advance();
+                    match &self.current_token {
+                        Token::Identifier(s) => field_type = Type::Class(s.clone()),
+                        Token::KwInt => field_type = Type::Int,
+                        Token::KwFloat => field_type = Type::Float,
+                        Token::KwChar => field_type = Type::Char,
+                        Token::KwString => field_type = Type::String,
+                        _ => {}
+                    }
                     self.advance(); 
                 }
+                self.current_class_fields.insert(field_name.clone(), (offset, field_type.clone()));
+                fields.insert(field_name, (offset, field_type));
+                offset += 1; 
                 if self.current_token == Token::SemiColon { self.advance(); }
             } else {
                 return self.error(format!("Only functions/fields allowed in classes for now, got {:?}", self.current_token));
@@ -947,6 +956,153 @@ impl Parser {
                      out.push_str("OP_SEC_WHOAMI\n");
                      return Ok(());
                  }
+                 
+                 if part1 == "tensor_set" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_SET\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_free" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_FREE\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_add" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_ADD\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_scale" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_SCALE\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_copy" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_COPY\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_relu" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_RELU\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_softmax" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_SOFTMAX\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_rmsnorm" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_RMSNORM\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_matmul" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_MATMUL\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "tensor_embedding" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?;
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("OP_TENSOR_EMBEDDING\nPOP\n");
+                     return Ok(());
+                 }
+                 if part1 == "cux_call" {
+                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                     self.advance(); self.parse_expression(out)?; 
+                     if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                     self.advance(); self.parse_expression(out)?; 
+                     let mut arg_count = 0;
+                     while self.current_token == Token::Comma {
+                         self.advance();
+                         self.parse_expression(out)?;
+                         arg_count += 1;
+                     }
+                     if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                     self.advance();
+                     if expect_semi && self.current_token == Token::SemiColon { self.advance(); }
+                     else if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str(&format!("PUSH {}\nOP_CUX_CALL\nPOP\n", arg_count));
+                     return Ok(());
+                 }
 
                  if self.current_token == Token::Eq {
                         match self.resolve_var(&part1) {
@@ -992,71 +1148,78 @@ impl Parser {
                       else if self.current_token == Token::SemiColon { self.advance(); }
                       out.push_str(&format!("CALL {} {}\nPOP\n", part1, arg_count));
                  } else if self.current_token == Token::Dot {
-                      self.advance();
-                      let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
-                      self.advance();
-                        if self.current_token == Token::Eq {
-                          let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
-                          let offset = if let Type::Class(cname) = typ {
-                              if Some(cname.clone()) == self.current_class_name {
-                                  if let Some(off) = self.current_class_fields.get(&member) { *off }
-                                  else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                     let (loc, mut typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
+                     match loc {
+                         VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
+                         VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n", idx)); }
+                     }
+                     
+                     while self.current_token == Token::Dot {
+                         self.advance();
+                         let member = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected member name".to_string()) };
+                         self.advance();
+                         
+                         if self.current_token == Token::Eq {
+                              let (offset, _field_typ) = if let Type::Class(cname) = &typ {
+                                  if Some(cname.clone()) == self.current_class_name {
+                                      if let Some(&(off, ref t)) = self.current_class_fields.get(&member) { (off, t.clone()) } else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                                  } else if let Some(cinfo) = self.classes.get(cname) {
+                                      if let Some(&(off, ref t)) = cinfo.fields.get(&member) { (off, t.clone()) } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                                  } else { return self.error(format!("Unknown class '{}'", cname)); }
+                              } else {
+                                  if let Some(&(off, ref t)) = self.current_class_fields.get(&member) {
+                                      (off, t.clone())
+                                  } else {
+                                      let mut found = None; for (cname, cinfo) in &self.classes { if let Some(&(off, ref t)) = cinfo.fields.get(&member) { found = Some((off, t.clone())); } }
+                                      if let Some(res) = found { res } else { return self.error(format!("Field '{}' not found", member)); }
+                                  }
+                              };
+                              out.push_str(&format!("PUSH {}\nOP_ADD\n", offset * 8));
+                              self.advance();
+                              self.parse_expression(out)?;
+                              if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                              else if self.current_token == Token::SemiColon { self.advance(); }
+                              out.push_str("POKE\n");
+                              return Ok(());
+                         } else if self.current_token == Token::LParen {
+                              let cname = if let Type::Class(n) = &typ { n.clone() } else { 
+                                  if let Some(ref cn) = self.current_class_name { cn.clone() } else { return self.error(format!("Variable is not an object")); }
+                              };
+                              self.advance();
+                              let mut arg_count = 1;
+                              if self.current_token != Token::RParen {
+                                  loop {
+                                      self.parse_expression(out)?; arg_count += 1;
+                                      if self.current_token == Token::Comma { self.advance(); } else { break; }
+                                  }
                               }
-                              else if let Some(cinfo) = self.classes.get(&cname) { *cinfo.fields.get(&member).unwrap() } 
-                              else { return self.error(format!("Unknown class '{}'", cname)); }
-                          } else {
-                             if let Some(off) = self.current_class_fields.get(&member) {
-                                 *off
-                             } else {
-                                 let mut found = None;
-                                 for (cname, cinfo) in &self.classes {
-                                     if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); }
-                                 }
-                                 if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
-                             }
-                          };
-                          match loc {
-                              VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
-                              VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n\n", idx)); }
-                          }
-                          out.push_str(&format!("PUSH {}\nOP_ADD\n", offset * 8));
-                          self.advance(); 
-                          self.parse_expression(out)?;
-                          if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
-                          else if self.current_token == Token::SemiColon { self.advance(); }
-                          out.push_str("POKE\n");
-                      } else if self.current_token == Token::LParen {
-                           let (loc, typ) = if let Some(r) = self.resolve_var(&part1) { r } else { return self.error(format!("Undefined variable '{}'", part1)); };
-                           let cname = if let Type::Class(n) = typ { 
-                               n 
-                           } else {
-                               if let Some(ref cn) = self.current_class_name {
-                                   cn.clone()
-                               } else {
-                                   return self.error(format!("Variable '{}' is not an object", part1));
-                               }
-                           };
-
-                           match loc {
-                               VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nPEEK\n", addr)); },
-                               VarLocation::Local(idx) => { out.push_str(&format!("OP_GET_LOCAL {}\n", idx)); }
-                           }
-
-                           self.advance();
-                           let mut arg_count = 1; 
-                           if self.current_token != Token::RParen {
-                                loop {
-                                    self.parse_expression(out)?; arg_count += 1; 
-                                    if self.current_token == Token::Comma { self.advance(); } else { break; }
-                                }
-                           }
-                           self.advance(); 
-                           if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
-                           else if self.current_token == Token::SemiColon { self.advance(); }
-                           out.push_str(&format!("CALL {}_{} {}\nPOP\n", cname, member, arg_count));
-                      } else {
-                           return self.error("Expected = or ( after member name".to_string());
-                      }
+                              if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                              self.advance();
+                              if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
+                              else if self.current_token == Token::SemiColon { self.advance(); }
+                              out.push_str(&format!("CALL {}_{} {}\nPOP\n", cname, member, arg_count));
+                              return Ok(());
+                         } else if self.current_token == Token::Dot {
+                              let (offset, field_typ) = if let Type::Class(cname) = &typ {
+                                  if Some(cname.clone()) == self.current_class_name {
+                                      if let Some(&(off, ref t)) = self.current_class_fields.get(&member) { (off, t.clone()) } else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                                  } else if let Some(cinfo) = self.classes.get(cname) {
+                                      if let Some(&(off, ref t)) = cinfo.fields.get(&member) { (off, t.clone()) } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                                  } else { return self.error(format!("Unknown class '{}'", cname)); }
+                              } else {
+                                  if let Some(&(off, ref t)) = self.current_class_fields.get(&member) {
+                                      (off, t.clone())
+                                  } else {
+                                      let mut found = None; for (cname, cinfo) in &self.classes { if let Some(&(off, ref t)) = cinfo.fields.get(&member) { found = Some((off, t.clone())); } }
+                                      if let Some(res) = found { res } else { return self.error(format!("Field '{}' not found", member)); }
+                                  }
+                              };
+                              out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8));
+                              typ = field_typ;
+                         } else {
+                              return self.error("Expected =, (, or . after member name".to_string());
+                         }
+                     }
                  } else {
                        if let Token::Identifier(ref s) = self.current_token {
                            let lower = part1.to_lowercase();
@@ -1332,7 +1495,10 @@ impl Parser {
         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
         self.advance();
         let loc = self.declare_var(name, final_type);
-        if let VarLocation::Global(addr) = loc { out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)); }
+        match loc {
+            VarLocation::Global(addr) => { out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)); },
+            VarLocation::Local(offset) => { out.push_str(&format!("SET_LOCAL {}\n", offset)); }
+        }
         Ok(())
     }
 
@@ -1694,6 +1860,14 @@ impl Parser {
                     self.advance();
                     out.push_str("OP_FFI_LOAD\n");
                     return Ok(Type::Int);
+                } else if part1 == "cux_load" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_CUX_LOAD\n");
+                    return Ok(Type::Int);
                 } else if part1 == "ffi_invoke" {
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                     self.advance();
@@ -1712,6 +1886,166 @@ impl Parser {
                     self.advance();
                     out.push_str(&format!("PUSH {}\n", arg_count));
                     out.push_str("OP_FFI_CALL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "cux_call" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?; 
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?; 
+                    
+                    let mut arg_count = 0;
+                    while self.current_token == Token::Comma {
+                        self.advance();
+                        self.parse_expression(out)?;
+                        arg_count += 1;
+                    }
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str(&format!("PUSH {}\n", arg_count));
+                    out.push_str("OP_CUX_CALL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_new" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_NEW\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_free" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_FREE\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_set" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_SET\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_get" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_GET\n");
+                    return Ok(Type::Float);
+                } else if part1 == "tensor_copy" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_COPY\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_add" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_ADD\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_matmul" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_MATMUL\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_relu" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_RELU\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_softmax" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_SOFTMAX\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_rmsnorm" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_RMSNORM\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_scale" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_SCALE\n");
+                    return Ok(Type::Int);
+                } else if part1 == "tensor_embedding" {
+                    if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::Comma { return self.error("Expected ,".to_string()); }
+                    self.advance();
+                    self.parse_expression(out)?;
+                    if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
+                    self.advance();
+                    out.push_str("OP_TENSOR_EMBEDDING\n");
                     return Ok(Type::Int);
                 } else if part1 == "dm_get" {
                     if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -1838,21 +2172,21 @@ impl Parser {
                              out.push_str(&format!("CALL {}_{} {}\n", cname, member, arg_count));
                              typ = Type::Int;
                         } else {
-                            let offset = if let Type::Class(cname) = &typ {
-                                 if Some(cname.clone()) == self.current_class_name {
-                                     if let Some(f) = self.current_class_fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
-                                 } else if let Some(cinfo) = self.classes.get(cname) { 
-                                     if let Some(f) = cinfo.fields.get(&member) { *f } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
-                                 } else { return self.error(format!("Unknown class '{}'", cname)); }
-                            } else {
-                                 if let Some(off) = self.current_class_fields.get(&member) {
-                                     *off
-                                 } else {
-                                     let mut found = None; for (cname, cinfo) in &self.classes { if let Some(off) = cinfo.fields.get(&member) { found = Some(*off); } }
-                                     if let Some(off) = found { off } else { return self.error(format!("Field '{}' not found", member)); }
-                                 }
-                            };
-                            out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8)); typ = Type::Unknown;
+                             let (offset, field_typ) = if let Type::Class(cname) = &typ {
+                                  if Some(cname.clone()) == self.current_class_name {
+                                      if let Some(&(f, ref t)) = self.current_class_fields.get(&member) { (f, t.clone()) } else { return self.error(format!("Field '{}' not found in current class '{}'", member, cname)); }
+                                  } else if let Some(cinfo) = self.classes.get(cname) { 
+                                      if let Some(&(f, ref t)) = cinfo.fields.get(&member) { (f, t.clone()) } else { return self.error(format!("Field '{}' not found in '{}'", member, cname)); }
+                                  } else { return self.error(format!("Unknown class '{}'", cname)); }
+                             } else {
+                                  if let Some(&(off, ref t)) = self.current_class_fields.get(&member) {
+                                      (off, t.clone())
+                                  } else {
+                                      let mut found = None; for (cname, cinfo) in &self.classes { if let Some(&(off, ref t)) = cinfo.fields.get(&member) { found = Some((off, t.clone())); } }
+                                      if let Some(res) = found { res } else { return self.error(format!("Field '{}' not found", member)); }
+                                  }
+                             };
+                             out.push_str(&format!("PUSH {}\nOP_ADD\nPEEK\n", offset * 8)); typ = field_typ;
                         }
                     }
                     Ok(typ)

@@ -9,8 +9,8 @@ func init_cuda() {
 }
 
 class Tensor {
-    var ptr;
-    var size;
+    var ptr: int;
+    var size: int;
 
     func init(size) {
         this.size = size;
@@ -53,26 +53,26 @@ class MSELoss {
         var size = predictions.size;
         var sum = 0;
         for (var i = 0; i < size; i = i + 1) {
-            var diff = predictions.get(i) - targets.get(i);
+            var diff = tensor_get(predictions.ptr, i) - tensor_get(targets.ptr, i);
             sum = sum + (diff * diff);
         }
-        output_loss.set(0, sum / size);
+        tensor_set(output_loss.ptr, 0, sum / size);
     }
 
     func backward(predictions, targets, grad_out) {
         var size = predictions.size;
         for (var i = 0; i < size; i = i + 1) {
-            var grad = 2 * (predictions.get(i) - targets.get(i)) / size;
-            grad_out.set(i, grad);
+            var grad = 2 * (tensor_get(predictions.ptr, i) - tensor_get(targets.ptr, i)) / size;
+            tensor_set(grad_out.ptr, i, grad);
         }
     }
 }
 
 class Linear {
-    var in_features;
-    var out_features;
-    var weights;
-    var cux_lib;
+    var in_features: int;
+    var out_features: int;
+    var weights: Tensor;
+    var cux_lib: int;
 
     func init(in_features, out_features, cux_lib) {
         this.in_features = in_features;
@@ -83,11 +83,11 @@ class Linear {
     }
 
     func set_weight(index, val) {
-        this.weights.set(index, val);
+        tensor_set(this.weights.ptr, index, val);
     }
 
     func free_weights() {
-        this.weights.mfree();
+        tensor_free(this.weights.ptr);
     }
 
     func forward(input_tensor, output_tensor) {
@@ -111,22 +111,22 @@ class Linear {
         # Since this is MVP, we manually compute and subtract lr * grad_weights
         for (var i = 0; i < this.in_features; i = i + 1) {
             for (var j = 0; j < this.out_features; j = j + 1) {
-                var in_val = input_tensor.get(i);
-                var grad_val = grad_output.get(j);
+                var in_val = tensor_get(input_tensor.ptr, i);
+                var grad_val = tensor_get(grad_output.ptr, j);
                 
                 var weight_idx = i * this.out_features + j;
-                var old_w = this.weights.get(weight_idx);
+                var old_w = tensor_get(this.weights.ptr, weight_idx);
                 
                 # Gradient step: W = W - (lr * input * grad)
-                this.weights.set(weight_idx, old_w - (lr * in_val * grad_val));
+                tensor_set(this.weights.ptr, weight_idx, old_w - (lr * in_val * grad_val));
             }
         }
     }
 }
 
 class RMSNorm {
-    var size;
-    var eps;
+    var size: int;
+    var eps: float;
 
     func init(size, eps) {
         this.size = size;
@@ -139,9 +139,9 @@ class RMSNorm {
 }
 
 class Embedding {
-    var num_embeddings;
-    var embedding_dim;
-    var weights;
+    var num_embeddings: int;
+    var embedding_dim: int;
+    var weights: Tensor;
 
     func init(num_embeddings, embedding_dim) {
         this.num_embeddings = num_embeddings;
@@ -151,14 +151,14 @@ class Embedding {
     }
 
     func set_weight(index, val) {
-        this.weights.set(index, val);
+        tensor_set(this.weights.ptr, index, val);
     }
 
     func forward(input_tensor, seq_len, output_tensor) {
     }
 
     func free_weights() {
-        this.weights.mfree();
+        tensor_free(this.weights.ptr);
     }
 }
 
@@ -172,11 +172,11 @@ class Softmax {
 }
 
 class FeedForward {
-    var linear1;
-    var linear2;
-    var hidden_dim;
-    var out_dim;
-    var intermediate;
+    var linear1: Linear;
+    var linear2: Linear;
+    var hidden_dim: int;
+    var out_dim: int;
+    var intermediate: Tensor;
 
     func init(in_dim, hidden_dim, out_dim) {
         this.hidden_dim = hidden_dim;
@@ -191,25 +191,25 @@ class FeedForward {
 
     func forward(x, out_tensor) {
         this.linear1.forward(x, this.intermediate);
-        this.intermediate.relu();
+        tensor_relu(this.intermediate.ptr);
         this.linear2.forward(this.intermediate, out_tensor);
     }
 }
 
 class MultiHeadAttention {
-    var embed_dim;
-    var heads;
-    var head_dim;
+    var embed_dim: int;
+    var heads: int;
+    var head_dim: int;
     
-    var q_proj;
-    var k_proj;
-    var v_proj;
-    var o_proj;
+    var q_proj: Linear;
+    var k_proj: Linear;
+    var v_proj: Linear;
+    var o_proj: Linear;
     
-    var q;
-    var k;
-    var v;
-    var scores;
+    var q: Tensor;
+    var k: Tensor;
+    var v: Tensor;
+    var scores: Tensor;
 
     func init(embed_dim, heads, seq_len) {
         this.embed_dim = embed_dim;
@@ -246,13 +246,13 @@ class MultiHeadAttention {
 }
 
 class TransformerBlock {
-    var attention;
-    var feed_forward;
-    var norm1;
-    var norm2;
-    var attn_out;
-    var ff_out;
-    var norm_out;
+    var attention: MultiHeadAttention;
+    var feed_forward: FeedForward;
+    var norm1: RMSNorm;
+    var norm2: RMSNorm;
+    var attn_out: Tensor;
+    var ff_out: Tensor;
+    var norm_out: Tensor;
 
     func init(embed_dim, heads, seq_len) {
         this.attention = new MultiHeadAttention;
