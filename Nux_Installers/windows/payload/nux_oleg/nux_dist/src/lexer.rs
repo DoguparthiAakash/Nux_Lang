@@ -9,6 +9,7 @@ pub enum Token {
     Println,
     Input,
     Class,
+    Struct,
     Enum,
     Trait,
     Func,
@@ -18,6 +19,8 @@ pub enum Token {
     Const,
     Return,
     New,
+    Alloc,
+    Free,
     This,
     If,
     Else,
@@ -61,6 +64,9 @@ pub enum Token {
     // Vision
     ImgAlloc, ImgFree, ImgDraw, CamCapture, ImgFilter, ImgGet, ImgSet, ImgFill,
     ImgResize, ImgCrop, ImgGrayscale,
+
+    // GPU / CUDA
+    GpuMap,
 
     // Math Intrinsics
     Sin, Cos, Sqrt,
@@ -126,6 +132,8 @@ pub struct Lexer {
     col: usize,
     last_token: Option<Token>,
     pending_semi: bool,
+    paren_depth: usize,
+    bracket_depth: usize,
 }
 
 impl Lexer {
@@ -137,6 +145,8 @@ impl Lexer {
             col: 1,
             last_token: None,
             pending_semi: false,
+            paren_depth: 0,
+            bracket_depth: 0,
         }
     }
 
@@ -188,10 +198,10 @@ impl Lexer {
                 }
             },
             '%' => { self.advance_pos(); (Token::Percent, start_span) },
-            '(' => { self.advance_pos(); (Token::LParen, start_span) },
-            ')' => { self.advance_pos(); (Token::RParen, start_span) },
-            '[' => { self.advance_pos(); (Token::LBracket, start_span) },
-            ']' => { self.advance_pos(); (Token::RBracket, start_span) },
+            '(' => { self.advance_pos(); self.paren_depth += 1; (Token::LParen, start_span) },
+            ')' => { self.advance_pos(); if self.paren_depth > 0 { self.paren_depth -= 1; } (Token::RParen, start_span) },
+            '[' => { self.advance_pos(); self.bracket_depth += 1; (Token::LBracket, start_span) },
+            ']' => { self.advance_pos(); if self.bracket_depth > 0 { self.bracket_depth -= 1; } (Token::RBracket, start_span) },
             '{' => { self.advance_pos(); (Token::LBrace, start_span) },
             '}' => { self.advance_pos(); (Token::RBrace, start_span) },
             ';' => { self.advance_pos(); (Token::SemiColon, start_span) },
@@ -326,7 +336,7 @@ impl Lexer {
         }
         
         // If we hit a newline and the last token can end a statement, infer semicolon
-        if hit_newline {
+        if hit_newline && self.paren_depth == 0 && self.bracket_depth == 0 {
             if let Some(tok) = &self.last_token {
                 match tok {
                     Token::Identifier(_) | Token::Number(_) | Token::Float(_) | Token::String(_) |
@@ -443,8 +453,12 @@ impl Lexer {
             "break" => Token::Break,
             "continue" => Token::Continue,
             "class" => Token::Class,
+            "struct" => Token::Struct,
             "enum" => Token::Enum,
             "trait" => Token::Trait,
+            "alloc" => Token::Alloc,
+            "free" => Token::Free,
+            "gpu_map" => Token::GpuMap,
             "this" => Token::Identifier("self".to_string()),
             
             // Types

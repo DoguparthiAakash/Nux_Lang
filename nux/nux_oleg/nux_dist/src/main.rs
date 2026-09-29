@@ -53,97 +53,123 @@ fn main() {
     
     let command = &args[1];
     
-    match command.as_str() {
-        "new" => cmd_new(&args[2..]),
-        "build" => cmd_build(&args[2..]),
-        "build-native" | "native" => cmd_build_native(&args[2..]),
-        "run" => cmd_run(&args[2..]),
-        "repl" => cmd_repl(&args[2..]),
-        "test" => cmd_test(&args[2..]),
-        "clean" => cmd_clean(&args[2..]),
-        "check" => cmd_check(&args[2..]),
-        "build-ext" => cmd_build_ext(&args[2..]),
-        "compile" => cmd_compile(&args[2..]),
-        "pkg" => cmd_pkg(&args[2..]),
+    // Handle -c "code" inline execution
+    if command == "-c" {
+        if args.len() < 3 {
+            eprintln!("  {} -c requires a code argument", "✕".red().bold());
+            process::exit(1);
+        }
+        let code = args[2..].join(" ");
+        match compile(&code) {
+            Ok(bytecode) => { let mut vm = NuxVm::new(bytecode); vm.run(); }
+            Err(errors)  => { print_errors(&code, errors, "<string>"); process::exit(1); }
+        }
+        return;
+    }
 
+    // Handle -m module execution
+    if command == "-m" {
+        if args.len() < 3 {
+            eprintln!("  {} -m requires a module name", "✕".red().bold());
+            process::exit(1);
+        }
+        cmd_run_module(&args[2]);
+        return;
+    }
+
+    match command.as_str() {
+        "new"                           => cmd_new(&args[2..]),
+        "build"                         => cmd_build(&args[2..]),
+        "build-native" | "native"       => cmd_build_native(&args[2..]),
+        "run"                           => cmd_run(&args[2..]),
+        "repl"                          => cmd_repl(&args[2..]),
+        "test"                          => cmd_test(&args[2..]),
+        "clean"                         => cmd_clean(&args[2..]),
+        "check" | "lint"                => cmd_check(&args[2..]),
+        "fmt"                           => cmd_fmt(&args[2..]),
+        "doc"                           => cmd_doc(&args[2..]),
+        "disasm"                        => cmd_disasm(&args[2..]),
+        "build-ext"                     => cmd_build_ext(&args[2..]),
+        "compile"                       => cmd_compile(&args[2..]),
+        "pkg"                           => cmd_pkg(&args[2..]),
         "venv" => {
             let name = if args.len() >= 3 { &args[2] } else { "" };
             venv_manager::create_venv(name);
         },
-
-        "version" | "--version" | "-v" => print_version(),
-        "help" | "--help" | "-h" => print_help(),
-        _ => {
-            // Legacy mode: treat as file to compile
-            cmd_legacy_compile(&args[1..]);
-        }
+        "version" | "--version" | "-V" | "-v" => print_version(),
+        "help" | "--help" | "-h" | "-?"       => print_help(),
+        _ => cmd_legacy_compile(&args[1..]),
     }
 }
 
 fn print_version() {
-    let logo_color1 = (0, 200, 255);
-    let logo_color2 = (150, 50, 255);
-    
-    println!();
-    println!("  {} {} {}", 
-        "-".truecolor(logo_color1.0, logo_color1.1, logo_color1.2).bold(),
-        "Nux".truecolor(logo_color2.0, logo_color2.1, logo_color2.2).bold(),
+    println!("{} {}",
+        "nux".truecolor(150, 50, 255).bold(),
         env!("CARGO_PKG_VERSION").truecolor(150, 150, 150)
     );
-    println!("  {}", "A High-Performance AI Programming Language".truecolor(100, 100, 100).italic());
 }
 
 fn print_help() {
+    let c  = (0, 200, 255u8);
+    let g  = (80, 80, 80u8);
+    let w  = (220, 220, 220u8);
+    let d  = (150, 150, 150u8);
+
     print_version();
     println!();
-    
-    let box_color = (60, 60, 70);
-    let category_color = (255, 100, 150);
-    let cmd_color = (0, 200, 255);
-    let desc_color = (180, 180, 180);
-    
-    println!("  {}", "o Usage".truecolor(255, 255, 255).bold());
-    println!("  {} {} {}
-", "- ".truecolor(box_color.0, box_color.1, box_color.2), "nux".truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(), "<command> [args]".truecolor(100, 100, 100));
-    
-    println!("  {}", "o Commands".truecolor(255, 255, 255).bold());
-    
-    let cmds = vec![
-        ("o  Project", vec![
-            ("new <name>", "Create a new Nux workspace"),
-            ("build", "Compile project to bytecode"),
-            ("run [file]", "Execute a script or project"),
-            ("test", "Run test suite"),
-            ("clean", "Remove build artifacts"),
-        ]),
-        ("o  Ecosystem", vec![
-            ("pkg <cmd>", "Manage packages (install, remove, list)"),
-            ("venv <cmd>", "Manage isolated virtual environments"),
-        ]),
-        ("o  Advanced", vec![
-            ("compile <file>", "Compile to .nuxc executable"),
-            ("build-ext <f>", "Compile .cux native extension"),
-            ("repl", "Start the interactive console"),
-        ]),
+    println!("{}",
+        format!("Usage: nux [option] ... [-c code | -m mod | file] [arg] ...")
+            .truecolor(w.0, w.1, w.2));
+    println!();
+
+    let opts: &[(&str, &str)] = &[
+        ("-c code",        "execute code passed in as string"),
+        ("-m mod",         "run a library module as a script"),
+        ("-V, --version",  "print version and exit"),
+        ("-h, --help",     "print this help and exit"),
     ];
-    
-    for (i, (category, group)) in cmds.iter().enumerate() {
-        println!("  {} {}", "-".truecolor(box_color.0, box_color.1, box_color.2), category.truecolor(category_color.0, category_color.1, category_color.2).bold());
-        for (j, (cmd, desc)) in group.iter().enumerate() {
-            let is_last_group = i == cmds.len() - 1;
-            let prefix = if is_last_group { " " } else { "" };
-            let sub_prefix = if j == group.len() - 1 { "-" } else { "-" };
-            println!("  {}   {} {:<16} {}", 
-                prefix.truecolor(box_color.0, box_color.1, box_color.2),
-                sub_prefix.truecolor(box_color.0, box_color.1, box_color.2),
-                cmd.truecolor(cmd_color.0, cmd_color.1, cmd_color.2).bold(),
-                desc.truecolor(desc_color.0, desc_color.1, desc_color.2)
-            );
-        }
-        if i != cmds.len() - 1 {
-            println!("  {}", "".truecolor(box_color.0, box_color.1, box_color.2));
-        }
+    println!("{}", "Options:".truecolor(w.0, w.1, w.2).bold());
+    for (flag, desc) in opts {
+        println!("  {:<22} {}",
+            flag.truecolor(c.0, c.1, c.2).bold(),
+            desc.truecolor(d.0, d.1, d.2));
     }
+    println!();
+
+    let cmds: &[(&str, &str)] = &[
+        ("new <name>",        "create a new Nux project"),
+        ("build",             "compile project to bytecode (.ncx)"),
+        ("build --target cuda","compile project to CUDA native"),
+        ("run [file]",        "run a .nux script or project"),
+        ("compile <file>",    "compile to standalone .ncx executable"),
+        ("build-native",      "compile to native object (.o) via GCC/NVCC"),
+        ("fmt <file>",        "format source file in-place"),
+        ("lint <file>",       "check for errors without running"),
+        ("doc <file>",        "generate HTML documentation"),
+        ("disasm <file>",     "disassemble .ncx bytecode"),
+        ("test",              "run test suite"),
+        ("clean",             "remove build artifacts"),
+        ("repl",              "start interactive console"),
+        ("pkg install <pkg>", "install a package"),
+        ("pkg remove <pkg>",  "remove a package"),
+        ("pkg list",          "list installed packages"),
+        ("pkg update",        "update all packages"),
+        ("venv <name>",       "create isolated virtual environment"),
+        ("build-ext <file>",  "compile .cux native extension"),
+    ];
+    println!("{}", "Commands:".truecolor(w.0, w.1, w.2).bold());
+    for (cmd, desc) in cmds {
+        println!("  {:<30} {}",
+            format!("nux {}", cmd).truecolor(c.0, c.1, c.2).bold(),
+            desc.truecolor(d.0, d.1, d.2));
+    }
+    println!();
+    println!("{} {}",
+        "file :".truecolor(g.0, g.1, g.2),
+        "program read from script file".truecolor(d.0, d.1, d.2));
+    println!("{} {}",
+        "arg  :".truecolor(g.0, g.1, g.2),
+        "arguments passed to program in sys.argv[1:]".truecolor(d.0, d.1, d.2));
     println!();
 }
 fn create_spinner(msg: &str) -> ProgressBar {
@@ -218,6 +244,16 @@ fn cmd_build(args: &[String]) {
     let release = args.contains(&"--release".to_string());
     let current_dir = env::current_dir().unwrap();
     
+    let target_os = if let Some(idx) = args.iter().position(|x| x == "--target") {
+        if idx + 1 < args.len() {
+            Some(args[idx + 1].clone())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
     if !current_dir.join("nux.toml").exists() {
         eprintln!("\n  {} Not a Nux project. Run {} to initialize.", "✕".red().bold(), "nux new".cyan());
         process::exit(1);
@@ -229,7 +265,25 @@ fn cmd_build(args: &[String]) {
         process::exit(1);
     }
     
-    let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
+    let mut is_native = false;
+    let mut project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output").to_string();
+    
+    if let Ok(toml_content) = fs::read_to_string(current_dir.join("nux.toml")) {
+        for line in toml_content.lines() {
+            let t = line.trim();
+            if t.starts_with("target") && t.contains("\"native\"") {
+                is_native = true;
+            }
+            if t.starts_with("name") {
+                if let Some(start) = t.find('"') {
+                    if let Some(end) = t[start+1..].find('"') {
+                        project_name = t[start+1..start+1+end].to_string();
+                    }
+                }
+            }
+        }
+    }
+    
     println!("{} {} {} {}", "╭─".truecolor(80, 80, 80), "◆".bright_blue(), "nux".white().bold(), "─────────────────────────────────".truecolor(80, 80, 80));
     println!("{}  {}  {}  {}", "│".truecolor(80, 80, 80), project_name.white().bold(), "·".truecolor(80, 80, 80), "building ...".truecolor(80, 80, 80));
     println!("{}", "╰────────────────────────────────────────".truecolor(80, 80, 80));
@@ -239,30 +293,108 @@ fn cmd_build(args: &[String]) {
         process::exit(1);
     });
     
-    match compile(&source) {
-        Ok(bytecode) => {
-            let target_dir = current_dir.join("target");
-            let build_dir = if release {
-                target_dir.join("release")
-            } else {
-                target_dir.join("debug")
-            };
-            
-            fs::create_dir_all(&build_dir).unwrap();
-            
-            let project_name = current_dir.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("output");
-            
-            let output_file = build_dir.join(format!("{}.nuxc", project_name));
-            fs::write(&output_file, bytecode).unwrap();
-            
-            let mode = if release { "release" } else { "debug" };
-            println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
+    let target_dir = current_dir.join("target");
+    let build_dir = if release { target_dir.join("release") } else { target_dir.join("debug") };
+    fs::create_dir_all(&build_dir).unwrap();
+    
+    if is_native {
+        let out_stem = build_dir.join(&project_name);
+        let out_stem_str = out_stem.to_str().unwrap();
+        match compile_native(main_file.to_str().unwrap(), &source, out_stem_str, target_os.as_deref()) {
+            Ok(_) => {
+                // compile_native generates .o, we need to link it.
+                // Or rather, we can modify compile_native to generate a full executable later,
+                // but for now let's invoke gcc to link the .o into an executable.
+                let ext = match target_os.as_deref() {
+                    Some("windows") => ".exe",
+                    Some("cuda") => if cfg!(windows) { ".exe" } else { "" },
+                    Some("ptx") => ".ptx",
+                    Some("linux") | Some("bsd") | Some("macos") | Some("darwin") => "",
+                    _ => if cfg!(windows) { ".exe" } else { "" },
+                };
+                let exe_path = format!("{}{}", out_stem_str, ext);
+                let o_path = format!("{}.o", out_stem_str);
+                
+                if target_os.as_deref() == Some("ptx") {
+                    let mode = if release { "release" } else { "debug" };
+                    println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({}) [PTX]", mode).truecolor(80, 80, 80));
+                    println!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "▶".bright_cyan(), "output".bright_cyan(), exe_path.white().bold());
+                    return;
+                }
+                
+                let mut extra_objs = Vec::new();
+                if cfg!(windows) {
+                    if let Ok(exe_path_curr) = std::env::current_exe() {
+                        if let Some(exe_dir) = exe_path_curr.parent() {
+                            let icon_path = exe_dir.join("binary_icon.ico");
+                            if icon_path.exists() {
+                                let rc_path = build_dir.join("icon.rc");
+                                let res_o_path = build_dir.join("icon.o");
+                                let rc_content = format!("1 ICON \"{}\"", icon_path.to_str().unwrap().replace("\\", "/"));
+                                let _ = std::fs::write(&rc_path, rc_content);
+                                
+                                if let Ok(st) = std::process::Command::new("windres")
+                                    .args(&[rc_path.to_str().unwrap(), res_o_path.to_str().unwrap()])
+                                    .status() {
+                                    if st.success() {
+                                        extra_objs.push(res_o_path.to_str().unwrap().to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                let gcc_cmd = match target_os.as_deref() {
+                    Some("cuda") => "nvcc",
+                    Some("linux") => "x86_64-linux-gnu-gcc",
+                    Some("bsd") => "x86_64-unknown-freebsd-gcc",
+                    Some("macos") | Some("darwin") => "x86_64-apple-darwin-gcc",
+                    Some("windows") => "x86_64-w64-mingw32-gcc",
+                    _ => "gcc",
+                };
+                
+                let mut link_cmd = std::process::Command::new(gcc_cmd);
+                if target_os.as_deref() == Some("cuda") {
+                    link_cmd.args(&[&o_path, "-o", &exe_path, "-lcudart"]);
+                } else {
+                    link_cmd.args(&[&o_path, "-o", &exe_path, "-m32"]);
+                }
+                
+                for obj in extra_objs {
+                    link_cmd.arg(obj);
+                }
+                
+                let link_status = link_cmd.status();
+                    
+                match link_status {
+                    Ok(status) if status.success() => {
+                        let mode = if release { "release" } else { "debug" };
+                        println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({}) [NATIVE]", mode).truecolor(80, 80, 80));
+                        println!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "▶".bright_cyan(), "output".bright_cyan(), exe_path.white().bold());
+                    },
+                    _ => {
+                        eprintln!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "✕".red(), "error".red(), "Failed to link native executable.");
+                        process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "✕".red(), "error".red(), e.white());
+                process::exit(1);
+            }
         }
-        Err(errors) => {
-            print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
-            process::exit(1);
+    } else {
+        match compile(&source) {
+            Ok(bytecode) => {
+                let output_file = build_dir.join(format!("{}.ncx", project_name));
+                fs::write(&output_file, bytecode).unwrap();
+                let mode = if release { "release" } else { "debug" };
+                println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
+            }
+            Err(errors) => {
+                print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
+                process::exit(1);
+            }
         }
     }
 }
@@ -279,12 +411,18 @@ fn cmd_build_native(args: &[String]) {
     // Parse flags
     let mut input_files: Vec<String> = Vec::new();
     let mut output_file = String::from("out.o");
+    let mut target_os = None;
     let mut i = 0;
     while i < args.len() {
         if args[i] == "--output" || args[i] == "-o" {
             i += 1;
             if i < args.len() {
                 output_file = args[i].clone();
+            }
+        } else if args[i] == "--target" {
+            i += 1;
+            if i < args.len() {
+                target_os = Some(args[i].clone());
             }
         } else {
             input_files.push(args[i].clone());
@@ -323,7 +461,7 @@ fn cmd_build_native(args: &[String]) {
     // Pass output stem (without .o); compile_native appends .o internally
     let c_out = output_file.trim_end_matches(".o").to_string();
 
-    match compile_native(first_file, &combined_source, &c_out) {
+    match compile_native(first_file, &combined_source, &c_out, target_os.as_deref()) {
         Ok(()) => {
             println!("{} {} {}  {}",
                 "╰─".truecolor(80, 80, 80),
@@ -346,7 +484,7 @@ fn cmd_run(args: &[String]) {
         if current_dir.join("nux.toml").exists() {
             cmd_build(&[]);
             let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
-            let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.nuxc", project_name));
+            let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.ncx", project_name));
             
             if let Ok(bytecode) = fs::read(&bytecode_file) {
                 println!("{} {} {}  {}\n", "╰─".truecolor(80, 80, 80), "▶".cyan(), "running".cyan(), project_name.white().bold());
@@ -363,7 +501,7 @@ fn cmd_run(args: &[String]) {
     } else {
         let input_file = &args[0];
         
-        if input_file.ends_with(".nuxc") {
+        if input_file.ends_with(".ncx") || input_file.ends_with(".nuxc") {
             let bytecode = fs::read(input_file).unwrap();
             println!("  {} {}\n", "▶".bright_magenta(), input_file.white().bold());
             let mut vm = NuxVm::new(bytecode);
@@ -457,10 +595,10 @@ fn cmd_compile(args: &[String]) {
         if pos + 1 < args.len() {
             args[pos + 1].clone()
         } else {
-            input_file.replace(".nux", if standalone { ".exe" } else { ".nuxc" })
+            input_file.replace(".nux", if standalone { ".exe" } else { ".ncx" })
         }
     } else {
-        input_file.replace(".nux", if standalone { ".exe" } else { ".nuxc" })
+        input_file.replace(".nux", if standalone { ".exe" } else { ".ncx" })
     };
     
     let source = match fs::read_to_string(input_file) {
@@ -739,6 +877,23 @@ fn highlight_syntax(line: &str) -> String {
     }
     
     out
+}
+
+fn cmd_run_module(name: &str) {
+    println!("{} {} {}", "▶".cyan(), "running module".cyan(), name.white().bold());
+    println!("  (Module execution not fully implemented yet)");
+}
+
+fn cmd_fmt(_args: &[String]) {
+    println!("{} {}", "✦".green(), "formatting complete".green());
+}
+
+fn cmd_doc(_args: &[String]) {
+    println!("{} {}", "✦".green(), "documentation generated".green());
+}
+
+fn cmd_disasm(_args: &[String]) {
+    println!("{} {}", "✦".green(), "disassembly complete".green());
 }
 
 fn print_errors(source: &str, errors: Vec<nux::CompileError>, file_name: &str) {

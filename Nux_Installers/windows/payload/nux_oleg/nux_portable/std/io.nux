@@ -1,0 +1,28 @@
+# std/io.nux
+# Nux Standard Library: I/O Operations
+# Interfaces with the OS Machine Layer for direct hardware/OS control.
+
+import "std/string.nux"
+
+class IO {
+    # System call wrapper for printing to standard output
+    func print(str_ptr) {
+        # OS-specific machine call to write to stdout
+        sys_write(1, str_ptr); 
+    }
+    
+    # OS-specific machine call to open a file
+    func open_file(path_str, flags) {
+        return sys_open(path_str, flags);
+    }
+    
+    # OS-specific machine call to read from a file descriptor
+    func read_file(fd, buffer_ptr, size) {
+        return sys_read(fd, buffer_ptr, size);
+    }
+    
+    # OS-specific machine call to close a file descriptor
+    func close_file(fd) {
+        sys_close(fd);
+    }
+}

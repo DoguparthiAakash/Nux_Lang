@@ -1,0 +1,53 @@
+# physics::body
+# Rigid body dynamics
+
+import physics::math::Vec2;
+
+class RigidBody {
+    var position: Vec2;
+    var velocity: Vec2;
+    var acceleration: Vec2;
+    var mass: f32;
+    var inverse_mass: f32;
+    var restitution: f32; # Bounciness
+    
+    func init(x: f32, y: f32, mass: f32) {
+        this.position = new Vec2();
+        this.position.init(x, y);
+        this.velocity = new Vec2();
+        this.velocity.init(0.0, 0.0);
+        this.acceleration = new Vec2();
+        this.acceleration.init(0.0, 0.0);
+        
+        this.mass = mass;
+        if (mass > 0.0) {
+            this.inverse_mass = 1.0 / mass;
+        } else {
+            this.inverse_mass = 0.0; # infinite mass (static body)
+        }
+        
+        this.restitution = 0.5;
+    }
+    
+    func apply_force(force: Vec2) {
+        if (this.mass > 0.0) {
+            var f = force.mul(this.inverse_mass);
+            this.acceleration = this.acceleration.add(f);
+        }
+    }
+    
+    func integrate(dt: f32) {
+        if (this.mass == 0.0) {
+            return;
+        }
+        
+        var dv = this.acceleration.mul(dt);
+        this.velocity = this.velocity.add(dv);
+        
+        var dp = this.velocity.mul(dt);
+        this.position = this.position.add(dp);
+        
+        # Reset acceleration after integration
+        this.acceleration.init(0.0, 0.0);
+    }
+}

@@ -1,7 +1,7 @@
 # sort.nux - Nux Concurrent Sorting Library
 # Implements manual and automatic load balancing sorting algorithms
 
-@priority(10)
+# @priority(10)
 
 func quicksort(base, low, high) {
     if (low < high) {

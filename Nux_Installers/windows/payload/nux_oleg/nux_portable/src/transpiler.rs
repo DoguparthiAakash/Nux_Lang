@@ -15,6 +15,7 @@ pub enum TranspileProfile {
     Extreme,  // Native C via Symbolic Stack Tracking (No VM overhead)
     Nano,     // Bare metal (< 1KB RAM, int32_t, 32-element arrays)
     Legacy,   // MS-DOS/UNIX (ANSI C89, long, no stdint.h)
+    WebWASM,  // Emscripten WebAssembly target
 }
 
 pub struct TranspilerConfig {
@@ -60,6 +61,59 @@ pub fn transpile_and_compile(asm: &str, output_path: &str, config: &TranspilerCo
         TranspileProfile::Legacy => {
              println!("⚠️  Note: Legacy profile selected (ANSI C89).");
              println!("   Output C source: {}. Move to MS-DOS and compile with Turbo C or Watcom.", c_file);
+        },
+        TranspileProfile::WebWASM => {
+             println!("🚀 Compiling to WebAssembly via Emscripten (emcc)...");
+             let wasm_file = format!("{}.wasm", output_path);
+             let js_file = format!("{}.js", output_path);
+             let dts_file = format!("{}.d.ts", output_path);
+             
+             let status = Command::new("emcc")
+                 .arg(&c_file)
+                 .arg("-o")
+                 .arg(&js_file)
+                 .arg("-O3")
+                 .arg("-s")
+                 .arg("WASM=1")
+                 .arg("-s")
+                 .arg("EXPORTED_FUNCTIONS=['_nux_entry', '_nux_alloc', '_nux_free', '_malloc', '_free']")
+                 .arg("-s")
+                 .arg("EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']")
+                 .arg("-s")
+                 .arg("ALLOW_MEMORY_GROWTH=1")
+                 .status()
+                 .map_err(|e| format!("Failed to run emcc: {}. Is Emscripten installed?", e))?;
+                 
+             if !status.success() {
+                 return Err("WebAssembly Compilation failed".to_string());
+             }
+             
+             let dts_content = r#"
+export interface NuxModule extends EmscriptenModule {
+    ccall(ident: string, returnType: string | null, argTypes: string[], args: any[]): any;
+    cwrap(ident: string, returnType: string | null, argTypes: string[]): (...args: any[]) => any;
+    _nux_entry(): number;
+    _nux_alloc(size: number): number;
+    _nux_free(ptr: number): void;
+    _malloc(size: number): number;
+    _free(ptr: number): void;
+    HEAP8: Int8Array;
+    HEAP16: Int16Array;
+    HEAP32: Int32Array;
+    HEAPU8: Uint8Array;
+    HEAPU16: Uint16Array;
+    HEAPU32: Uint32Array;
+    HEAPF32: Float32Array;
+    HEAPF64: Float64Array;
+}
+export default function Module(moduleArg?: any): Promise<NuxModule>;
+"#;
+             fs::write(&dts_file, dts_content).map_err(|e| e.to_string())?;
+             
+             println!("✅ Successfully generated WebAssembly:");
+             println!("   -> {}", wasm_file);
+             println!("   -> {}", js_file);
+             println!("   -> {}", dts_file);
         }
     }
     
@@ -220,6 +274,55 @@ NUX_INT vars[1024];
 #define NUX_EXIT() return 0
 
 int main() {
+"#);
+        },
+        TranspileProfile::WebWASM => {
+            code.push_str(r#"
+/* Nux WebWASM Profile Output */
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <emscripten.h>
+
+#define NUX_INT int64_t
+
+size_t nux_total_alloc = 0;
+size_t nux_mem_limit = (size_t)-1;
+
+EMSCRIPTEN_KEEPALIVE
+void* nux_alloc(size_t size) {
+    if (nux_mem_limit != (size_t)-1 && nux_total_alloc + size > nux_mem_limit) {
+        fprintf(stderr, "Runtime Error: Out of Memory\n");
+        return NULL;
+    }
+    void* p = malloc(size);
+    if (p) nux_total_alloc += size;
+    return p;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void nux_free(void* ptr) {
+    free(ptr);
+}
+
+#define NUX_STACK_SIZE 1024
+NUX_INT stack[NUX_STACK_SIZE];
+int sp = -1;
+NUX_INT vars[1024];
+
+#define PUSH(x) stack[++sp] = (x)
+#define POP() stack[sp--]
+
+/* Stubs for WebGPU and browser environments */
+#define NUX_PRINT_VAL(x) printf("%lld\n", (long long)(x))
+#define NUX_PRINT_CHAR(x) printf("%c", (char)(x))
+#define NUX_INPUT() 0
+#define NUX_EXIT() return 0
+
+/* Native WebGPU hooks will be inserted here in Phase 3 */
+
+EMSCRIPTEN_KEEPALIVE
+int nux_entry() {
 "#);
         }
     }

@@ -15,7 +15,7 @@
         },
         {
             "comment": "Keywords",
-            "match": "\\b(if|else|while|for|return|break|continue|import|class|func|let|const|var|new|this|async|await|try|catch|throw|defer|match|enum|trait|asm|unsafe|syscall|peek_ptr|poke_ptr)\\b",
+            "match": "\\b(if|else|while|for|return|break|continue|import|class|func|let|const|var|new|this|async|await|try|catch|throw|defer|match|enum|trait|asm|unsafe|syscall|peek_ptr|poke_ptr|gpu_map)\\b",
             "name": "keyword.control.nux"
         },
         {

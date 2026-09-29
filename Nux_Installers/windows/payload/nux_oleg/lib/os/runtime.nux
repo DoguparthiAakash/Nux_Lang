@@ -1,0 +1,32 @@
+# Nux operating-system foundation: portable runtime capabilities.
+
+func os_platform() {
+    return sys_platform();
+}
+
+func os_memory_bytes() {
+    return mem_size();
+}
+
+func os_is_windows() {
+    return os_platform() == 1;
+}
+
+func os_is_linux() {
+    return os_platform() == 2;
+}
+
+func os_is_macos() {
+    return os_platform() == 3;
+}
+
+func os_valid_address(address) {
+    return address > 0 && address < os_memory_bytes();
+}
+
+func os_require(condition, error_code) {
+    if (!condition) {
+        return error_code;
+    }
+    return 0;
+}

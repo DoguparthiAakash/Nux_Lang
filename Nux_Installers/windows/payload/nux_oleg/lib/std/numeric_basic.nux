@@ -1,0 +1,45 @@
+# Small numeric helpers used across Nux applications.
+
+func numeric_abs(value) {
+    if (value < 0) {
+        return 0 - value;
+    }
+    return value;
+}
+
+func numeric_min(left, right) {
+    if (left < right) {
+        return left;
+    }
+    return right;
+}
+
+func numeric_max(left, right) {
+    if (left > right) {
+        return left;
+    }
+    return right;
+}
+
+func numeric_clamp(value, minimum, maximum) {
+    return numeric_min(numeric_max(value, minimum), maximum);
+}
+
+func numeric_gcd(left, right) {
+    var a = numeric_abs(left);
+    var b = numeric_abs(right);
+    var remainder = 0;
+    while (b != 0) {
+        remainder = a % b;
+        a = b;
+        b = remainder;
+    }
+    return a;
+}
+
+func numeric_lerp(start, finish, numerator, denominator) {
+    if (denominator == 0) {
+        return start;
+    }
+    return start + (finish - start) * numerator / denominator;
+}

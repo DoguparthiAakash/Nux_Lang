@@ -9,6 +9,7 @@ pub enum Token {
     Println,
     Input,
     Class,
+    Struct,
     Enum,
     Trait,
     Func,
@@ -18,6 +19,8 @@ pub enum Token {
     Const,
     Return,
     New,
+    Alloc,
+    Free,
     This,
     If,
     Else,
@@ -61,6 +64,9 @@ pub enum Token {
     // Vision
     ImgAlloc, ImgFree, ImgDraw, CamCapture, ImgFilter, ImgGet, ImgSet, ImgFill,
     ImgResize, ImgCrop, ImgGrayscale,
+
+    // GPU / CUDA
+    GpuMap,
 
     // Math Intrinsics
     Sin, Cos, Sqrt,
@@ -447,8 +453,12 @@ impl Lexer {
             "break" => Token::Break,
             "continue" => Token::Continue,
             "class" => Token::Class,
+            "struct" => Token::Struct,
             "enum" => Token::Enum,
             "trait" => Token::Trait,
+            "alloc" => Token::Alloc,
+            "free" => Token::Free,
+            "gpu_map" => Token::GpuMap,
             "this" => Token::Identifier("self".to_string()),
             
             // Types

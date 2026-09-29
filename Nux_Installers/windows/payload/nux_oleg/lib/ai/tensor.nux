@@ -1,0 +1,61 @@
+# Nux AI foundation: dense tensors backed by managed memory.
+
+func tensor_alloc(elements) {
+    return mem_alloc(elements * 8);
+}
+
+func tensor_free(tensor) {
+    return mem_free(tensor);
+}
+
+func tensor_set(tensor, index, value) {
+    return mem_write64(tensor + index * 8, value);
+}
+
+func tensor_get(tensor, index) {
+    return mem_read64(tensor + index * 8);
+}
+
+func tensor_fill(tensor, elements, value) {
+    var index = 0;
+    while (index < elements) {
+        tensor_set(tensor, index, value);
+        index = index + 1;
+    }
+    return elements;
+}
+
+func tensor_dot(left, right, elements) {
+    var index = 0;
+    var result = 0;
+    while (index < elements) {
+        result = result + tensor_get(left, index) * tensor_get(right, index);
+        index = index + 1;
+    }
+    return result;
+}
+
+func tensor_relu(value) {
+    if (value < 0) {
+        return 0;
+    }
+    return value;
+}
+
+func tensor_argmax(tensor, elements) {
+    if (elements <= 0) {
+        return -1;
+    }
+    var best_index = 0;
+    var index = 1;
+    var best_value = tensor_get(tensor, 0);
+    while (index < elements) {
+        var value = tensor_get(tensor, index);
+        if (value > best_value) {
+            best_value = value;
+            best_index = index;
+        }
+        index = index + 1;
+    }
+    return best_index;
+}

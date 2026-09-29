@@ -1,0 +1,40 @@
+// Nux Standard Library: File System (fs.nux)
+
+func read_file(path: string): string {
+    asm {
+        path
+        "FILE_READ"
+    }
+}
+
+func write_file(path: string, content: string): int {
+    asm {
+        path
+        content
+        "FILE_WRITE"
+        "PUSH 0"
+    }
+}
+
+func file_exists(path: string): int {
+    asm {
+        path
+        "FILE_EXISTS"
+    }
+}
+
+func mkdir(path: string): int {
+    asm {
+        path
+        "FILE_MKDIR"
+        "PUSH 0"
+    }
+}
+
+func delete_file(path: string): int {
+    asm {
+        path
+        "FILE_DELETE"
+        "PUSH 0"
+    }
+}

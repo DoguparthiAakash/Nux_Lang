@@ -1,0 +1,3 @@
+#define IDI_APP_ICON 101
+#define IDR_MSI_PAYLOAD 102
+#define IDB_LOGO 103

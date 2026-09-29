@@ -1,0 +1,58 @@
+# synapse::gpu
+# The interface for Nvidia GPU acceleration in the Synapse ML framework.
+# Uses the @[gpu_kernel] attribute for future compiler intrinsic mappings.
+
+extern {
+    func synapse_cuda_malloc(size: usize) -> *u8;
+    func synapse_cuda_free(ptr: *u8);
+    func synapse_cuda_memcpy_to_device(dst: *u8, src: *u8, size: usize);
+    func synapse_cuda_memcpy_to_host(dst: *u8, src: *u8, size: usize);
+    
+    # Kernel Bindings
+    func synapse_cuda_matmul_f32(A: *f32, B: *f32, C: *f32, M: u32, K: u32, N: u32);
+    func synapse_cuda_conv2d_f32(I: *f32, W: *f32, O: *f32, C_in: u32, H: u32, Width: u32, C_out: u32, kH: u32, kW: u32, stride: u32, padding: u32);
+    func synapse_cuda_add_f32(A: *f32, B: *f32, C: *f32, size: usize);
+    func synapse_cuda_mul_f32(A: *f32, B: *f32, C: *f32, size: usize);
+}
+
+class CudaDevice {
+    func malloc(size: usize) -> *u8 {
+        return synapse_cuda_malloc(size);
+    }
+    
+    func free(ptr: *u8) {
+        synapse_cuda_free(ptr);
+    }
+    
+    func memcpy_to_device(dst: *u8, src: *u8, size: usize) {
+        synapse_cuda_memcpy_to_device(dst, src, size);
+    }
+    
+    func memcpy_to_host(dst: *u8, src: *u8, size: usize) {
+        synapse_cuda_memcpy_to_host(dst, src, size);
+    }
+}
+
+var DEVICE = new CudaDevice();
+
+@[gpu_kernel]
+func matmul(A: *f32, B: *f32, C: *f32, M: u32, K: u32, N: u32) {
+    # The compiler will intercept this attribute. 
+    # For now, it routes to the C CUDA mockup library.
+    synapse_cuda_matmul_f32(A, B, C, M, K, N);
+}
+
+@[gpu_kernel]
+func conv2d(I: *f32, W: *f32, O: *f32, C_in: u32, H: u32, Width: u32, C_out: u32, kH: u32, kW: u32, stride: u32, padding: u32) {
+    synapse_cuda_conv2d_f32(I, W, O, C_in, H, Width, C_out, kH, kW, stride, padding);
+}
+
+@[gpu_kernel]
+func add(A: *f32, B: *f32, C: *f32, size: usize) {
+    synapse_cuda_add_f32(A, B, C, size);
+}
+
+@[gpu_kernel]
+func mul(A: *f32, B: *f32, C: *f32, size: usize) {
+    synapse_cuda_mul_f32(A, B, C, size);
+}

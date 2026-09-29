@@ -1,0 +1,245 @@
+/// std::string — Nux String Operations
+///
+/// Provides fundamental string manipulation for Nux programs.
+/// All strings in Nux are null-terminated byte arrays (*u8),
+/// identical to C strings — zero runtime overhead.
+///
+/// Usage:
+///   import std::string;
+///   var n = string::len("hello");     # 5
+///   var eq = string::eq("hi", "hi");  # true
+
+@[no_std]
+import std::mem;
+
+# ─── Length & Bounds ──────────────────────────────────────────────────────────
+
+/// Return the length of a null-terminated string (excludes the null byte).
+func len(s: *u8) -> u32 {
+    var i: u32 = 0;
+    var c: u8 = 0;
+    while (true) {
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(s), "r"(i) : "%eax", "%ecx");
+        if (c == 0) {
+            return i;
+        }
+        i += 1;
+    }
+    return 0;
+}
+
+# ─── Comparison ───────────────────────────────────────────────────────────────
+
+/// Compare two null-terminated strings.
+/// Returns true if they are identical.
+func eq(a: *u8, b: *u8) -> bool {
+    var i: u32 = 0;
+    while (true) {
+        var ca: u8 = 0;
+        var cb: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(ca) : "r"(a), "r"(i) : "%eax", "%ecx");
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(cb) : "r"(b), "r"(i) : "%eax", "%ecx");
+        if (ca != cb) { return false; }
+        if (ca == 0) { return true; }
+        i += 1;
+    }
+    return false;
+}
+
+/// Returns true if `s` starts with `prefix`.
+func starts_with(s: *u8, prefix: *u8) -> bool {
+    var i: u32 = 0;
+    while (true) {
+        var cs: u8 = 0;
+        var cp: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(cs) : "r"(s), "r"(i) : "%eax", "%ecx");
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(cp) : "r"(prefix), "r"(i) : "%eax", "%ecx");
+        if (cp == 0) { return true; }   # end of prefix
+        if (cs != cp) { return false; }
+        if (cs == 0) { return false; }
+        i += 1;
+    }
+    return false;
+}
+
+/// Returns true if `s` ends with `suffix`.
+func ends_with(s: *u8, suffix: *u8) -> bool {
+    var slen = len(s);
+    var sufflen = len(suffix);
+    if (sufflen > slen) { return false; }
+    var offset = slen - sufflen;
+    var i: u32 = 0;
+    while (i < sufflen) {
+        var cs: u8 = 0;
+        var csuff: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(cs) : "r"(s), "r"(offset + i) : "%eax", "%ecx");
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(csuff) : "r"(suffix), "r"(i) : "%eax", "%ecx");
+        if (cs != csuff) { return false; }
+        i += 1;
+    }
+    return true;
+}
+
+# ─── Copy & Concat ────────────────────────────────────────────────────────────
+
+/// Copy string `src` into buffer `dst`. Buffer must be large enough.
+/// Null-terminates `dst`. Returns number of bytes copied (excluding null).
+func str_copy(dst: *u8, src: *u8) -> u32 {
+    var i: u32 = 0;
+    while (true) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(src), "r"(i) : "%eax", "%ecx");
+        asm("mov %0, %%eax\n\t"
+            "add %1, %%eax\n\t"
+            "movb %b2, (%%eax)\n\t"
+            : : "r"(dst), "r"(i), "q"(c) : "%eax");
+        if (c == 0) { return i; }
+        i += 1;
+    }
+    return i;
+}
+
+/// Concatenate `src` onto the end of `dst`.
+/// `dst` must have enough space for both strings + null terminator.
+/// Returns total length of the resulting string.
+func concat(dst: *u8, src: *u8) -> u32 {
+    var dst_len = len(dst);
+    # Start writing src at the null terminator of dst
+    var write_pos = dst_len;
+    var i: u32 = 0;
+    while (true) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(src), "r"(i) : "%eax", "%ecx");
+        asm("mov %0, %%eax\n\t"
+            "add %1, %%eax\n\t"
+            "movb %b2, (%%eax)\n\t"
+            : : "r"(dst), "r"(write_pos), "q"(c) : "%eax");
+        if (c == 0) { return write_pos; }
+        i += 1;
+        write_pos += 1;
+    }
+    return write_pos;
+}
+
+# ─── Search ───────────────────────────────────────────────────────────────────
+
+/// Find first occurrence of byte `ch` in string `s`.
+/// Returns offset of the character, or 0xFFFFFFFF if not found.
+func find_char(s: *u8, ch: u8) -> u32 {
+    var i: u32 = 0;
+    while (true) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(s), "r"(i) : "%eax", "%ecx");
+        if (c == 0) { return 0xFFFFFFFF; }
+        if (c == ch) { return i; }
+        i += 1;
+    }
+    return 0xFFFFFFFF;
+}
+
+# ─── Numeric Conversion ───────────────────────────────────────────────────────
+
+/// Convert an unsigned 32-bit integer to a decimal ASCII string.
+/// Writes result into `buf`. `buf` must be at least 11 bytes.
+/// Returns number of digits written (not counting null terminator).
+func u32_to_str(val: u32, buf: *u8) -> u32 {
+    if (val == 0) {
+        asm("movb $48, (%0)\n\t" : : "r"(buf));     # '0'
+        asm("movb $0,  1(%0)\n\t" : : "r"(buf));    # null
+        return 1;
+    }
+    # Write digits in reverse
+    var tmp: *u8 = buf + 20;
+    asm("movb $0, (%0)\n\t" : : "r"(tmp));           # null term at end
+    var pos: u32 = 20;
+    var v = val;
+    while (v > 0) {
+        var digit: u8 = (v % 10) as u8 + 48;
+        pos -= 1;
+        asm("mov %0, %%eax\n\t"
+            "add %1, %%eax\n\t"
+            "movb %b2, (%%eax)\n\t"
+            : : "r"(buf), "r"(pos), "q"(digit) : "%eax");
+        v = v / 10;
+    }
+    # Shift result to front of buf
+    var digits_len: u32 = 20 - pos;
+    var i: u32 = 0;
+    while (i < digits_len) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(buf), "r"(pos + i) : "%eax", "%ecx");
+        asm("mov %0, %%eax\n\t"
+            "add %1, %%eax\n\t"
+            "movb %b2, (%%eax)\n\t"
+            : : "r"(buf), "r"(i), "q"(c) : "%eax");
+        i += 1;
+    }
+    asm("mov %0, %%eax\n\t"
+        "add %1, %%eax\n\t"
+        "movb $0, (%%eax)\n\t"
+        : : "r"(buf), "r"(digits_len) : "%eax");
+    return digits_len;
+}
+
+/// Convert a decimal ASCII string to a u32.
+/// Stops at the first non-digit character.
+func str_to_u32(s: *u8) -> u32 {
+    var result: u32 = 0;
+    var i: u32 = 0;
+    while (true) {
+        var c: u8 = 0;
+        asm("mov %1, %%eax\n\t"
+            "add %2, %%eax\n\t"
+            "movb (%%eax), %%cl\n\t"
+            "mov %%cl, %0\n\t"
+            : "=r"(c) : "r"(s), "r"(i) : "%eax", "%ecx");
+        if (c < 48 || c > 57) { return result; }  # not '0'-'9'
+        result = result * 10 + (c - 48) as u32;
+        i += 1;
+    }
+    return result;
+}

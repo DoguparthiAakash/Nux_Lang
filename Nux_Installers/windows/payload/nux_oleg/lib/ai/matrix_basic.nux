@@ -1,0 +1,72 @@
+# Row-major fixed-point matrices for AI, graphics, and scientific code.
+
+func matrix_alloc(rows, columns) {
+    return mem_alloc(rows * columns * 8);
+}
+
+func matrix_free(matrix) {
+    return mem_free(matrix);
+}
+
+func matrix_index(columns, row, column) {
+    return (row * columns + column) * 8;
+}
+
+func matrix_get(matrix, columns, row, column) {
+    return mem_read64(matrix + matrix_index(columns, row, column));
+}
+
+func matrix_set(matrix, columns, row, column, value) {
+    return mem_write64(matrix + matrix_index(columns, row, column), value);
+}
+
+func matrix_fill(matrix, rows, columns, value) {
+    var row = 0;
+    var column = 0;
+    while (row < rows) {
+        column = 0;
+        while (column < columns) {
+            matrix_set(matrix, columns, row, column, value);
+            column = column + 1;
+        }
+        row = row + 1;
+    }
+    return rows * columns;
+}
+
+func matrix_add(left, right, result, rows, columns) {
+    var row = 0;
+    var column = 0;
+    while (row < rows) {
+        column = 0;
+        while (column < columns) {
+            var value = matrix_get(left, columns, row, column) + matrix_get(right, columns, row, column);
+            matrix_set(result, columns, row, column, value);
+            column = column + 1;
+        }
+        row = row + 1;
+    }
+    return result;
+}
+
+func matrix_multiply(left, right, result, left_rows, shared, right_columns) {
+    var row = 0;
+    var column = 0;
+    var inner = 0;
+    var total = 0;
+    while (row < left_rows) {
+        column = 0;
+        while (column < right_columns) {
+            total = 0;
+            inner = 0;
+            while (inner < shared) {
+                total = total + matrix_get(left, shared, row, inner) * matrix_get(right, right_columns, inner, column);
+                inner = inner + 1;
+            }
+            matrix_set(result, right_columns, row, column, total);
+            column = column + 1;
+        }
+        row = row + 1;
+    }
+    return result;
+}

@@ -79,6 +79,11 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "LTE" => ops.push(0x94),
             "GTE" => ops.push(0x95),
             "OP_DRAW_RECT" => ops.push(0x20),
+            "OP_WINDOW_CREATE" => ops.push(0x22),
+            "OP_WINDOW_UPDATE" => ops.push(0x23),
+            "OP_GET_MOUSE_X" => ops.push(0x24),
+            "OP_GET_MOUSE_Y" => ops.push(0x25),
+            "OP_GET_MOUSE_BTN" => ops.push(0x26),
             "OP_SLEEP" => ops.push(0x30),
             
             // Vision
@@ -105,6 +110,13 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_VM_STACK_COPY" | "VM_STACK_COPY" => {
                  ops.push(0x5B);
             },
+            "OP_VBE_SET_MODE" | "VBE_SET_MODE" => ops.push(0xC0),
+            "OP_VBE_GET_FB" | "VBE_GET_FB" => ops.push(0xC1),
+            "OP_VBE_UPDATE" | "VBE_UPDATE" => ops.push(0xC2),
+            "OP_VBE_GET_KEY" | "VBE_GET_KEY" => ops.push(0xC3),
+            "OP_VBE_GET_MOUSE_X" | "VBE_GET_MOUSE_X" => ops.push(0xC4),
+            "OP_VBE_GET_MOUSE_Y" | "VBE_GET_MOUSE_Y" => ops.push(0xC5),
+            "OP_VBE_GET_MOUSE_DOWN" | "VBE_GET_MOUSE_DOWN" => ops.push(0xC6),
             "OP_TIME" | "TIME" => ops.push(0x5C),
             "OP_SYSTEM" | "SYSTEM" => ops.push(0x5D),
             "OP_FILE_DELETE" | "FILE_DELETE" => ops.push(0x5E),
@@ -205,8 +217,10 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_FSIN" => ops.push(0x48),
             "OP_FCOS" => ops.push(0x49),
             "OP_FSQRT" => ops.push(0x4A),
-            "PEEK8" => ops.push(0x42),
-            "POKE8" => ops.push(0x43),
+            "OP_PEEK8" | "PEEK8" => ops.push(0x4B),
+            "OP_POKE8" | "POKE8" => ops.push(0x4C),
+            "OP_PEEK32" | "PEEK32" => ops.push(0x42), // Reusing 42/43 for 32-bit peek/poke
+            "OP_POKE32" | "POKE32" => ops.push(0x43),
             "OP_ALLOC" => ops.push(0x82),
             "OP_FREE" => ops.push(0x83),
             "OP_LIMIT_MEM" => ops.push(0x84),
@@ -244,6 +258,8 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_RELEASE" => ops.push(0x86),
             "OP_MATMUL_SIMD" => ops.push(0x87),
             "OP_GPU_DISPATCH" => ops.push(0x88),
+            "OP_HTTP_LISTEN" => ops.push(0xC7),
+            "OP_HTTP_RESPOND" => ops.push(0xC8),
             _ => return Err(format!("Unknown instruction: {} (full line: {})", mnemonic, line)),
         }
     }

@@ -2,9 +2,11 @@ mod lexer;
 mod compiler;
 mod assembler;
 mod vm;
+mod native;
 
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::process;
 
 fn main() {
@@ -14,7 +16,51 @@ fn main() {
         eprintln!("Usage: nux <file.nux> [options]");
         eprintln!("       nux run <file.nux>");
         eprintln!("       nux compile <file.nux> <output.nuxi>");
+        eprintln!("       nux native <file.nux> <output.o>");
+        eprintln!("       nux llvm <file.nux> <output.o>");
         process::exit(1);
+    }
+
+    if args[1] == "native" {
+        if args.len() < 3 {
+            eprintln!("Error: Missing input file for native compilation");
+            process::exit(1);
+        }
+        let input = Path::new(&args[2]);
+        let output = if args.len() >= 4 {
+            args[3].clone()
+        } else {
+            input.with_extension("o").to_string_lossy().to_string()
+        };
+        match native::compile_to_object(input, Path::new(&output)) {
+            Ok(()) => println!("Native object written to {}", output),
+            Err(error) => {
+                eprintln!("Native compilation error: {}", error);
+                process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if args[1] == "llvm" {
+        if args.len() < 3 {
+            eprintln!("Error: Missing input file for LLVM compilation");
+            process::exit(1);
+        }
+        let input = Path::new(&args[2]);
+        let output = if args.len() >= 4 {
+            args[3].clone()
+        } else {
+            input.with_extension("o").to_string_lossy().to_string()
+        };
+        match native::compile_to_llvm_object(input, Path::new(&output)) {
+            Ok(()) => println!("LLVM object written to {}", output),
+            Err(error) => {
+                eprintln!("LLVM compilation error: {}", error);
+                process::exit(1);
+            }
+        }
+        return;
     }
     
     let mode = if args.len() >= 3 && args[1] == "compile" {

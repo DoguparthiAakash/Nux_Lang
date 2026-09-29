@@ -1,0 +1,24 @@
+import "std.array_basic";
+import "algorithms.search_basic";
+import "ai.activations";
+import "crypto.hash_basic";
+import "testing.assert_basic";
+
+func main() {
+    var values = array_alloc(5);
+    array_set(values, 0, 9);
+    array_set(values, 1, 2);
+    array_set(values, 2, 7);
+    array_set(values, 3, 4);
+    array_set(values, 4, 6);
+
+    sort_selection(values, 5);
+    println(array_get(values, 0));
+    println(search_linear(values, 5, 2));
+    println(array_sum(values, 5));
+    println(activation_relu(0 - 8));
+    println(activation_sum_relu(values, 5));
+    println(hash_words(values, 5));
+    println(assert_equal(array_max(values, 5), 9));
+    array_free(values);
+}

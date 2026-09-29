@@ -1,6 +1,6 @@
 import "nn";
 
-print_str("Initializing TransformerBlock...\n");
+print("Initializing TransformerBlock...\n");
 var embed_dim = 4;
 var heads = 2;
 var seq_len = 2;
@@ -8,7 +8,7 @@ var seq_len = 2;
 var transformer = new TransformerBlock;
 transformer.init(embed_dim, heads, seq_len);
 
-print_str("Creating input tensor...\n");
+print("Creating input tensor...\n");
 var x = new Tensor;
 x.init(embed_dim * seq_len);
 
@@ -20,19 +20,19 @@ while (i < 8) {
     i = i + 1;
 }
 
-print_str("Creating output tensor...\n");
+print("Creating output tensor...\n");
 var out = new Tensor;
 out.init(embed_dim * seq_len);
 
-print_str("Running forward pass...\n");
+print("Running forward pass...\n");
 transformer.forward(x, out);
 
-print_str("Output values:\n");
+print("Output values:\n");
 i = 0;
 while (i < 8) {
     var v = out.get(i);
-    print_val(v);
+    println(v);
     i = i + 1;
 }
 
-print_str("Done.\n");
+print("Done.\n");

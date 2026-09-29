@@ -1,0 +1,42 @@
+# Common ML activation functions using scalar fixed-point values.
+
+func activation_relu(value) {
+    if (value < 0) {
+        return 0;
+    }
+    return value;
+}
+
+func activation_step(value, threshold) {
+    if (value >= threshold) {
+        return 1;
+    }
+    return 0;
+}
+
+func activation_leaky_relu(value, slope) {
+    if (value < 0) {
+        return value * slope;
+    }
+    return value;
+}
+
+func activation_clamp(value, minimum, maximum) {
+    if (value < minimum) {
+        return minimum;
+    }
+    if (value > maximum) {
+        return maximum;
+    }
+    return value;
+}
+
+func activation_sum_relu(array, length) {
+    var index = 0;
+    var total = 0;
+    while (index < length) {
+        total = total + activation_relu(mem_read64(array + index * 8));
+        index = index + 1;
+    }
+    return total;
+}

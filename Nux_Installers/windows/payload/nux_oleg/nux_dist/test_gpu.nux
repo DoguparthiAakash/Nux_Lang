@@ -1,0 +1,5 @@
+fn main() {
+    var data: *u32;
+    gpu_map(data, 1024);
+    print("GPU Map Test!");
+}

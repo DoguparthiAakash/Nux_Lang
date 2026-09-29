@@ -37,6 +37,8 @@ pub enum Token {
     Free,   // NEW: Manual Free
     Break,  // NEW: Loop Control
     Continue, // NEW: Loop Control
+    HttpListen,
+    HttpRespond,
     At,
     Hardware,
     Link,
@@ -67,6 +69,8 @@ pub enum Token {
     
     LParen,
     RParen,
+    LBracket,
+    RBracket,
     LBrace,
     RBrace,
     Slash,
@@ -157,6 +161,8 @@ impl Lexer {
             '%' => { self.advance_pos(); (Token::Percent, start_span) },
             '(' => { self.advance_pos(); (Token::LParen, start_span) },
             ')' => { self.advance_pos(); (Token::RParen, start_span) },
+            '[' => { self.advance_pos(); (Token::LBracket, start_span) },
+            ']' => { self.advance_pos(); (Token::RBracket, start_span) },
             '{' => { self.advance_pos(); (Token::LBrace, start_span) },
             '}' => { self.advance_pos(); (Token::RBrace, start_span) },
             ';' => { self.advance_pos(); (Token::SemiColon, start_span) },
@@ -351,6 +357,8 @@ impl Lexer {
             "free" => Token::Free,
             "break" => Token::Break,
             "continue" => Token::Continue,
+            "http_listen" => Token::HttpListen,
+            "http_respond" => Token::HttpRespond,
             // "class" => Token::Class, // Already matched above
             
             // Types

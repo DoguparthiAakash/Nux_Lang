@@ -213,7 +213,7 @@ impl Parser {
         loop {
             match &self.current_token {
                 Token::EOF => break,
-                Token::Class => {
+                Token::Class | Token::Struct => {
                      if let Err(e) = self.parse_class(&mut definitions) {
                           self.errors.push(e);
                           self.synchronize();
@@ -234,7 +234,8 @@ impl Parser {
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
                 Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
-                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
+                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString |
+                Token::Alloc | Token::Free | Token::GpuMap => {
                     if let Err(e) = self.parse_statement_or_expr(&mut main_body) {
                         self.errors.push(e);
                         self.synchronize();
@@ -368,7 +369,7 @@ impl Parser {
         loop {
             match sub_parser.current_token {
                 Token::EOF => break,
-                Token::Class => {
+                Token::Class | Token::Struct => {
                     if let Err(e) = sub_parser.parse_class(definitions) {
                          self.errors.push(e);
                          sub_parser.synchronize();
@@ -434,7 +435,8 @@ impl Parser {
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
                 Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
-                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
+                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString |
+                Token::Alloc | Token::Free | Token::GpuMap => {
                     if let Err(e) = sub_parser.parse_statement_or_expr(main_body) {
                         self.errors.push(e);
                         sub_parser.synchronize();
@@ -535,6 +537,16 @@ impl Parser {
             _ => return self.error("Expected class name".to_string()),
         };
         self.advance();
+        
+        if self.current_token == Token::Lt {
+            self.advance();
+            while self.current_token != Token::Gt && self.current_token != Token::EOF {
+                self.advance();
+            }
+            if self.current_token == Token::Gt {
+                self.advance();
+            }
+        }
         
         self.current_class_name = Some(name.clone());
         self.current_class_fields.clear();
@@ -675,6 +687,16 @@ impl Parser {
             _ => return self.error("Expected function name".to_string()),
         };
         self.advance();
+        
+        if self.current_token == Token::Lt {
+            self.advance();
+            while self.current_token != Token::Gt && self.current_token != Token::EOF {
+                self.advance();
+            }
+            if self.current_token == Token::Gt {
+                self.advance();
+            }
+        }
         
         if self.current_token != Token::LParen { return self.error("Expected '('".to_string()); }
         self.advance();
@@ -1233,6 +1255,15 @@ impl Parser {
                        return self.error(self.format_unexpected_token(&self.current_token, "Unexpected token in statement:"));
                  }
              },
+              Token::Alloc => {
+                 self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); if expect_semi && self.current_token!=Token::SemiColon{return self.error(";".to_string());} else if self.current_token==Token::SemiColon{self.advance();} out.push_str("OP_ALLOC\nPOP\n");
+              },
+              Token::Free => {
+                 self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); if expect_semi && self.current_token!=Token::SemiColon{return self.error(";".to_string());} else if self.current_token==Token::SemiColon{self.advance();} out.push_str("OP_FREE\nPOP\n");
+              },
+              Token::GpuMap => {
+                 self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::Comma{return self.error(",".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); if expect_semi && self.current_token!=Token::SemiColon{return self.error(";".to_string());} else if self.current_token==Token::SemiColon{self.advance();} out.push_str("OP_GPU_MAP\nPOP\n");
+              },
              Token::Input => {
                 self.advance();
                 if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -1746,6 +1777,9 @@ impl Parser {
             Token::UpperCase => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_TO_UPPER\n"); Ok(Type::Int) },
             Token::LowerCase => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_TO_LOWER\n"); Ok(Type::Int) },
             Token::ImgGet => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::Comma{return self.error(",".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::Comma{return self.error(",".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_IMG_GET\n"); Ok(Type::Int) },
+            Token::Alloc => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_ALLOC\n"); Ok(Type::Int) },
+            Token::Free => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_FREE\n"); Ok(Type::Int) },
+            Token::GpuMap => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::Comma{return self.error(",".to_string());} self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_GPU_MAP\n"); Ok(Type::Int) },
             Token::Number(n) => { let val = *n; self.advance(); out.push_str(&format!("PUSH {}\n", val)); Ok(Type::Int) },
             Token::Float(f) => { let val = *f; self.advance(); let bits = val.to_bits() as i64; out.push_str(&format!("PUSH {}\n", bits)); Ok(Type::Float) },
             Token::True => { self.advance(); out.push_str("PUSH 1\n"); Ok(Type::Bool) },

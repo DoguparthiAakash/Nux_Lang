@@ -1,0 +1,73 @@
+# physics::world
+# The simulation environment managing bodies and collisions
+
+import std::collections::List;
+import physics::math::Vec2;
+import physics::body::RigidBody;
+
+class World {
+    var bodies: List;
+    var gravity: Vec2;
+    
+    func init() {
+        this.bodies = new List();
+        this.bodies.init();
+        
+        this.gravity = new Vec2();
+        this.gravity.init(0.0, -9.81);
+    }
+    
+    func add_body(body: RigidBody) {
+        this.bodies.append(body);
+    }
+    
+    func step(dt: f32) {
+        var len = this.bodies.len();
+        
+        # Apply Gravity
+        var i = 0;
+        while (i < len) {
+            var body = this.bodies.get(i); # typeof RigidBody
+            if (body.mass > 0.0) {
+                var weight = this.gravity.mul(body.mass);
+                body.apply_force(weight);
+            }
+            i += 1;
+        }
+        
+        # Integrate
+        i = 0;
+        while (i < len) {
+            var body = this.bodies.get(i);
+            body.integrate(dt);
+            i += 1;
+        }
+        
+        # Collision Resolution (naive O(N^2) for now)
+        i = 0;
+        while (i < len) {
+            var j = i + 1;
+            while (j < len) {
+                this.resolve_collision(this.bodies.get(i), this.bodies.get(j));
+                j += 1;
+            }
+            i += 1;
+        }
+    }
+    
+    func resolve_collision(a: RigidBody, b: RigidBody) {
+        # Check basic AABB or circle intersection here.
+        # If intersecting, calculate penetration depth and normal.
+        
+        # Pseudo-code impulse resolution:
+        # var relative_vel = b.velocity.sub(a.velocity);
+        # var vel_along_normal = relative_vel.dot(normal);
+        # if (vel_along_normal > 0.0) return;
+        # var e = min(a.restitution, b.restitution);
+        # var j = -(1.0 + e) * vel_along_normal;
+        # j = j / (a.inverse_mass + b.inverse_mass);
+        # var impulse = normal.mul(j);
+        # a.velocity = a.velocity.sub(impulse.mul(a.inverse_mass));
+        # b.velocity = b.velocity.add(impulse.mul(b.inverse_mass));
+    }
+}

@@ -4,7 +4,7 @@
 import "ui";
 import "io";
 
-@priority(80)
+# @priority(80)
 
 # Initialize the game runtime
 func game_init(title, width, height) {

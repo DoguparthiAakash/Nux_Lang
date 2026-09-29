@@ -190,7 +190,7 @@ impl NuxVm {
             // eprintln!("WARNING: Running unsigned Nux bytecode.");
         }
         
-        std::fs::write("scratch/bytecode.bin", &code).unwrap();
+        // std::fs::write("scratch/bytecode.bin", &code).unwrap();
 
         Self {
             stack: Stack::new(),

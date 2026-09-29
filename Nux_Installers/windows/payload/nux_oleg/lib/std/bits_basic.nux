@@ -1,0 +1,49 @@
+# Portable integer bit operations for systems and embedded code.
+
+func bits_has(value, mask) {
+    return (value & mask) != 0;
+}
+
+func bits_set(value, mask) {
+    return value | mask;
+}
+
+func bits_clear(value, mask) {
+    return value & (0 - 1 - mask);
+}
+
+func bits_toggle(value, mask) {
+    return value xor mask;
+}
+
+func bits_shift_left(value, amount) {
+    var result = value;
+    var index = 0;
+    while (index < amount) {
+        result = result * 2;
+        index = index + 1;
+    }
+    return result;
+}
+
+func bits_shift_right(value, amount) {
+    var result = value;
+    var index = 0;
+    while (index < amount) {
+        result = result / 2;
+        index = index + 1;
+    }
+    return result;
+}
+
+func bits_popcount(value) {
+    var current = value;
+    var count = 0;
+    while (current != 0) {
+        if ((current & 1) != 0) {
+            count = count + 1;
+        }
+        current = current / 2;
+    }
+    return count;
+}

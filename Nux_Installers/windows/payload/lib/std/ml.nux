@@ -1,0 +1,48 @@
+// ============================================================================
+// Nux Standard Library: Machine Learning (Swami AI Core)
+// ============================================================================
+
+// A basic Tensor/Matrix struct for defining our data
+struct Tensor {
+    data: float*; // Pointer to underlying flat data array
+    rows: int;
+    cols: int;
+}
+
+// Math and Activation Functions
+extern fn exp(x: float) -> float;
+extern fn malloc(size: int) -> float*;
+extern fn free(ptr: float*);
+
+// Activation Functions
+fn relu(x: float) -> float {
+    if (x > 0.0) {
+        return x;
+    }
+    return 0.0;
+}
+
+fn relu_derivative(x: float) -> float {
+    if (x > 0.0) {
+        return 1.0;
+    }
+    return 0.0;
+}
+
+fn sigmoid(x: float) -> float {
+    return 1.0 / (1.0 + exp(-x));
+}
+
+// Basic Matrix operations (simplified for initial implementation)
+fn tensor_create(rows: int, cols: int) -> Tensor {
+    var t: Tensor;
+    t.rows = rows;
+    t.cols = cols;
+    // Assuming size of float is 4
+    t.data = malloc(rows * cols * 4);
+    return t;
+}
+
+fn tensor_free(t: Tensor) {
+    free(t.data);
+}

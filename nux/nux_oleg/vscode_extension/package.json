@@ -2,7 +2,7 @@
     "name": "nux-lang",
     "displayName": "Nux Language",
     "description": "Language support for Nux",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "NuxLanguage",
     "repository": {
         "type": "git",

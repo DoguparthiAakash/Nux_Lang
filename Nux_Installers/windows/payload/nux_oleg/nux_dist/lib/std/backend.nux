@@ -1,7 +1,7 @@
 # backend.nux - Nux Server Framework
 # For TCP/HTTP networking and routing
 
-@priority(60)
+# @priority(60)
 
 # Initialize the server
 func server_start(port) {

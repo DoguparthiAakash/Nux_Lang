@@ -1,0 +1,41 @@
+# Allocation-free fixed-point 2D collision and motion helpers.
+
+func collision_aabb(left_x, left_y, left_w, left_h, right_x, right_y, right_w, right_h) {
+    if (left_x + left_w <= right_x) { return 0; }
+    if (right_x + right_w <= left_x) { return 0; }
+    if (left_y + left_h <= right_y) { return 0; }
+    if (right_y + right_h <= left_y) { return 0; }
+    return 1;
+}
+
+func collision_point_aabb(point_x, point_y, box_x, box_y, box_w, box_h) {
+    if (point_x < box_x) { return 0; }
+    if (point_y < box_y) { return 0; }
+    if (point_x > box_x + box_w) { return 0; }
+    if (point_y > box_y + box_h) { return 0; }
+    return 1;
+}
+
+func physics_integrate_position(position, velocity, acceleration, delta) {
+    return position + velocity * delta + acceleration * delta * delta / 2;
+}
+
+func physics_integrate_velocity(velocity, acceleration, delta) {
+    return velocity + acceleration * delta;
+}
+
+func physics_bounce(velocity, restitution) {
+    return 0 - velocity * restitution;
+}
+
+func physics_approach(value, target, step) {
+    if (value < target) {
+        if (value + step > target) { return target; }
+        return value + step;
+    }
+    if (value > target) {
+        if (value - step < target) { return target; }
+        return value - step;
+    }
+    return value;
+}

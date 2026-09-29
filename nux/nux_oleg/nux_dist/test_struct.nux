@@ -1,0 +1,20 @@
+struct Point<T> {
+    x: int,
+    y: int
+}
+
+func main() {
+    print("Testing struct and alloc/free\n");
+    
+    var p = alloc(16);
+    
+    print("Allocated point\n");
+    
+    gpu_map(p, 16);
+    
+    print("Mapped to GPU\n");
+    
+    free(p);
+    
+    print("Freed point\n");
+}

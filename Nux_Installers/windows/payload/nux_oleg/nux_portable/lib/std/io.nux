@@ -1,0 +1,45 @@
+#* ─────────────────────────────────────────────────────
+   Nux I/O Utilities (std/io.nux)
+   Using modern `struct`, `alloc`, and `free` syntax
+   ───────────────────────────────────────────────────── *#
+
+struct File {
+    fd: int,
+    size: int,
+    cursor: int
+}
+
+struct IO {
+    # Open a file and return a File struct pointer
+    func open(path: string) -> File {
+        var f = alloc(24); # allocate 24 bytes for fd, size, cursor (8 bytes each)
+        
+        # Native stub: in a real environment this would do a syscall
+        # For bare metal we just mock the file descriptor
+        
+        return f;
+    }
+
+    # Close a file and free its memory
+    func close(f: File) {
+        if (f != 0) {
+            free(f);
+        }
+    }
+
+    # Read bytes into buffer
+    func read(f: File, buf: int, len: int) -> int {
+        # Native stub: read `len` bytes into `buf`
+        return 0;
+    }
+
+    # Write bytes from buffer
+    func write(f: File, buf: int, len: int) -> int {
+        # Native stub: write `len` bytes from `buf`
+        return len;
+    }
+}
+
+pub func print_hello_io() {
+    print("Nux IO initialized.\n");
+}

@@ -1,0 +1,172 @@
+/// std::hw — Nux Hardware Abstraction Layer
+///
+/// Provides hardware-independent access to low-level CPU and I/O operations.
+/// This replaces raw `asm(...)` blocks throughout Nux programs.
+///
+/// The native compiler backend (native_backend.rs) maps these functions
+/// directly to the correct x86/ARM/RISC-V instructions — the programmer
+/// never writes architecture-specific code.
+///
+/// Usage:
+///   import std::hw;
+///   hw::outb(0x3F8, 65);    # write 'A' to COM1
+///   var c = hw::inb(0x60);  # read keyboard scancode
+
+@[no_std]
+
+# ─── I/O Port Access ──────────────────────────────────────────────────────────
+
+/// Write a byte to a hardware I/O port.
+/// Equivalent to x86 `out dx, al` instruction.
+/// port: the 16-bit I/O port address
+/// val:  the byte value to write
+@[builtin = "hw_outb"]
+func outb(port: u16, val: u8);
+
+/// Read a byte from a hardware I/O port.
+/// Equivalent to x86 `in al, dx` instruction.
+/// port: the 16-bit I/O port address
+/// Returns the byte read from the port.
+@[builtin = "hw_inb"]
+func inb(port: u16) -> u8;
+
+/// Write a 16-bit word to a hardware I/O port.
+@[builtin = "hw_outw"]
+func outw(port: u16, val: u16);
+
+/// Read a 16-bit word from a hardware I/O port.
+@[builtin = "hw_inw"]
+func inw(port: u16) -> u16;
+
+/// Write a 32-bit dword to a hardware I/O port.
+@[builtin = "hw_outd"]
+func outd(port: u16, val: u32);
+
+/// Read a 32-bit dword from a hardware I/O port.
+@[builtin = "hw_ind"]
+func ind(port: u16) -> u32;
+
+# ─── I/O Wait ─────────────────────────────────────────────────────────────────
+
+/// Insert an I/O delay (write to an unused port).
+/// Used after I/O port writes on older hardware to give the device time to respond.
+func io_wait() {
+    outb(0x80, 0);
+}
+
+# ─── CPU Control ──────────────────────────────────────────────────────────────
+
+/// Disable hardware interrupts (cli).
+/// Use before critical sections that must not be interrupted.
+@[builtin = "hw_cli"]
+func cli();
+
+/// Enable hardware interrupts (sti).
+@[builtin = "hw_sti"]
+func sti();
+
+/// Halt the CPU until the next interrupt (hlt).
+/// Used in idle loops: while(true) { hw::hlt(); }
+@[builtin = "hw_hlt"]
+func hlt();
+
+/// Full CPU halt — disables interrupts then halts forever.
+/// Use for fatal kernel panics.
+func halt_forever() {
+    cli();
+    while (true) {
+        hlt();
+    }
+}
+
+# ─── Memory-Mapped I/O ────────────────────────────────────────────────────────
+
+/// Write a byte to a memory-mapped hardware register.
+/// addr: the physical address of the register
+/// val:  the byte to write
+@[builtin = "hw_mmio_write8"]
+func mmio_write8(addr: *u8, val: u8);
+
+/// Read a byte from a memory-mapped hardware register.
+@[builtin = "hw_mmio_read8"]
+func mmio_read8(addr: *u8) -> u8;
+
+/// Write a 32-bit value to a memory-mapped hardware register.
+@[builtin = "hw_mmio_write32"]
+func mmio_write32(addr: *u32, val: u32);
+
+/// Read a 32-bit value from a memory-mapped hardware register.
+@[builtin = "hw_mmio_read32"]
+func mmio_read32(addr: *u32) -> u32;
+
+# ─── CPU Information ──────────────────────────────────────────────────────────
+
+/// Returns the current CPU timestamp counter (rdtsc).
+/// Useful for performance measurements.
+@[builtin = "hw_rdtsc"]
+func rdtsc() -> u32;
+
+# ─── Common Hardware Addresses (x86 PC) ──────────────────────────────────────
+
+# VGA text buffer (color text mode)
+var VGA_BUFFER: *u16 = 0xB8000;
+var VGA_WIDTH:  u32  = 80;
+var VGA_HEIGHT: u32  = 25;
+
+# PIC (Programmable Interrupt Controller) ports
+var PIC1_COMMAND: u16 = 0x20;
+var PIC1_DATA:    u16 = 0x21;
+var PIC2_COMMAND: u16 = 0xA0;
+var PIC2_DATA:    u16 = 0xA1;
+var PIC_EOI:      u8  = 0x20;  # End-of-interrupt signal
+
+# PS/2 Keyboard
+var KEYBOARD_DATA_PORT:   u16 = 0x60;
+var KEYBOARD_STATUS_PORT: u16 = 0x64;
+
+# Serial port COM1
+var COM1: u16 = 0x3F8;
+
+# PIT (Programmable Interval Timer)
+var PIT_CHANNEL0: u16 = 0x40;
+var PIT_COMMAND:  u16 = 0x43;
+
+# ─── PIC Helpers ─────────────────────────────────────────────────────────────
+
+/// Send End-of-Interrupt signal to PIC.
+/// irq: the interrupt number (0-15)
+func pic_send_eoi(irq: u8) {
+    if (irq >= 8) {
+        outb(PIC2_COMMAND, PIC_EOI);
+    }
+    outb(PIC1_COMMAND, PIC_EOI);
+}
+
+/// Remap PIC IRQs to avoid conflict with CPU exception vectors.
+/// offset1: new base for master PIC (typically 0x20)
+/// offset2: new base for slave PIC  (typically 0x28)
+func pic_remap(offset1: u8, offset2: u8) {
+    # Save masks
+    var mask1 = inb(PIC1_DATA);
+    var mask2 = inb(PIC2_DATA);
+
+    # Start initialization sequence
+    outb(PIC1_COMMAND, 0x11);  io_wait();
+    outb(PIC2_COMMAND, 0x11);  io_wait();
+
+    # Set vector offsets
+    outb(PIC1_DATA, offset1);  io_wait();
+    outb(PIC2_DATA, offset2);  io_wait();
+
+    # Tell PICs about each other
+    outb(PIC1_DATA, 0x04);     io_wait();  # slave at IRQ2
+    outb(PIC2_DATA, 0x02);     io_wait();  # cascade identity
+
+    # 8086 mode
+    outb(PIC1_DATA, 0x01);     io_wait();
+    outb(PIC2_DATA, 0x01);     io_wait();
+
+    # Restore masks
+    outb(PIC1_DATA, mask1);
+    outb(PIC2_DATA, mask2);
+}

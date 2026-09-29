@@ -1,0 +1,5 @@
+func main() {
+    var ptr: *u8;
+    gpu_map(ptr, 1024);
+    print("GPU unified memory mapped successfully!\n");
+}

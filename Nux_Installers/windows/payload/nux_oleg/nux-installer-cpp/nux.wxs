@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" 
+             Name="Nux Compiler" 
+             Language="1033" 
+             Version="1.0.0.0" 
+             Manufacturer="Nux Language" 
+             UpgradeCode="A1B2C3D4-E5F6-4789-9A0B-1C2D3E4F5A6B">
+             
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+        
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+
+        <Feature Id="ProductFeature" Title="Nux Compiler" Level="1">
+            <ComponentGroupRef Id="ProductComponents" />
+        </Feature>
+    </Product>
+
+    <Fragment>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="Nux">
+                    <!-- nux.exe will go here -->
+                    <Directory Id="STDFOLDER" Name="lib">
+                        <Directory Id="STDDIR" Name="std">
+                            <!-- stdlib files will go here -->
+                        </Directory>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </Directory>
+    </Fragment>
+
+    <Fragment>
+        <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+            <!-- Nux Executable -->
+            <Component Id="cmp_nux_exe" Guid="*">
+                <File Id="file_nux_exe" Source="nux.exe" KeyPath="yes" />
+                
+                <!-- Environment Variable PATH Modification -->
+                <Environment Id="UpdatePath"
+                             Name="PATH"
+                             Value="[INSTALLFOLDER]"
+                             Permanent="no"
+                             Part="last"
+                             Action="set"
+                             System="yes" />
+
+                <!-- File Extension Registration -->
+                <ProgId Id="NuxSourceFile" Description="Nux Source Code File" Icon="file_nux_icon">
+                    <Extension Id="nux" ContentType="text/plain">
+                        <Verb Id="run" Command="Run in Nux Compiler" TargetFile="file_nux_exe" Argument="&quot;%1&quot;" />
+                    </Extension>
+                </ProgId>
+            </Component>
+            
+            <Component Id="cmp_nux_icon" Guid="*">
+                <File Id="file_nux_icon" Source="nux_file_icon.ico" KeyPath="yes" />
+            </Component>
+            
+            <Component Id="cmp_binary_icon" Guid="*">
+                <File Id="file_binary_icon" Source="..\nux_dist\binary_icon.ico" KeyPath="yes" />
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+</Wix>

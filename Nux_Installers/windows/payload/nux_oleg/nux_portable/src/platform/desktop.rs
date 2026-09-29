@@ -92,6 +92,28 @@ impl Platform for DesktopPlatform {
         // Basic mapping or just return false for now
         false
     }
+
+    fn get_mouse_pos(&self) -> (f32, f32) {
+        if let Some(win) = &self.window {
+            win.get_mouse_pos(minifb::MouseMode::Discard).unwrap_or((0.0, 0.0))
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
+    fn get_mouse_btn(&self, button: usize) -> bool {
+        if let Some(win) = &self.window {
+            let mb = match button {
+                0 => minifb::MouseButton::Left,
+                1 => minifb::MouseButton::Right,
+                2 => minifb::MouseButton::Middle,
+                _ => minifb::MouseButton::Left,
+            };
+            win.get_mouse_down(mb)
+        } else {
+            false
+        }
+    }
 }
 
 
@@ -116,4 +138,6 @@ impl Platform for DesktopPlatform {
     fn sys_info(&self) -> String { "Desktop (GUI Disabled)".to_string() }
     fn platform_type(&self) -> u8 { 0 }
     fn is_key_down(&self, _key: usize) -> bool { false }
+    fn get_mouse_pos(&self) -> (f32, f32) { (0.0, 0.0) }
+    fn get_mouse_btn(&self, _button: usize) -> bool { false }
 }

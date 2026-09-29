@@ -12,7 +12,7 @@ pub mod codegen;
 
 // Advanced runtime features (existing)
 pub mod nvm;
-pub mod jit;
+// pub mod jit;
 pub mod polyglot_parser;
 pub mod ffi_manager;
 pub mod cux;

@@ -1,7 +1,7 @@
 # gpu.nux - Nux GPU Acceleration Interface
 # Provides a high-level wrapper over CUX (C/CUDA Native Extensions)
 
-@priority(40)
+# @priority(40)
 
 # The CUX context (stores the loaded shared library handle)
 var __gpu_cux_handle = -1;

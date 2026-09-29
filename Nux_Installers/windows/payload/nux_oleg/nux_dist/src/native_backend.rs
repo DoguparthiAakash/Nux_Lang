@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use std::process::Command;
 
-pub fn compile_native(input_file: &str, source: &str, output_path: &str) -> Result<(), String> {
+pub fn compile_native(input_file: &str, source: &str, output_path: &str, target_os: Option<&str>) -> Result<(), String> {
     println!("Native compilation starting for: {}", input_file);
     
     // 1. Strip @[no_std] and @[entry]
@@ -209,12 +209,24 @@ static inline uint8_t* alloc(uint32_t size) { \
         "static inline uint32_t cmp(uint8_t* a, uint8_t* b, uint32_t n) { \
     for(uint32_t _i=0;_i<n;_i++) { if(a[_i]!=b[_i]) return (uint32_t)((int)a[_i]-(int)b[_i]); } return 0; }"
     );
-    let c_file_path = format!("{}.c", output_path);
+    // GPU map support
+    let re_gpu_map = Regex::new(r"gpu_map\s*\(\s*([a-zA-Z0-9_]+)\s*,\s*(.*?)\)").unwrap();
+    full_c = re_gpu_map.replace_all(&full_c, "cudaMallocManaged((void**)&($1), $2)").to_string();
+
+    let ext = match target_os {
+        Some("cuda") | Some("ptx") => "cu",
+        _ => "c",
+    };
+    let c_file_path = format!("{}.{}", output_path, ext);
     
-    let mut f = File::create(&c_file_path).map_err(|e| format!("Failed to create temp C file: {}", e))?;
+    let mut f = File::create(&c_file_path).map_err(|e| format!("Failed to create temp {} file: {}", ext, e))?;
     f.write_all(b"#include <stdint.h>\n#include <stdbool.h>\n").unwrap();
-    f.write_all(b"static inline uint8_t __inb(uint16_t port) { uint8_t ret; __asm__ volatile ( \"inb %1, %0\" : \"=a\"(ret) : \"Nd\"(port) ); return ret; }\n").unwrap();
-    f.write_all(b"static inline void __outb(uint16_t port, uint8_t val) { __asm__ volatile ( \"outb %0, %1\" : : \"a\"(val), \"Nd\"(port) ); }\n").unwrap();
+    if target_os == Some("cuda") || target_os == Some("ptx") {
+        f.write_all(b"#include <cuda_runtime.h>\n").unwrap();
+    } else {
+        f.write_all(b"static inline uint8_t __inb(uint16_t port) { uint8_t ret; __asm__ volatile ( \"inb %1, %0\" : \"=a\"(ret) : \"Nd\"(port) ); return ret; }\n").unwrap();
+        f.write_all(b"static inline void __outb(uint16_t port, uint8_t val) { __asm__ volatile ( \"outb %0, %1\" : : \"a\"(val), \"Nd\"(port) ); }\n").unwrap();
+    }
     
     if full_c.contains("struct File") {
         f.write_all(b"typedef struct File File;\n").unwrap();
@@ -224,27 +236,49 @@ static inline uint8_t* alloc(uint32_t size) { \
     }
     f.write_all(full_c.as_bytes()).unwrap();
     
-    // Call GCC directly (nux runs natively on Linux/WSL, so no wsl wrapping needed)
-    let status = Command::new("gcc")
-        .args(&[
-            "-m32",
-            "-ffreestanding",
-            "-fno-pie",
-            "-fno-stack-protector",
-            "-Wno-int-conversion",
-            "-Wno-implicit-function-declaration",
-            "-Wno-incompatible-pointer-types",
-            "-c", &c_file_path,
-            "-o", &format!("{}.o", output_path),
-        ])
-        .status()
-        .map_err(|e| format!("Failed to execute GCC: {}", e))?;
+    let status = if target_os == Some("cuda") || target_os == Some("ptx") {
+        let mut nvcc_cmd = Command::new("nvcc");
+        if target_os == Some("ptx") {
+            nvcc_cmd.args(&[
+                "-ptx", &c_file_path,
+                "-o", &format!("{}.ptx", output_path),
+            ])
+        } else {
+            nvcc_cmd.args(&[
+                "-c", &c_file_path,
+                "-o", &format!("{}.o", output_path),
+            ])
+        };
+        nvcc_cmd.status().map_err(|e| format!("Failed to execute NVCC: {}", e))?
+    } else {
+        let gcc_cmd = match target_os {
+            Some("linux") => "x86_64-linux-gnu-gcc",
+            Some("bsd") => "x86_64-unknown-freebsd-gcc",
+            Some("macos") | Some("darwin") => "x86_64-apple-darwin-gcc",
+            Some("windows") => "x86_64-w64-mingw32-gcc",
+            _ => "gcc",
+        };
+        Command::new(gcc_cmd)
+            .args(&[
+                "-m32",
+                "-ffreestanding",
+                "-fno-pie",
+                "-fno-stack-protector",
+                "-Wno-int-conversion",
+                "-Wno-implicit-function-declaration",
+                "-Wno-incompatible-pointer-types",
+                "-c", &c_file_path,
+                "-o", &format!("{}.o", output_path),
+            ])
+            .status()
+            .map_err(|e| format!("Failed to execute GCC: {}", e))?
+    };
 
     if !status.success() {
-        return Err("GCC compilation failed — check errors above.".to_string());
+        return Err("Compilation failed — check errors above.".to_string());
     }
     
-    // Clean up temporary C file — leave zero intermediate artefacts
+    // Clean up temporary file — leave zero intermediate artefacts
     // let _ = std::fs::remove_file(&c_file_path);
     
     Ok(())

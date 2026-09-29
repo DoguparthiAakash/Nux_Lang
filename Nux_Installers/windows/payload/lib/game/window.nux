@@ -1,0 +1,48 @@
+# game::window
+# Core display and rendering window for Nux games.
+
+import std::string::String;
+
+extern {
+    func nux_gl_create_window(title: *u8, width: u32, height: u32) -> *u8;
+    func nux_gl_destroy_window(win: *u8);
+    func nux_gl_window_is_open(win: *u8) -> bool;
+    func nux_gl_poll_events(win: *u8);
+    func nux_gl_clear_screen(r: u8, g: u8, b: u8, a: u8);
+    func nux_gl_swap_buffers(win: *u8);
+}
+
+class Window {
+    var title: String;
+    var width: u32;
+    var height: u32;
+    var handle: *u8; # C pointer to NuxWindow
+    
+    func init(title: String, width: u32, height: u32) {
+        this.title = title;
+        this.width = width;
+        this.height = height;
+        this.handle = nux_gl_create_window(title.c_str(), width, height);
+    }
+    
+    func is_open() -> bool {
+        return nux_gl_window_is_open(this.handle);
+    }
+    
+    func poll_events() {
+        nux_gl_poll_events(this.handle);
+    }
+    
+    func clear(r: u8, g: u8, b: u8, a: u8) {
+        nux_gl_clear_screen(r, g, b, a);
+    }
+    
+    func display() {
+        nux_gl_swap_buffers(this.handle);
+    }
+    
+    func close() {
+        nux_gl_destroy_window(this.handle);
+        this.handle = 0;
+    }
+}

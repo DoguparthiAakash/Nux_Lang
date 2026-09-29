@@ -1,0 +1,63 @@
+#* ─────────────────────────────────────────────────────
+   Nux Network Utilities (std/net.nux)
+   Using modern `struct`, `alloc`, and `free` syntax
+   ───────────────────────────────────────────────────── *#
+
+struct Socket {
+    fd: int,
+    port: int,
+    ip: int,
+    protocol: int # 0 for TCP, 1 for UDP
+}
+
+struct Net {
+    # Open a TCP socket connection
+    func tcp_connect(ip_addr: string, port_num: int) -> Socket {
+        var sock = alloc(32); # 32 bytes for 4 ints (8 bytes each)
+        
+        # Native stub: syscall to connect to remote IP and Port
+        
+        return sock;
+    }
+
+    # Listen on a TCP port
+    func tcp_listen(port_num: int) -> Socket {
+        var sock = alloc(32);
+        
+        # Native stub: bind and listen
+        
+        return sock;
+    }
+
+    # Accept an incoming connection
+    func accept(server_sock: Socket) -> Socket {
+        var client_sock = alloc(32);
+        
+        # Native stub: accept syscall
+        
+        return client_sock;
+    }
+
+    # Close a socket connection
+    func close(sock: Socket) {
+        if (sock != 0) {
+            free(sock);
+        }
+    }
+
+    # Send data over socket
+    func send(sock: Socket, buf: int, len: int) -> int {
+        # Native stub
+        return len;
+    }
+
+    # Receive data from socket
+    func recv(sock: Socket, buf: int, len: int) -> int {
+        # Native stub
+        return 0;
+    }
+}
+
+pub func print_hello_net() {
+    print("Nux Net initialized.\n");
+}

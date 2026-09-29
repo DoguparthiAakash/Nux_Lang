@@ -18,6 +18,9 @@ pub enum Token {
     While,
     For,
     Do,
+    Match,
+    Case,
+    Default,
     Asm,
     Spawn,
     Lock,
@@ -68,6 +71,8 @@ pub enum Token {
     GtEq,
     And,
     Or,
+    BitAnd,
+    BitOr,
     Xor,
     Xand,
     Xnot,
@@ -78,6 +83,8 @@ pub enum Token {
     Comma,
     Plus,
     Minus,
+    PlusPlus,
+    MinusMinus,
     EOF,
 }
 
@@ -87,6 +94,7 @@ pub struct Span {
     pub col: usize,
 }
 
+#[derive(Clone)]
 pub struct Lexer {
     input: Vec<char>,
     pos: usize,
@@ -115,8 +123,20 @@ impl Lexer {
         let c = self.input[self.pos];
         
         match c {
-            '+' => { self.advance_pos(); (Token::Plus, start_span) },
-            '-' => { self.advance_pos(); (Token::Minus, start_span) },
+            '+' => {
+                self.advance_pos();
+                if self.pos < self.input.len() && self.input[self.pos] == '+' {
+                    self.advance_pos();
+                    (Token::PlusPlus, start_span)
+                } else { (Token::Plus, start_span) }
+            },
+            '-' => {
+                self.advance_pos();
+                if self.pos < self.input.len() && self.input[self.pos] == '-' {
+                    self.advance_pos();
+                    (Token::MinusMinus, start_span)
+                } else { (Token::Minus, start_span) }
+            },
             '*' => {
                 self.advance_pos();
                 if self.pos < self.input.len() && self.input[self.pos] == '*' {
@@ -271,6 +291,9 @@ impl Lexer {
             "while" => Token::While,
             "for" => Token::For,
             "do" => Token::Do,
+            "match" => Token::Match,
+            "case" => Token::Case,
+            "default" => Token::Default,
             "asm" => Token::Asm,
             "spawn" => Token::Spawn,
             "lock" => Token::Lock,
@@ -357,6 +380,8 @@ impl Lexer {
         
         match c {
             '=' => (Token::Eq, start_span),
+            '&' => (Token::BitAnd, start_span),
+            '|' => (Token::BitOr, start_span),
             '<' => (Token::Lt, start_span),
             '>' => (Token::Gt, start_span),
             _ => (Token::Identifier(format!("{}", c)), start_span),

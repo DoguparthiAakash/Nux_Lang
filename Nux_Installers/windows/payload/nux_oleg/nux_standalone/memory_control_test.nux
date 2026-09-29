@@ -1,0 +1,18 @@
+func main() {
+    var source = mem_alloc(16);
+    var target = mem_alloc(16);
+
+    mem_write64(source, 123456);
+    var first = mem_read64(source);
+    mem_set(source, 65, 16);
+    var byte_value = mem_read8(source);
+    mem_copy(target, source, 16);
+    var copied_value = mem_read8(target);
+
+    println(first);
+    println(byte_value);
+    println(copied_value);
+    println(mem_free(source));
+    println(mem_free(target));
+    println(mem_size());
+}

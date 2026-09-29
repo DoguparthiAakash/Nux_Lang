@@ -1,0 +1,5 @@
+#include "resource.h"
+
+IDI_APP_ICON ICON "icon.ico"
+IDR_MSI_PAYLOAD RCDATA "nux.msi"
+IDB_LOGO BITMAP "logo.bmp"

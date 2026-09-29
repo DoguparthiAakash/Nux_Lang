@@ -1,0 +1,34 @@
+# game::sprite
+# 2D Texture and Sprite rendering.
+
+import std::string::String;
+
+extern {
+    func nux_gl_load_texture(filepath: *u8) -> *u8;
+    func nux_gl_draw_texture(tex: *u8, x: f32, y: f32, rotation: f32, scale: f32);
+}
+
+class Sprite {
+    var texture: *u8;
+    var x: f32;
+    var y: f32;
+    var rotation: f32;
+    var scale: f32;
+    
+    func init(filepath: String) {
+        this.texture = nux_gl_load_texture(filepath.c_str());
+        this.x = 0.0;
+        this.y = 0.0;
+        this.rotation = 0.0;
+        this.scale = 1.0;
+    }
+    
+    func set_position(x: f32, y: f32) {
+        this.x = x;
+        this.y = y;
+    }
+    
+    func draw() {
+        nux_gl_draw_texture(this.texture, this.x, this.y, this.rotation, this.scale);
+    }
+}

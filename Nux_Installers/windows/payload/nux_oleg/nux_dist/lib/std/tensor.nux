@@ -7,7 +7,7 @@
 #   - ndim: number of dimensions
 #   - size: total number of elements
 
-@priority(35)
+# @priority(35)
 
 # ============================================================
 # Tensor Creation
@@ -236,7 +236,7 @@ func tensor_dot(a, b) {
 # Matrix Operations (2D Tensors)
 # ============================================================
 
-# Matrix multiply: C = A @ B
+# Matrix multiply (Optimized Cache-Blocked / Tiled version): C = A @ B
 # A is [M x K], B is [K x N], result is [M x N]
 func tensor_matmul(a, b) {
     var shape_a = arr_get(a, 1);
@@ -250,13 +250,28 @@ func tensor_matmul(a, b) {
     var data_b = arr_get(b, 0);
     var data_r = arr_get(result, 0);
     
-    for (var i = 0; i < M; i = i + 1) {
-        for (var j = 0; j < N; j = j + 1) {
-            var sum = 0;
-            for (var k = 0; k < K; k = k + 1) {
-                sum = sum + arr_get(data_a, i * K + k) * arr_get(data_b, k * N + j);
+    var BLOCK_SIZE = 32; # Cache tile size
+    
+    for (var i0 = 0; i0 < M; i0 = i0 + BLOCK_SIZE) {
+        for (var j0 = 0; j0 < N; j0 = j0 + BLOCK_SIZE) {
+            for (var k0 = 0; k0 < K; k0 = k0 + BLOCK_SIZE) {
+                
+                # Compute inner tile
+                var i_max = i0 + BLOCK_SIZE; if (i_max > M) { i_max = M; }
+                var j_max = j0 + BLOCK_SIZE; if (j_max > N) { j_max = N; }
+                var k_max = k0 + BLOCK_SIZE; if (k_max > K) { k_max = K; }
+                
+                for (var i = i0; i < i_max; i = i + 1) {
+                    for (var k = k0; k < k_max; k = k + 1) {
+                        var a_val = arr_get(data_a, i * K + k);
+                        for (var j = j0; j < j_max; j = j + 1) {
+                            var b_val = arr_get(data_b, k * N + j);
+                            var current_r = arr_get(data_r, i * N + j);
+                            arr_set(data_r, i * N + j, current_r + (a_val * b_val));
+                        }
+                    }
+                }
             }
-            arr_set(data_r, i * N + j, sum);
         }
     }
     return result;

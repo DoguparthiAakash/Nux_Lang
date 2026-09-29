@@ -138,9 +138,9 @@ impl RuntimeBundle {
         // In production, this would extract embedded bytecode
         // For now, we'll create placeholder files
         let stdlib_modules = vec![
-            "io.nuxc", "fs.nuxc", "net.nuxc", "math.nuxc",
-            "collections.nuxc", "async.nuxc", "json.nuxc",
-            "http.nuxc", "crypto.nuxc", "testing.nuxc",
+            "io.ncx", "fs.ncx", "net.ncx", "math.ncx",
+            "collections.ncx", "async.ncx", "json.ncx",
+            "http.ncx", "crypto.ncx", "testing.ncx",
         ];
 
         for module in stdlib_modules {

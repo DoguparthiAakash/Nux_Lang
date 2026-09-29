@@ -7,7 +7,7 @@ import "math"
 
 # Create a new dense vector of size n
 func vec_new(size) {
-    return alloc(size * 8);
+    return malloc(size * 8);
 }
 
 # Dot product of two vectors

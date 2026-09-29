@@ -6,6 +6,13 @@ use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::cell::UnsafeCell;
 
+#[cfg(feature = "minifb")]
+use minifb::{Window, WindowOptions};
+#[cfg(feature = "minifb")]
+pub struct SendWindow(pub Window);
+#[cfg(feature = "minifb")]
+unsafe impl Send for SendWindow {}
+
 // ... constants ...
 const OP_PUSH: u8 = 0x01;
 // ... (SKIP CONSTANTS)
@@ -35,6 +42,11 @@ const OP_GTE: u8 = 0x95;
 
 const OP_DRAW_RECT: u8 = 0x20;
 const OP_DRAW_IMG: u8 = 0x21; // Unused
+const OP_WINDOW_CREATE: u8 = 0x22;
+const OP_WINDOW_UPDATE: u8 = 0x23;
+const OP_GET_MOUSE_X: u8 = 0x24;
+const OP_GET_MOUSE_Y: u8 = 0x25;
+const OP_GET_MOUSE_BTN: u8 = 0x26;
 const OP_SLEEP: u8 = 0x30;
 
 // Vision/Camera Ops
@@ -88,6 +100,8 @@ const OP_FFLOORDIV: u8 = 0x47;
 const OP_FSIN: u8 = 0x48;
 const OP_FCOS: u8 = 0x49;
 const OP_FSQRT: u8 = 0x4A;
+const OP_PEEK8: u8 = 0x4B;
+const OP_POKE8: u8 = 0x4C;
 
 const OP_JMP: u8 = 0x60;
 const OP_JE: u8 = 0x61;
@@ -111,6 +125,8 @@ const OP_ALLOC: u8 = 0x82;
 const OP_FREE: u8 = 0x83;
 const OP_LIMIT_MEM: u8 = 0x84;
 const OP_VISION_DETECT: u8 = 0xB0;
+const OP_HTTP_LISTEN: u8 = 0xC7;
+const OP_HTTP_RESPOND: u8 = 0xC8;
 const OP_EXIT: u8 = 0xFF;
 
 // Memory Safety & GPU Opcodes
@@ -191,6 +207,15 @@ struct SharedState {
     heap_ptr: usize,
     mem_limit: Option<usize>,
     ref_counts: std::collections::HashMap<usize, usize>,
+    #[cfg(feature = "minifb")]
+    window: Option<SendWindow>,
+    fb_width: usize,
+    fb_height: usize,
+    fb_addr: usize,
+    
+    http_servers: std::collections::HashMap<i64, Arc<tiny_http::Server>>,
+    http_requests: std::collections::HashMap<i64, tiny_http::Request>,
+    next_http_req_id: i64,
 }
 
 #[derive(Clone)]
@@ -250,6 +275,14 @@ impl NuxVm {
                 heap_ptr: 1024, // Reserve 1024 bytes for null and globals
                 mem_limit: None,
                 ref_counts: std::collections::HashMap::new(),
+                #[cfg(feature = "minifb")]
+                window: None,
+                fb_width: 640,
+                fb_height: 480,
+                fb_addr: 0,
+                http_servers: std::collections::HashMap::new(),
+                http_requests: std::collections::HashMap::new(),
+                next_http_req_id: 1,
             })),
         }
     }
@@ -333,6 +366,203 @@ impl NuxVm {
             self.ip += 1;
 
             match op {
+                0xC0 => { // OP_VBE_SET_MODE
+                    #[cfg(feature = "minifb")]
+                    {
+                        let _bpp = self.pop();
+                        let height = self.pop() as usize;
+                        let width = self.pop() as usize;
+                        let mut opts = minifb::WindowOptions::default();
+                        opts.scale = minifb::Scale::X1;
+                        if let Ok(mut window) = minifb::Window::new("Nux GUI", width, height, opts) {
+                            window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+                            let shared = self.shared.clone();
+                            let mut state = shared.lock();
+                            state.window = Some(SendWindow(window));
+                            state.fb_width = width;
+                            state.fb_height = height;
+                            
+                            // Allocate framebuffer in memory heap
+                            let fb_size = width * height * 4;
+                            let fb_addr = state.heap_ptr;
+                            state.heap_ptr += fb_size;
+                            if state.heap_ptr > state.memory.len() {
+                                let new_size = state.heap_ptr + 1024;
+                                state.memory.resize(new_size, 0);
+                            }
+                            state.fb_addr = fb_addr;
+                        }
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.pop(); self.pop(); self.pop(); }
+                    self.push(0); // Return value for call convention
+                },
+                0xC1 => { // OP_VBE_GET_FB
+                    let addr = {
+                        let shared = self.shared.clone();
+                        let state = shared.lock();
+                        state.fb_addr as i64
+                    };
+                    self.push(addr);
+                },
+                0xC2 => { // OP_VBE_UPDATE
+                    #[cfg(feature = "minifb")]
+                    {
+                        let shared = self.shared.clone();
+                        let mut state = shared.lock();
+                        let w = state.fb_width;
+                        let h = state.fb_height;
+                        let addr = state.fb_addr;
+                        let mut buffer = vec![0u32; w * h];
+                        for i in 0..(w * h) {
+                            let b = state.memory[addr + i * 4];
+                            let g = state.memory[addr + i * 4 + 1];
+                            let r = state.memory[addr + i * 4 + 2];
+                            buffer[i] = ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+                        }
+                        if let Some(send_window) = &mut state.window {
+                            let window = &mut send_window.0;
+                            if window.is_open() && !window.is_key_down(minifb::Key::Escape) {
+                                window.update_with_buffer(&buffer, w, h).unwrap();
+                            }
+                        }
+                    }
+                    self.push(0); // Return value for call convention
+                },
+                0xC3 => { // OP_VBE_GET_KEY
+                    #[cfg(feature = "minifb")]
+                    {
+                        let key_code = self.pop();
+                        let mut pressed = 0;
+                        let shared = self.shared.clone();
+                        let state = shared.lock();
+                        if let Some(send_window) = &state.window {
+                            let window = &send_window.0;
+                            let key = match key_code {
+                                87 => Some(minifb::Key::W),
+                                65 => Some(minifb::Key::A),
+                                83 => Some(minifb::Key::S),
+                                68 => Some(minifb::Key::D),
+                                32 => Some(minifb::Key::Space),
+                                37 => Some(minifb::Key::Left),
+                                38 => Some(minifb::Key::Up),
+                                39 => Some(minifb::Key::Right),
+                                40 => Some(minifb::Key::Down),
+                                _ => None,
+                            };
+                            if let Some(k) = key {
+                                if window.is_key_down(k) { pressed = 1; }
+                            }
+                        }
+                        self.push(pressed);
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.pop(); self.push(0); }
+                },
+                0xC4 => { // OP_VBE_GET_MOUSE_X
+                    #[cfg(feature = "minifb")]
+                    {
+                        let mut mx = 0;
+                        let shared = self.shared.clone();
+                        let state = shared.lock();
+                        if let Some(send_window) = &state.window {
+                            let window = &send_window.0;
+                            if let Some((x, _)) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+                                mx = x as i64;
+                            }
+                        }
+                        self.push(mx);
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.push(0); }
+                },
+                0xC5 => { // OP_VBE_GET_MOUSE_Y
+                    #[cfg(feature = "minifb")]
+                    {
+                        let mut my = 0;
+                        let shared = self.shared.clone();
+                        let state = shared.lock();
+                        if let Some(send_window) = &state.window {
+                            let window = &send_window.0;
+                            if let Some((_, y)) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+                                my = y as i64;
+                            }
+                        }
+                        self.push(my);
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.push(0); }
+                },
+                0xC6 => { // OP_VBE_GET_MOUSE_DOWN
+                    #[cfg(feature = "minifb")]
+                    {
+                        let mut mdown = 0;
+                        let shared = self.shared.clone();
+                        let state = shared.lock();
+                        if let Some(send_window) = &state.window {
+                            let window = &send_window.0;
+                            if window.get_mouse_down(minifb::MouseButton::Left) { mdown = 1; }
+                        }
+                        self.push(mdown);
+                    }
+                    #[cfg(not(feature = "minifb"))]
+                    { self.push(0); }
+                },
+                OP_HTTP_LISTEN => {
+                    let port = self.pop();
+                    let server_arc = {
+                        let mut state = self.shared.lock();
+                        if !state.http_servers.contains_key(&port) {
+                            if let Ok(server) = tiny_http::Server::http(format!("0.0.0.0:{}", port)) {
+                                state.http_servers.insert(port, Arc::new(server));
+                            }
+                        }
+                        state.http_servers.get(&port).cloned()
+                    };
+                    
+                    if let Some(server) = server_arc {
+                        if let Ok(request) = server.recv() {
+                            let req_id = {
+                                let mut state = self.shared.lock();
+                                let id = state.next_http_req_id;
+                                state.next_http_req_id += 1;
+                                state.http_requests.insert(id, request);
+                                id
+                            };
+                            self.push(req_id);
+                        } else {
+                            self.push(0); // Error receiving
+                        }
+                    } else {
+                        self.push(0); // Failed to bind
+                    }
+                },
+                OP_HTTP_RESPOND => {
+                    let res_ptr = self.pop() as usize; // Address of string response
+                    let req_id = self.pop();
+                    
+                    let req_opt = {
+                        let mut state = self.shared.lock();
+                        state.http_requests.remove(&req_id)
+                    };
+                    
+                    if let Some(request) = req_opt {
+                        let state = self.shared.lock();
+                        // Find length of string at res_ptr
+                        let mut len = 0;
+                        while res_ptr + len < state.memory.len() && state.memory[res_ptr + len] != 0 {
+                            len += 1;
+                        }
+                        let res_str = std::str::from_utf8(&state.memory[res_ptr..res_ptr+len]).unwrap_or("Internal Server Error").to_string();
+                        drop(state); // Drop lock before responding
+                        
+                        let response = tiny_http::Response::from_string(res_str);
+                        let _ = request.respond(response);
+                        self.push(1); // Success
+                    } else {
+                        self.push(0); // Error, request not found
+                    }
+                },
                 OP_PUSH => {
                     let val = self.read_i64_code();
                     self.push(val);
@@ -544,7 +774,9 @@ impl NuxVm {
                      if idx < self.stack.len() {
                          self.push(self.stack[idx]);
                      } else {
-                         println!("Runtime Error: Stack Invalid Access Local {}", offset);
+                         println!("Runtime Error: Stack Invalid Access Local {} (fp={}, idx={}, stack_len={}, ip={})", offset, self.fp, idx, self.stack.len(), self.ip);
+                         println!("Stack: {:?}", &self.stack);
+                         println!("Call stack depth: {}", self.call_stack.len());
                          self.running = false;
                      }
                 },
@@ -601,6 +833,87 @@ impl NuxVm {
                          println!("Runtime Error: No Platform Available");
                      }
                      self.push(new_handle);
+                },
+                OP_WINDOW_CREATE => {
+                    let height = self.pop();
+                    let width = self.pop();
+                    let title_ptr = self.pop();
+                    let mut title = String::new();
+                    {
+                        let state = self.shared.lock();
+                        let mut i = title_ptr as usize;
+                        while state.memory[i] != 0 {
+                            title.push(state.memory[i] as char);
+                            i += 1;
+                        }
+                    }
+                    if let Some(plat) = platform.as_deref_mut() {
+                        if let Err(e) = plat.create_window(width as usize, height as usize, &title) {
+                            println!("Runtime Warning: Window Create Failed: {}", e);
+                        }
+                    } else {
+                        println!("Runtime Error: No Platform Available for Window Create");
+                    }
+                },
+                OP_WINDOW_UPDATE => {
+                    let handle = self.pop();
+                    let shared = self.shared.clone();
+                    let state = shared.lock();
+                    if let Some((w, h, data)) = state.images.get(&handle) {
+                        if let Some(plat) = platform.as_deref_mut() {
+                            if let Err(e) = plat.update_window(data, *w as usize, *h as usize) {
+                                println!("Runtime Warning: Window Update Failed: {}", e);
+                            }
+                        }
+                    }
+                },
+                OP_GET_MOUSE_X => {
+                    let mut mx = 0.0;
+                    if let Some(plat) = platform.as_deref() {
+                        let (x, _) = plat.get_mouse_pos();
+                        mx = x;
+                    }
+                    self.push(mx as i64);
+                },
+                OP_GET_MOUSE_Y => {
+                    let mut my = 0.0;
+                    if let Some(plat) = platform.as_deref() {
+                        let (_, y) = plat.get_mouse_pos();
+                        my = y;
+                    }
+                    self.push(my as i64);
+                },
+                OP_GET_MOUSE_BTN => {
+                    let btn = self.pop();
+                    let mut is_down = 0;
+                    if let Some(plat) = platform.as_deref() {
+                        if plat.get_mouse_btn(btn as usize) {
+                            is_down = 1;
+                        }
+                    }
+                    self.push(is_down);
+                },
+                OP_DRAW_RECT => {
+                    let h = self.pop();
+                    let w = self.pop();
+                    let y = self.pop();
+                    let x = self.pop();
+                    let color = self.pop();
+                    let handle = self.pop();
+                    
+                    let shared = self.shared.clone();
+                    let mut state = shared.lock();
+                    if let Some((img_w, img_h, data)) = state.images.get_mut(&handle) {
+                        for row in 0..h {
+                            for col in 0..w {
+                                let py = y + row;
+                                let px = x + col;
+                                if px >= 0 && px < *img_w && py >= 0 && py < *img_h {
+                                    data[(py * *img_w + px) as usize] = color as u32;
+                                }
+                            }
+                        }
+                    }
                 },
                 OP_IS_KEY_DOWN => {
                      let key = self.pop();
@@ -1077,6 +1390,7 @@ impl NuxVm {
                             *pixel = color;
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_PIXEL => {
@@ -1096,6 +1410,7 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_LINE => {
@@ -1141,6 +1456,7 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 OP_DRAW_CIRCLE => {
@@ -1187,9 +1503,90 @@ impl NuxVm {
                             }
                         }
                     }
+                    self.push(0);
                 },
 
                 // Memory Ops (Thread-Safe via Mutex)
+                OP_PEEK8 => {
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let val_opt = {
+                        let state = shared.lock();
+                        if addr < 0 || addr as usize >= state.memory.len() {
+                            None
+                        } else {
+                            Some(state.memory[addr as usize] as i64)
+                        }
+                    };
+                    
+                    if let Some(val) = val_opt {
+                        self.push(val);
+                    } else {
+                        println!("Runtime Error: Segfault Read8 {}", addr); 
+                        self.running = false;
+                    }
+                },
+                OP_POKE8 => {
+                    let val = self.pop() as u8;
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let success = {
+                        let mut state = shared.lock();
+                        if addr < 0 || addr as usize >= state.memory.len() {
+                            false
+                        } else {
+                            state.memory[addr as usize] = val;
+                            true
+                        }
+                    };
+                    if !success {
+                        println!("Runtime Error: Segfault Write8 {}", addr);
+                        self.running = false;
+                    }
+                    self.push(0);
+                },
+                0x42 => { // OP_PEEK32
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let val_opt = {
+                        let state = shared.lock();
+                        if addr < 0 || addr as usize + 4 > state.memory.len() {
+                             None
+                        } else {
+                             let bytes = &state.memory[addr as usize .. addr as usize + 4];
+                             Some(u32::from_le_bytes(bytes.try_into().unwrap()) as i64)
+                        }
+                    };
+                    
+                    if let Some(val) = val_opt {
+                        self.push(val);
+                    } else {
+                        println!("Runtime Error: Segfault Read32 {}", addr); 
+                        self.running = false;
+                    }
+                },
+                0x43 => { // OP_POKE32
+                    let val = self.pop() as u32;
+                    let addr = self.pop();
+                    let shared = self.shared.clone();
+                    let success = {
+                        let mut state = shared.lock();
+                        if addr < 0 || addr as usize + 4 > state.memory.len() {
+                            false
+                        } else {
+                            let bytes = val.to_le_bytes();
+                            for i in 0..4 {
+                                state.memory[addr as usize + i] = bytes[i];
+                            }
+                            true
+                        }
+                    };
+                    if !success {
+                        println!("Runtime Error: Segfault Write32 {} with val {}", addr, val);
+                        self.running = false;
+                    }
+                    self.push(0);
+                },
                 OP_PEEK => {
                     let addr = self.pop();
                     let shared = self.shared.clone(); // Clone Arc to avoid borrowing self

@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <DirectoryRef Id="STDDIR">
+            <Component Id="cmp06F877B5F994961BB895CF638F621359" Guid="{B394435E-9087-459D-B300-1DD0577F12C3}">
+                <File Id="filA134D820B90396B31680D1BD8EDF3E26" KeyPath="yes" Source="$(var.StdSource)\fs.nux" />
+            </Component>
+            <Component Id="cmp846AD1197ECD1AD6F1B53FF076443EEC" Guid="{72ABF81F-D7F0-472C-9E73-75D1DA802191}">
+                <File Id="fil1450BBC8CF61CC5D7FFD44D77DFB5482" KeyPath="yes" Source="$(var.StdSource)\gui.nux" />
+            </Component>
+            <Component Id="cmp10A889AD84E69880BB0873EC41F132E6" Guid="{3DE2FF15-3385-4E14-93C3-3E4DE8672CEE}">
+                <File Id="filB852E12D7F714EF802732C828E9D718B" KeyPath="yes" Source="$(var.StdSource)\hw.nux" />
+            </Component>
+            <Component Id="cmp4176D7D0A5C888800DAAF5AC0076043E" Guid="{BFAC6A95-07E8-4383-91EC-2B363E1DC658}">
+                <File Id="fil59808F2DD54633FD0FCA706D93476D35" KeyPath="yes" Source="$(var.StdSource)\io.nux" />
+            </Component>
+            <Component Id="cmp40A795060CBCB90ECEE25AE6347BA595" Guid="{4C70BF01-F580-42FE-9F16-61CA22D29B42}">
+                <File Id="fil062EB3DDFBC3312EB767CF71D75217E1" KeyPath="yes" Source="$(var.StdSource)\math.nux" />
+            </Component>
+            <Component Id="cmp38A7502E57E3D1223427EE53C717DC52" Guid="{A0C83F91-08F1-4E51-B498-60BDC1406ED7}">
+                <File Id="fil91B2BFA32C31DA43BD8843A4B4A5EDCD" KeyPath="yes" Source="$(var.StdSource)\mem.nux" />
+            </Component>
+            <Component Id="cmp999E0A73B41AF7B749858948FF4DFEEC" Guid="{090069B6-9978-40F0-B142-8C9750F8E695}">
+                <File Id="fil94BA05B1A57F2C0A192013168B83F7AE" KeyPath="yes" Source="$(var.StdSource)\ml.nux" />
+            </Component>
+            <Component Id="cmpC52E5D72F0E256E6BF1E67838B9A507E" Guid="{E42DF7D0-B64F-4E10-8786-E4221C079128}">
+                <File Id="fil17023344C062F4AEC89A520BE94398CA" KeyPath="yes" Source="$(var.StdSource)\string.nux" />
+            </Component>
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="StdComponents">
+            <ComponentRef Id="cmp06F877B5F994961BB895CF638F621359" />
+            <ComponentRef Id="cmp846AD1197ECD1AD6F1B53FF076443EEC" />
+            <ComponentRef Id="cmp10A889AD84E69880BB0873EC41F132E6" />
+            <ComponentRef Id="cmp4176D7D0A5C888800DAAF5AC0076043E" />
+            <ComponentRef Id="cmp40A795060CBCB90ECEE25AE6347BA595" />
+            <ComponentRef Id="cmp38A7502E57E3D1223427EE53C717DC52" />
+            <ComponentRef Id="cmp999E0A73B41AF7B749858948FF4DFEEC" />
+            <ComponentRef Id="cmpC52E5D72F0E256E6BF1E67838B9A507E" />
+        </ComponentGroup>
+    </Fragment>
+</Wix>

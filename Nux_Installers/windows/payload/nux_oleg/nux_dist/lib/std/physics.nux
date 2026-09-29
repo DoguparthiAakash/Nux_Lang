@@ -1,7 +1,7 @@
 # physics.nux - Nux Advanced Physics Engine
 # High speed rigid body and collision detection
 
-@memory_limit(4000000)
+# @memory_limit(4000000)
 
 # Calculate gravity updates in parallel
 func apply_gravity(obj_base, count, dt) {

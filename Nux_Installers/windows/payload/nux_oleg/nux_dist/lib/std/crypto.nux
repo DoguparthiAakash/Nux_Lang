@@ -1,8 +1,8 @@
 # crypto.nux - Nux Standard Cryptography Library
 # Implements XOR cipher, hash functions, and basic AES-like substitution
 
-@priority(80)
-@memory_limit(1000000)
+# @priority(80)
+# @memory_limit(1000000)
 
 # XOR-cipher: encrypts/decrypts buffer in-place using key stream
 func xor_cipher(buf_addr, length, key) {

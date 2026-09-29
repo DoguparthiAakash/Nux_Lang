@@ -1,0 +1,85 @@
+# surul.nux - Convolutional Neural Networks (CNN) for Nux
+# Uses hardware acceleration FFI when available
+
+import "std/tensor"
+
+class Conv2D {
+    var in_channels;
+    var out_channels;
+    var kernel_size;
+    var weights;
+    var cux_lib;
+
+    func init(in_c, out_c, k_size, cux_lib_handle) {
+        self.in_channels = in_c;
+        self.out_channels = out_c;
+        self.kernel_size = k_size;
+        self.cux_lib = cux_lib_handle;
+        
+        # Initialize weights tensor [out_c x in_c x k_size x k_size]
+        var total_weights = out_c * in_c * k_size * k_size;
+        self.weights = new Tensor();
+        self.weights.init(total_weights);
+        
+        # Xavier/He Initialization mock
+        for (var i = 0; i < total_weights; i = i + 1) {
+            # MVP random weight init (0.01)
+            self.weights.set(i, 1); # Assume floating point bits for small positive val in real env
+        }
+    }
+
+    func forward(input_tensor, in_h, in_w, output_tensor) {
+        if (self.cux_lib >= 0) {
+            # Use Nvidia GPU / AMD CPU accelerated backend
+            cux_call(
+                self.cux_lib, 
+                "cuda_conv2d", 
+                input_tensor.ptr, self.in_channels, in_h, in_w,
+                self.weights.ptr, self.out_channels, self.kernel_size, self.kernel_size,
+                output_tensor.ptr
+            );
+        } else {
+            print("Warning: CPU fallback Conv2D not implemented. Please use GPU or AMD native lib.\n");
+        }
+    }
+    
+    func backward(input_tensor, grad_output, lr) {
+        # MVP: Convolutional Backpropagation
+        # In a real engine, we calculate grad_weights via correlation and grad_input via full convolution
+    }
+}
+
+class MaxPool2D {
+    var pool_size;
+    var stride;
+
+    func init(p_size, str) {
+        self.pool_size = p_size;
+        self.stride = str;
+    }
+
+    func forward(input_tensor, in_c, in_h, in_w, output_tensor) {
+        # MVP: CPU-based Pooling Operation
+        var out_h = in_h / self.stride;
+        var out_w = in_w / self.stride;
+        
+        for (var c = 0; c < in_c; c = c + 1) {
+            for (var oh = 0; oh < out_h; oh = oh + 1) {
+                for (var ow = 0; ow < out_w; ow = ow + 1) {
+                    var max_val = -999999;
+                    for (var ph = 0; ph < self.pool_size; ph = ph + 1) {
+                        for (var pw = 0; pw < self.pool_size; pw = pw + 1) {
+                            var in_idx = (c * in_h * in_w) + ((oh * self.stride + ph) * in_w) + (ow * self.stride + pw);
+                            var val = input_tensor.get(in_idx);
+                            if (val > max_val) {
+                                max_val = val;
+                            }
+                        }
+                    }
+                    var out_idx = (c * out_h * out_w) + (oh * out_w) + ow;
+                    output_tensor.set(out_idx, max_val);
+                }
+            }
+        }
+    }
+}

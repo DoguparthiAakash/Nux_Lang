@@ -1,8 +1,1 @@
-println("Hello from Nux!");
-
-var x: int = 10;
-var y: int = 20;
-var sum = x + y;
-
-println("Sum:");
-println(sum);
+func main(){ println("Hello, Nux!"); } main();

@@ -218,6 +218,16 @@ fn cmd_build(args: &[String]) {
     let release = args.contains(&"--release".to_string());
     let current_dir = env::current_dir().unwrap();
     
+    let target_os = if let Some(idx) = args.iter().position(|x| x == "--target") {
+        if idx + 1 < args.len() {
+            Some(args[idx + 1].clone())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    
     if !current_dir.join("nux.toml").exists() {
         eprintln!("\n  {} Not a Nux project. Run {} to initialize.", "✕".red().bold(), "nux new".cyan());
         process::exit(1);
@@ -229,7 +239,25 @@ fn cmd_build(args: &[String]) {
         process::exit(1);
     }
     
-    let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
+    let mut is_native = false;
+    let mut project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output").to_string();
+    
+    if let Ok(toml_content) = fs::read_to_string(current_dir.join("nux.toml")) {
+        for line in toml_content.lines() {
+            let t = line.trim();
+            if t.starts_with("target") && t.contains("\"native\"") {
+                is_native = true;
+            }
+            if t.starts_with("name") {
+                if let Some(start) = t.find('"') {
+                    if let Some(end) = t[start+1..].find('"') {
+                        project_name = t[start+1..start+1+end].to_string();
+                    }
+                }
+            }
+        }
+    }
+    
     println!("{} {} {} {}", "╭─".truecolor(80, 80, 80), "◆".bright_blue(), "nux".white().bold(), "─────────────────────────────────".truecolor(80, 80, 80));
     println!("{}  {}  {}  {}", "│".truecolor(80, 80, 80), project_name.white().bold(), "·".truecolor(80, 80, 80), "building ...".truecolor(80, 80, 80));
     println!("{}", "╰────────────────────────────────────────".truecolor(80, 80, 80));
@@ -239,30 +267,108 @@ fn cmd_build(args: &[String]) {
         process::exit(1);
     });
     
-    match compile(&source) {
-        Ok(bytecode) => {
-            let target_dir = current_dir.join("target");
-            let build_dir = if release {
-                target_dir.join("release")
-            } else {
-                target_dir.join("debug")
-            };
-            
-            fs::create_dir_all(&build_dir).unwrap();
-            
-            let project_name = current_dir.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("output");
-            
-            let output_file = build_dir.join(format!("{}.nuxc", project_name));
-            fs::write(&output_file, bytecode).unwrap();
-            
-            let mode = if release { "release" } else { "debug" };
-            println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
+    let target_dir = current_dir.join("target");
+    let build_dir = if release { target_dir.join("release") } else { target_dir.join("debug") };
+    fs::create_dir_all(&build_dir).unwrap();
+    
+    if is_native {
+        let out_stem = build_dir.join(&project_name);
+        let out_stem_str = out_stem.to_str().unwrap();
+        match compile_native(main_file.to_str().unwrap(), &source, out_stem_str, target_os.as_deref()) {
+            Ok(_) => {
+                // compile_native generates .o, we need to link it.
+                // Or rather, we can modify compile_native to generate a full executable later,
+                // but for now let's invoke gcc to link the .o into an executable.
+                let ext = match target_os.as_deref() {
+                    Some("windows") => ".exe",
+                    Some("cuda") => if cfg!(windows) { ".exe" } else { "" },
+                    Some("ptx") => ".ptx",
+                    Some("linux") | Some("bsd") | Some("macos") | Some("darwin") => "",
+                    _ => if cfg!(windows) { ".exe" } else { "" },
+                };
+                let exe_path = format!("{}{}", out_stem_str, ext);
+                let o_path = format!("{}.o", out_stem_str);
+                
+                if target_os.as_deref() == Some("ptx") {
+                    let mode = if release { "release" } else { "debug" };
+                    println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({}) [PTX]", mode).truecolor(80, 80, 80));
+                    println!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "▶".bright_cyan(), "output".bright_cyan(), exe_path.white().bold());
+                    return;
+                }
+                
+                let mut extra_objs = Vec::new();
+                if cfg!(windows) {
+                    if let Ok(exe_path_curr) = std::env::current_exe() {
+                        if let Some(exe_dir) = exe_path_curr.parent() {
+                            let icon_path = exe_dir.join("binary_icon.ico");
+                            if icon_path.exists() {
+                                let rc_path = build_dir.join("icon.rc");
+                                let res_o_path = build_dir.join("icon.o");
+                                let rc_content = format!("1 ICON \"{}\"", icon_path.to_str().unwrap().replace("\\", "/"));
+                                let _ = std::fs::write(&rc_path, rc_content);
+                                
+                                if let Ok(st) = std::process::Command::new("windres")
+                                    .args(&[rc_path.to_str().unwrap(), res_o_path.to_str().unwrap()])
+                                    .status() {
+                                    if st.success() {
+                                        extra_objs.push(res_o_path.to_str().unwrap().to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                let gcc_cmd = match target_os.as_deref() {
+                    Some("cuda") => "nvcc",
+                    Some("linux") => "x86_64-linux-gnu-gcc",
+                    Some("bsd") => "x86_64-unknown-freebsd-gcc",
+                    Some("macos") | Some("darwin") => "x86_64-apple-darwin-gcc",
+                    Some("windows") => "x86_64-w64-mingw32-gcc",
+                    _ => "gcc",
+                };
+                
+                let mut link_cmd = std::process::Command::new(gcc_cmd);
+                if target_os.as_deref() == Some("cuda") {
+                    link_cmd.args(&[&o_path, "-o", &exe_path, "-lcudart"]);
+                } else {
+                    link_cmd.args(&[&o_path, "-o", &exe_path, "-m32"]);
+                }
+                
+                for obj in extra_objs {
+                    link_cmd.arg(obj);
+                }
+                
+                let link_status = link_cmd.status();
+                    
+                match link_status {
+                    Ok(status) if status.success() => {
+                        let mode = if release { "release" } else { "debug" };
+                        println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({}) [NATIVE]", mode).truecolor(80, 80, 80));
+                        println!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "▶".bright_cyan(), "output".bright_cyan(), exe_path.white().bold());
+                    },
+                    _ => {
+                        eprintln!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "✕".red(), "error".red(), "Failed to link native executable.");
+                        process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("{} {} {}  {}", "╰─".truecolor(80, 80, 80), "✕".red(), "error".red(), e.white());
+                process::exit(1);
+            }
         }
-        Err(errors) => {
-            print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
-            process::exit(1);
+    } else {
+        match compile(&source) {
+            Ok(bytecode) => {
+                let output_file = build_dir.join(format!("{}.nuxc", project_name));
+                fs::write(&output_file, bytecode).unwrap();
+                let mode = if release { "release" } else { "debug" };
+                println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
+            }
+            Err(errors) => {
+                print_errors(&source, errors, main_file.to_str().unwrap_or("src/main.nux"));
+                process::exit(1);
+            }
         }
     }
 }
@@ -279,12 +385,18 @@ fn cmd_build_native(args: &[String]) {
     // Parse flags
     let mut input_files: Vec<String> = Vec::new();
     let mut output_file = String::from("out.o");
+    let mut target_os = None;
     let mut i = 0;
     while i < args.len() {
         if args[i] == "--output" || args[i] == "-o" {
             i += 1;
             if i < args.len() {
                 output_file = args[i].clone();
+            }
+        } else if args[i] == "--target" {
+            i += 1;
+            if i < args.len() {
+                target_os = Some(args[i].clone());
             }
         } else {
             input_files.push(args[i].clone());
@@ -323,7 +435,7 @@ fn cmd_build_native(args: &[String]) {
     // Pass output stem (without .o); compile_native appends .o internally
     let c_out = output_file.trim_end_matches(".o").to_string();
 
-    match compile_native(first_file, &combined_source, &c_out) {
+    match compile_native(first_file, &combined_source, &c_out, target_os.as_deref()) {
         Ok(()) => {
             println!("{} {} {}  {}",
                 "╰─".truecolor(80, 80, 80),

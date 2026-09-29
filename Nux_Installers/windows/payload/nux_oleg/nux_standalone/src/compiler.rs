@@ -91,6 +91,8 @@ pub struct Parser {
     local_offset: i64, 
     bound_types: BTreeMap<String, (i64, i64)>,
     classes: BTreeMap<String, ClassInfo>,
+    has_main: bool,
+    allow_implicit_local: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -121,6 +123,8 @@ impl Parser {
             local_offset: 0,
             bound_types: BTreeMap::new(),
             classes: BTreeMap::new(),
+            has_main: false,
+            allow_implicit_local: false,
         }
     }
 
@@ -181,8 +185,8 @@ impl Parser {
                  return;
              }
              match self.current_token {
-                 Token::Class | Token::Func | Token::Var | Token::For | 
-                 Token::If | Token::While | Token::Print | Token::Return => return,
+                 Token::Class | Token::Func | Token::Var | Token::For |
+                 Token::If | Token::While | Token::Match | Token::Print | Token::Return => return,
                  Token::RBrace => return,
                  _ => self.advance(),
              }
@@ -216,7 +220,7 @@ impl Parser {
                      }
                 },
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
-                Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
+                Token::If | Token::While | Token::Do | Token::For | Token::Match | Token::Asm | Token::Spawn |
                 Token::Var | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
                 Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString => {
                     if let Err(e) = self.parse_statement_or_expr(&mut main_body) {
@@ -348,6 +352,10 @@ impl Parser {
             self.emit("CALL __main 0");
             self.emit("POP");
         }
+        if self.has_main {
+            self.emit("CALL main 0");
+            self.emit("POP");
+        }
         self.emit("EXIT");
         
         Ok(self.asm_output.clone())
@@ -370,7 +378,10 @@ impl Parser {
                     if let Err(_) = sub_parser.parse_class(definitions) { break; }
                 },
                 Token::Func => {
-                    if let Err(_) = sub_parser.parse_func(definitions, "") { break; }
+                    if let Err(error) = sub_parser.parse_func(definitions, "") {
+                        self.errors.push(error);
+                        break;
+                    }
                 },
                 Token::Import => { 
                     // Transitive imports!
@@ -572,6 +583,9 @@ impl Parser {
         } else {
              format!("{}_{}", class_prefix, name)
         };
+        if full_name == "main" {
+            self.has_main = true;
+        }
         
         out.push_str(&format!("; Function {}\nJMP skip_{}\n{}:\n", full_name, full_name, full_name));
         
@@ -700,6 +714,21 @@ impl Parser {
                      out.push_str("OP_SEC_WHOAMI\n");
                      return Ok(());
                  }
+                 if matches!(part1.as_str(), "mem_free" | "mem_write8" | "mem_write64" | "mem_copy" | "mem_set") {
+                     let opcode = match part1.as_str() {
+                         "mem_free" => "MEM_FREE",
+                         "mem_write8" => "MEM_WRITE8",
+                         "mem_write64" => "MEM_WRITE64",
+                         "mem_copy" => "MEM_COPY",
+                         _ => "MEM_SET",
+                     };
+                     let argc = if part1 == "mem_free" { 1 } else if part1.starts_with("mem_write") { 2 } else { 3 };
+                     self.advance();
+                     self.parse_builtin_call(out, opcode, argc)?;
+                     if self.current_token == Token::SemiColon { self.advance(); }
+                     out.push_str("POP\n");
+                     return Ok(());
+                 }
 
                  self.advance(); 
                  if self.current_token == Token::Eq {
@@ -716,7 +745,7 @@ impl Parser {
                                 }
                             },
                            None => {
-                               if self.scopes.len() == 1 {
+                               if self.scopes.len() == 1 || self.allow_implicit_local {
                                    self.advance(); 
                                    self.parse_expression(out)?;
                                    if expect_semi && self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
@@ -730,6 +759,18 @@ impl Parser {
                                }
                            }
                        }
+                 } else if self.current_token == Token::PlusPlus || self.current_token == Token::MinusMinus {
+                      let increment = self.current_token == Token::PlusPlus;
+                      let loc = match self.resolve_var(&part1) {
+                          Some(loc) => loc,
+                          None => return self.error(format!("Undefined variable '{}'", part1)),
+                      };
+                      self.advance();
+                      match loc.0 {
+                          VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nPEEK\nPUSH 1\n{}\nPUSH {}\nSWAP\nPOKE\n", addr, if increment { "ADD" } else { "SUB" }, addr)),
+                          VarLocation::Local(offset) => out.push_str(&format!("OP_GET_LOCAL {}\nPUSH 1\n{}\nSET_LOCAL {}\n", offset, if increment { "ADD" } else { "SUB" }, offset)),
+                      }
+                      if self.current_token == Token::SemiColon { self.advance(); }
                  } else if self.current_token == Token::LParen {
                       self.advance(); 
                       let mut arg_count = 0;
@@ -841,6 +882,67 @@ impl Parser {
                   }
                   out.push_str(&format!("{}:\n", label_end));
              },
+             Token::Match => {
+                  self.advance();
+                  if self.current_token != Token::LParen { return self.error("Expected ( after match".to_string()); }
+                  self.advance();
+                  let match_id = self.label_id_counter; self.label_id_counter += 1;
+                  let temp_name = format!("__match_value_{}", match_id);
+                  let temp_loc = self.declare_var(temp_name, Type::Int);
+                  if let VarLocation::Local(_) = temp_loc { out.push_str("PUSH 0\n"); }
+                  self.parse_expression(out)?;
+                  if self.current_token != Token::RParen { return self.error("Expected ) after match value".to_string()); }
+                  self.advance();
+                  match temp_loc {
+                      VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)),
+                      VarLocation::Local(offset) => out.push_str(&format!("SET_LOCAL {}\n", offset)),
+                  }
+                  if self.current_token != Token::LBrace { return self.error("Expected { after match value".to_string()); }
+                  self.advance();
+                  let label_end = format!("__match_end_{}", match_id);
+                  let mut next_case = format!("__match_next_{}_0", match_id);
+                  let mut case_number = 0;
+                  let mut saw_default = false;
+                  while self.current_token != Token::RBrace && self.current_token != Token::EOF {
+                      if self.current_token == Token::Case {
+                          self.advance();
+                          let pattern = match &self.current_token {
+                              Token::Number(n) => *n,
+                              Token::True => 1,
+                              Token::False => 0,
+                              _ => return self.error("case expects an integer or boolean literal".to_string()),
+                          };
+                          self.advance();
+                          if self.current_token != Token::Colon { return self.error("Expected : after case value".to_string()); }
+                          self.advance();
+                          case_number += 1;
+                          next_case = format!("__match_next_{}_{}", match_id, case_number);
+                          match temp_loc {
+                              VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nPEEK\n", addr)),
+                              VarLocation::Local(offset) => out.push_str(&format!("OP_GET_LOCAL {}\n", offset)),
+                          }
+                          out.push_str(&format!("PUSH {}\nEQ\nPUSH 0\nJE {}\n", pattern, next_case));
+                          if self.current_token != Token::LBrace { return self.error("Expected { after case value".to_string()); }
+                          self.parse_block(out)?;
+                          out.push_str(&format!("JMP {}\n{}:\n", label_end, next_case));
+                      } else if self.current_token == Token::Default {
+                          if saw_default { return self.error("Only one default arm is allowed".to_string()); }
+                          saw_default = true;
+                          self.advance();
+                          if self.current_token != Token::Colon { return self.error("Expected : after default".to_string()); }
+                          self.advance();
+                          if self.current_token != Token::LBrace { return self.error("Expected { after default".to_string()); }
+                          self.parse_block(out)?;
+                          out.push_str(&format!("JMP {}\n", label_end));
+                      } else {
+                          return self.error("Expected case or default inside match".to_string());
+                      }
+                      out.push_str(&format!("{}:\n", next_case));
+                  }
+                  if self.current_token != Token::RBrace { return self.error("Expected } after match".to_string()); }
+                  self.advance();
+                  out.push_str(&format!("{}:\n", label_end));
+             },
              Token::While => {
                   self.advance();
                   if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
@@ -862,7 +964,22 @@ impl Parser {
                   self.advance();
                   if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                   self.advance();
-                  self.parse_statement_or_expr(out)?; 
+                  let is_range_for = if let Token::Identifier(_) = &self.current_token {
+                      let mut lookahead = self.lexer.clone();
+                      matches!(lookahead.next_token().0, Token::Identifier(name) if name == "in")
+                  } else { false };
+                  if is_range_for {
+                      self.parse_range_for(out)?;
+                  } else {
+                      self.allow_implicit_local = true;
+                      if self.current_token != Token::SemiColon {
+                          self.parse_statement_or_expr(out)?;
+                      } else {
+                          self.advance();
+                      }
+                      self.allow_implicit_local = false;
+                  }
+                  if is_range_for { return Ok(()); }
                   let label_id = self.label_id_counter; self.label_id_counter += 1;
                   let label_start = format!("__for_start_{}", label_id);
                   let label_step = format!("__for_step_{}", label_id);
@@ -1043,6 +1160,69 @@ impl Parser {
         Ok(())
     }
 
+    fn parse_range_for(&mut self, out: &mut String) -> Result<(), CompileError> {
+        let name = match &self.current_token {
+            Token::Identifier(name) => name.clone(),
+            _ => return self.error("Expected loop variable".to_string()),
+        };
+        self.advance();
+        if self.current_token != Token::Identifier("in".to_string()) {
+            return self.error("Expected 'in' in range loop".to_string());
+        }
+        self.advance();
+        if self.current_token != Token::Identifier("rangeOf".to_string()) {
+            return self.error("Expected rangeOf(n) in range loop".to_string());
+        }
+        self.advance();
+        if self.current_token != Token::LParen { return self.error("Expected ( after rangeOf".to_string()); }
+        self.advance();
+        let mut limit_out = String::new();
+        self.parse_expression(&mut limit_out)?;
+        if self.current_token != Token::RParen { return self.error("Expected ) after rangeOf".to_string()); }
+        self.advance();
+        if self.current_token != Token::RParen { return self.error("Expected ) after range loop".to_string()); }
+        self.advance();
+        if self.current_token != Token::LBrace { return self.error("Expected { after rangeOf(n)".to_string()); }
+
+        let already_declared = self.resolve_var(&name).is_some();
+        let location = match self.resolve_var(&name) {
+            Some((location, _)) => location,
+            None => {
+                out.push_str("PUSH 0\n");
+                self.declare_var(name, Type::Int)
+            },
+        };
+        if already_declared {
+            out.push_str("PUSH 0\n");
+            match location {
+                VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)),
+                VarLocation::Local(offset) => out.push_str(&format!("SET_LOCAL {}\n", offset)),
+            }
+        }
+
+        let label_id = self.label_id_counter; self.label_id_counter += 1;
+        let label_start = format!("__range_start_{}", label_id);
+        let label_step = format!("__range_step_{}", label_id);
+        let label_end = format!("__range_end_{}", label_id);
+        self.loop_stack.push((label_step.clone(), label_end.clone()));
+        out.push_str(&format!("{}:\n", label_start));
+        match location {
+            VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nPEEK\n", addr)),
+            VarLocation::Local(offset) => out.push_str(&format!("OP_GET_LOCAL {}\n", offset)),
+        }
+        out.push_str(&limit_out);
+        out.push_str(&format!("LT\nPUSH 0\nJE {}\n", label_end));
+        self.parse_block(out)?;
+        out.push_str(&format!("{}:\n", label_step));
+        match location {
+            VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nPEEK\nPUSH 1\nADD\nPUSH {}\nSWAP\nPOKE\n", addr, addr)),
+            VarLocation::Local(offset) => out.push_str(&format!("OP_GET_LOCAL {}\nPUSH 1\nADD\nSET_LOCAL {}\n", offset, offset)),
+        }
+        out.push_str(&format!("JMP {}\n{}:\n", label_start, label_end));
+        self.loop_stack.pop();
+        Ok(())
+    }
+
     fn parse_var_decl(&mut self, out: &mut String, expected_type: Type) -> Result<(), CompileError> {
         self.advance();
         let name = match &self.current_token { Token::Identifier(s) => s.clone(), _ => return self.error("Expected variable name".to_string()) };
@@ -1067,7 +1247,10 @@ impl Parser {
         if self.current_token != Token::SemiColon { return self.error("Expected ;".to_string()); }
         self.advance();
         let loc = self.declare_var(name, final_type);
-        if let VarLocation::Global(addr) = loc { out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)); }
+        match loc {
+            VarLocation::Global(addr) => out.push_str(&format!("PUSH {}\nSWAP\nPOKE\n", addr)),
+            VarLocation::Local(_) => {}
+        }
         Ok(())
     }
 
@@ -1108,9 +1291,12 @@ impl Parser {
 
     fn parse_logical_or(&mut self, out: &mut String) -> Result<Type, CompileError> {
         let mut left_type = self.parse_logical_xor(out)?;
-        while self.current_token == Token::Or {
+        while self.current_token == Token::Or || self.current_token == Token::BitOr {
+            let is_bitwise = self.current_token == Token::BitOr;
             self.advance();
-            let _ = self.parse_logical_xor(out)?; out.push_str("OR\n"); left_type = Type::Bool;
+            let _ = self.parse_logical_xor(out)?;
+            out.push_str(if is_bitwise { "BOR\n" } else { "OR\n" });
+            left_type = if is_bitwise { Type::Int } else { Type::Bool };
         }
         Ok(left_type)
     }
@@ -1135,9 +1321,12 @@ impl Parser {
 
     fn parse_logical_and(&mut self, out: &mut String) -> Result<Type, CompileError> {
         let mut left_type = self.parse_equality(out)?;
-        while self.current_token == Token::And {
+        while self.current_token == Token::And || self.current_token == Token::BitAnd {
+            let is_bitwise = self.current_token == Token::BitAnd;
             self.advance();
-            let _ = self.parse_equality(out)?; out.push_str("AND\n"); left_type = Type::Bool; 
+            let _ = self.parse_equality(out)?;
+            out.push_str(if is_bitwise { "BAND\n" } else { "AND\n" });
+            left_type = if is_bitwise { Type::Int } else { Type::Bool };
         }
         Ok(left_type)
     }
@@ -1314,6 +1503,27 @@ impl Parser {
             },
             Token::Identifier(name) => {
                 let part1 = name.clone(); self.advance();
+                if matches!(part1.as_str(), "mem_alloc" | "mem_free" | "mem_read8" | "mem_write8" | "mem_read64" | "mem_write64" | "mem_copy" | "mem_set" | "mem_size") {
+                    let opcode = match part1.as_str() {
+                        "mem_alloc" => "MEM_ALLOC",
+                        "mem_free" => "MEM_FREE",
+                        "mem_read8" => "MEM_READ8",
+                        "mem_write8" => "MEM_WRITE8",
+                        "mem_read64" => "MEM_READ64",
+                        "mem_write64" => "MEM_WRITE64",
+                        "mem_copy" => "MEM_COPY",
+                        "mem_set" => "MEM_SET",
+                        _ => "MEM_SIZE",
+                    };
+                    let argc = match part1.as_str() {
+                        "mem_size" => 0,
+                        "mem_alloc" | "mem_free" | "mem_read8" | "mem_read64" => 1,
+                        "mem_write8" | "mem_write64" => 2,
+                        _ => 3,
+                    };
+                    self.parse_builtin_call(out, opcode, argc)?;
+                    return Ok(Type::Int);
+                }
                 if self.current_token == Token::LParen {
                     self.advance(); let mut arg_count = 0;
                     if self.current_token != Token::RParen { loop { self.parse_expression(out)?; arg_count += 1; if self.current_token == Token::Comma { self.advance(); } else { break; } } }
@@ -1389,5 +1599,22 @@ impl Parser {
             },
             _ => return self.error(format!("Unexpected token in expression: {:?}", self.current_token)),
         }
+    }
+
+    fn parse_builtin_call(&mut self, out: &mut String, opcode: &str, argc: usize) -> Result<(), CompileError> {
+        if self.current_token != Token::LParen { return self.error(format!("Expected ( after {}", opcode.to_ascii_lowercase())); }
+        self.advance();
+        for index in 0..argc {
+            self.parse_expression(out)?;
+            if index + 1 < argc {
+                if self.current_token != Token::Comma { return self.error("Expected , between arguments".to_string()); }
+                self.advance();
+            }
+        }
+        if self.current_token != Token::RParen { return self.error("Expected ) after arguments".to_string()); }
+        self.advance();
+        out.push_str(opcode);
+        out.push('\n');
+        Ok(())
     }
 }

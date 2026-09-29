@@ -1,0 +1,34 @@
+# Nux application foundation: small status/result helpers.
+
+func app_ok(value) {
+    return value;
+}
+
+func app_failed(error_code) {
+    return 0 - error_code;
+}
+
+func app_is_success(status) {
+    return status >= 0;
+}
+
+func app_is_failure(status) {
+    return status < 0;
+}
+
+func app_clamp(value, minimum, maximum) {
+    if (value < minimum) {
+        return minimum;
+    }
+    if (value > maximum) {
+        return maximum;
+    }
+    return value;
+}
+
+func app_select(condition, when_true, when_false) {
+    if (condition) {
+        return when_true;
+    }
+    return when_false;
+}

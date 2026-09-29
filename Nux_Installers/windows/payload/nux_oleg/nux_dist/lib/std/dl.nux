@@ -2,7 +2,7 @@
 # Neural Networks and Perceptrons (Inference only for now)
 # Depends on ml.nux
 
-@priority(41)
+# @priority(41)
 
 import "ml"
 
