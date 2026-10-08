@@ -174,6 +174,11 @@ impl InstallerApp {
         let add_to_path = self.add_to_path;
 
         thread::spawn(move || {
+            if install_dir.exists() {
+                *status.lock().unwrap() = "Cleaning up old installation...".to_string();
+                let _ = std::fs::remove_dir_all(&install_dir);
+            }
+
             *status.lock().unwrap() = "Extracting files...".to_string();
             
             let exe_path = match std::env::current_exe() {

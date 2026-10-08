@@ -2,13 +2,32 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+fn ensure_dir_exists(path: &std::path::Path) -> Result<(), String> {
+    if path.exists() {
+        if path.is_dir() {
+            return Ok(());
+        }
+        std::fs::remove_file(path).ok();
+    }
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            ensure_dir_exists(parent)?;
+        }
+    }
+    std::fs::create_dir(path).or_else(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            Ok(())
+        } else {
+            Err(format!("Failed to create dir {}: {}", path.display(), e))
+        }
+    })
+}
+
 pub fn extract_zip_archive<R: std::io::Read + std::io::Seek>(
     archive: &mut zip::ZipArchive<R>,
     target_dir: &PathBuf,
 ) -> Result<(), String> {
-    if !target_dir.exists() {
-        fs::create_dir_all(target_dir).map_err(|e| e.to_string())?;
-    }
+    ensure_dir_exists(target_dir)?;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
@@ -18,12 +37,10 @@ pub fn extract_zip_archive<R: std::io::Read + std::io::Seek>(
         };
 
         if file.name().ends_with('/') {
-            fs::create_dir_all(&outpath).ok();
+            ensure_dir_exists(&outpath)?;
         } else {
             if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p).ok();
-                }
+                ensure_dir_exists(p)?;
             }
             if outpath.exists() {
                 if outpath.is_dir() {
@@ -34,7 +51,7 @@ pub fn extract_zip_archive<R: std::io::Read + std::io::Seek>(
             }
             let mut outfile = match fs::File::create(&outpath) {
                 Ok(f) => f,
-                Err(e) => return Err(format!("Failed to create {}: {}", outpath.display(), e)),
+                Err(e) => return Err(format!("Failed to create file {}: {}", outpath.display(), e)),
             };
             io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
