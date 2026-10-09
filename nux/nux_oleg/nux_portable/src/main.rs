@@ -111,7 +111,7 @@ fn main() {
                     }
                 },
                 Err(errors) => {
-                    print_temple_errors(&errors, &source, source_path);
+                    print_rocket_errors(&errors, &source, source_path);
                 }
             }
         },
@@ -223,7 +223,7 @@ fn main() {
             let compiled_bytes = match result {
                 Ok(b) => b,
                 Err(errors) => {
-                    print_temple_errors(&errors, &source_content, fname);
+                    print_rocket_errors(&errors, &source_content, fname);
                     return;
                 }
             };
@@ -748,14 +748,14 @@ fn process_imports(path: &std::path::Path, visited: &mut std::collections::HashS
 
 use crate::high_level::CompileError;
 
-fn print_temple_errors(errors: &[CompileError], source_content: &str, file_name: &str) {
+fn print_rocket_errors(errors: &[CompileError], source_content: &str, file_name: &str) {
     let quotes = [
-        "Be calm, for every error is just a step towards perfection.",
-        "Peace comes from within. Do not seek it without.",
-        "The mind is everything. What you think you become.",
-        "Patience is the key to paradise.",
-        "Breathe in, breathe out. The bug is transient.",
-        "Do your duty, but do not concern yourself with the results."
+        "Houston, we have a problem... but we can fix it.",
+        "Space is hard, and so is programming. Keep going.",
+        "Every error is a stepping stone to the cosmos.",
+        "To infinity and beyond! Just fix this bug first.",
+        "A smooth launch requires careful preparation.",
+        "Explore the unknown, one line of code at a time."
     ];
     let quote = quotes[std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as usize % quotes.len()];
 
@@ -794,7 +794,7 @@ fn print_temple_errors(errors: &[CompileError], source_content: &str, file_name:
         }
         if !current_line.is_empty() { msg_lines.push(current_line); }
 
-        eprintln!("{}║{} 🛕 ERROR #{:<42}{}║{}", orange, red, idx + 1, orange, reset);
+        eprintln!("{}║{} 🚀 ERROR #{:<42}{}║{}", orange, red, idx + 1, orange, reset);
         for m in msg_lines {
             eprintln!("{}║{} {:<50}{} ║{}", orange, red, m, orange, reset);
         }

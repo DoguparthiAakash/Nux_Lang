@@ -1,0 +1,16 @@
+fn main() {
+    println("--- Fibonacci Sequence ---");
+    let n = input("Enter number of terms: ");
+    
+    let a = 0;
+    let b = 1;
+    let count = 0;
+    
+    while count < n {
+        println(a);
+        let temp = a + b;
+        a = b;
+        b = temp;
+        count = count + 1;
+    }
+}

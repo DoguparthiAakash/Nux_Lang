@@ -64,6 +64,10 @@ pub enum Type {
     Int,
     Long,
     Float,
+    Double,
+    I8, I16, I32, I64, I128,
+    U8, U16, U32, U64, U128,
+    F32, F64, F128,
     Char,
     String,
     Bool,
@@ -234,7 +238,7 @@ impl Parser {
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
                 Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
-                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString |
+                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString | Token::KwDouble | Token::KwI8 | Token::KwI16 | Token::KwI32 | Token::KwI64 | Token::KwI128 | Token::KwU8 | Token::KwU16 | Token::KwU32 | Token::KwU64 | Token::KwU128 | Token::KwF32 | Token::KwF64 | Token::KwF128 |
                 Token::Alloc | Token::Free | Token::GpuMap => {
                     if let Err(e) = self.parse_statement_or_expr(&mut main_body) {
                         self.errors.push(e);
@@ -435,7 +439,7 @@ impl Parser {
                 Token::Identifier(_) | Token::Print | Token::Println | Token::Input |
                 Token::If | Token::While | Token::Do | Token::For | Token::Asm | Token::Spawn |
                 Token::Var | Token::Let | Token::Const | Token::Return | Token::Lock | Token::Unlock | Token::Peek |
-                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString |
+                Token::KwInt | Token::KwFloat | Token::KwByte | Token::KwShort | Token::KwLong | Token::KwChar | Token::KwString | Token::KwDouble | Token::KwI8 | Token::KwI16 | Token::KwI32 | Token::KwI64 | Token::KwI128 | Token::KwU8 | Token::KwU16 | Token::KwU32 | Token::KwU64 | Token::KwU128 | Token::KwF32 | Token::KwF64 | Token::KwF128 |
                 Token::Alloc | Token::Free | Token::GpuMap => {
                     if let Err(e) = sub_parser.parse_statement_or_expr(main_body) {
                         self.errors.push(e);
@@ -1280,6 +1284,20 @@ impl Parser {
               Token::KwByte => { self.parse_var_decl(out, Type::Byte)?; },
               Token::KwShort => { self.parse_var_decl(out, Type::Short)?; },
               Token::KwLong => { self.parse_var_decl(out, Type::Long)?; },
+              Token::KwDouble => { self.parse_var_decl(out, Type::Double)?; },
+              Token::KwI8 => { self.parse_var_decl(out, Type::I8)?; },
+              Token::KwI16 => { self.parse_var_decl(out, Type::I16)?; },
+              Token::KwI32 => { self.parse_var_decl(out, Type::I32)?; },
+              Token::KwI64 => { self.parse_var_decl(out, Type::I64)?; },
+              Token::KwI128 => { self.parse_var_decl(out, Type::I128)?; },
+              Token::KwU8 => { self.parse_var_decl(out, Type::U8)?; },
+              Token::KwU16 => { self.parse_var_decl(out, Type::U16)?; },
+              Token::KwU32 => { self.parse_var_decl(out, Type::U32)?; },
+              Token::KwU64 => { self.parse_var_decl(out, Type::U64)?; },
+              Token::KwU128 => { self.parse_var_decl(out, Type::U128)?; },
+              Token::KwF32 => { self.parse_var_decl(out, Type::F32)?; },
+              Token::KwF64 => { self.parse_var_decl(out, Type::F64)?; },
+              Token::KwF128 => { self.parse_var_decl(out, Type::F128)?; },
               Token::KwChar => { self.parse_var_decl(out, Type::Char)?; },
               Token::KwString => { self.parse_var_decl(out, Type::String)?; },
              Token::Return => {
@@ -1764,6 +1782,10 @@ impl Parser {
             },
             Token::KwFloat => {
                  self.advance(); if self.current_token == Token::LParen { self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error("Expected )".to_string());} self.advance(); out.push_str("ITOF\n"); Ok(Type::Float) } else { return self.error("Expected (".to_string()); }
+            },
+            Token::KwDouble | Token::KwI8 | Token::KwI16 | Token::KwI32 | Token::KwI64 | Token::KwI128 | Token::KwU8 | Token::KwU16 | Token::KwU32 | Token::KwU64 | Token::KwU128 | Token::KwF32 | Token::KwF64 | Token::KwF128 => {
+                 // For now, treat these types similarly to KwInt / KwFloat parsing
+                 self.advance(); if self.current_token == Token::LParen { self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error("Expected )".to_string());} self.advance(); Ok(Type::Int) } else { return self.error("Expected (".to_string()); }
             },
             Token::SysPlatform => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_SYS_PLATFORM\n"); Ok(Type::Int) },
             Token::CamCount => { self.advance(); if self.current_token!=Token::LParen{return self.error("(".to_string());} self.advance(); if self.current_token!=Token::RParen{return self.error(")".to_string());} self.advance(); out.push_str("OP_CAM_COUNT\n"); Ok(Type::Int) },

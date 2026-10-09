@@ -1,0 +1,18 @@
+fn main() {
+    println("--- Palindrome Number Checker ---");
+    let num = input("Enter a positive number: ");
+    let original = num;
+    let reversed = 0;
+    
+    while num > 0 {
+        let digit = num % 10;
+        reversed = (reversed * 10) + digit;
+        num = num / 10;
+    }
+    
+    if original == reversed {
+        println("Is Palindrome: true");
+    } else {
+        println("Is Palindrome: false");
+    }
+}

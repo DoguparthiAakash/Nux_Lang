@@ -1,0 +1,21 @@
+fn main() {
+    println("--- FizzBuzz ---");
+    let n = input("Enter a number N: ");
+    let i = 1;
+    
+    while i <= n {
+        if (i % 15) == 0 {
+            prints("FizzBuzz");
+            println("");
+        } else if (i % 3) == 0 {
+            prints("Fizz");
+            println("");
+        } else if (i % 5) == 0 {
+            prints("Buzz");
+            println("");
+        } else {
+            println(i);
+        }
+        i = i + 1;
+    }
+}

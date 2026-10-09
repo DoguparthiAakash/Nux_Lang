@@ -50,7 +50,7 @@ pub enum Token {
     Number(i64),
     
     // Type Keywords
-    KwInt, KwFloat, KwByte, KwShort, KwLong, KwChar, KwString,
+    KwInt, KwFloat, KwByte, KwShort, KwLong, KwChar, KwString, KwDouble, KwI8, KwI16, KwI32, KwI64, KwI128, KwU8, KwU16, KwU32, KwU64, KwU128, KwF32, KwF64, KwF128,
     
     // Boolean
     True, False, Not,
@@ -363,6 +363,20 @@ impl Lexer {
             
             // Types
             "int" => Token::KwInt,
+            "double" => Token::KwDouble,
+            "i8" => Token::KwI8,
+            "i16" => Token::KwI16,
+            "i32" => Token::KwI32,
+            "i64" => Token::KwI64,
+            "i128" => Token::KwI128,
+            "u8" => Token::KwU8,
+            "u16" => Token::KwU16,
+            "u32" => Token::KwU32,
+            "u64" => Token::KwU64,
+            "u128" => Token::KwU128,
+            "f32" => Token::KwF32,
+            "f64" => Token::KwF64,
+            "f128" => Token::KwF128,
             "float" => Token::KwFloat,
             "hardware" => Token::Hardware,
             "link" => Token::Link,

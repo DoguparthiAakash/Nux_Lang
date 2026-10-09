@@ -2802,6 +2802,16 @@ OP_IMG_ALLOC
                  self.advance();
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
+                 if self.current_token != Token::RParen {
+                     let mut sub_out = String::new();
+                     let (t, _) = self.parse_expression(&mut sub_out)?;
+                     out.push_str(&sub_out);
+                     if t == Type::String {
+                         out.push_str("PRINTS\n");
+                     } else {
+                         out.push_str("PRINT\n");
+                     }
+                 }
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }
                  self.advance();
                  out.push_str("INPUT\n");
