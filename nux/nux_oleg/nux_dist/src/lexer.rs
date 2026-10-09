@@ -134,10 +134,12 @@ pub struct Lexer {
     pending_semi: bool,
     paren_depth: usize,
     bracket_depth: usize,
+    edition: String,
 }
 
 impl Lexer {
     pub fn new(input: &str) -> Self {
+        let edition = std::env::var("NUX_EDITION").unwrap_or_else(|_| "nx24".to_string());
         Self {
             input: input.chars().collect(),
             pos: 0,
@@ -147,6 +149,7 @@ impl Lexer {
             pending_semi: false,
             paren_depth: 0,
             bracket_depth: 0,
+            edition,
         }
     }
 
@@ -414,7 +417,7 @@ impl Lexer {
             self.advance_pos();
         }
 
-        let token = match text.as_str() {
+        let mut token = match text.as_str() {
             "print" => Token::Print,
             "println" => Token::Println,
             "input" => Token::Input,
@@ -503,8 +506,17 @@ impl Lexer {
             "xand" => Token::Xand,
             "xnot" => Token::Xnot,
             
-            _ => Token::Identifier(text),
+            _ => Token::Identifier(text.clone()),
         };
+
+        if self.edition == "nx1" || self.edition == "1" {
+            match text.as_str() {
+                "async" | "spawn" | "join" | "parallel" | "match" | "defer" => {
+                    token = Token::Identifier(text.clone());
+                }
+                _ => {}
+            }
+        }
         (token, start_span)
     }
 

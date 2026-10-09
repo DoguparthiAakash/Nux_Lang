@@ -44,8 +44,16 @@ fn main() {
         }
     }
 
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
     
+    // Parse global --edition flag to support older code versions
+    if let Some(pos) = args.iter().position(|x| x == "--edition") {
+        if pos + 1 < args.len() {
+            std::env::set_var("NUX_EDITION", &args[pos + 1]);
+            args.remove(pos); // remove --edition
+            args.remove(pos); // remove its value
+        }
+    }
     if args.len() < 2 {
         print_help();
         process::exit(1);
@@ -125,6 +133,7 @@ fn print_help() {
     let opts: &[(&str, &str)] = &[
         ("-c code",        "execute code passed in as string"),
         ("-m mod",         "run a library module as a script"),
+        ("--edition <id>", "set language edition for backward compatibility (e.g. nx1)"),
         ("-V, --version",  "print version and exit"),
         ("-h, --help",     "print this help and exit"),
     ];
@@ -138,15 +147,15 @@ fn print_help() {
 
     let cmds: &[(&str, &str)] = &[
         ("new <name>",        "create a new Nux project"),
-        ("build",             "compile project to bytecode (.ncx)"),
+        ("build",             "compile project to bytecode (.nuxi)"),
         ("build --target cuda","compile project to CUDA native"),
         ("run [file]",        "run a .nux script or project"),
-        ("compile <file>",    "compile to standalone .ncx executable"),
+        ("compile <file>",    "compile to standalone .nuxi executable"),
         ("build-native",      "compile to native object (.o) via GCC/NVCC"),
         ("fmt <file>",        "format source file in-place"),
         ("lint <file>",       "check for errors without running"),
         ("doc <file>",        "generate HTML documentation"),
-        ("disasm <file>",     "disassemble .ncx bytecode"),
+        ("disasm <file>",     "disassemble .nuxi bytecode"),
         ("test",              "run test suite"),
         ("clean",             "remove build artifacts"),
         ("repl",              "start interactive console"),
@@ -204,12 +213,12 @@ fn cmd_new(args: &[String]) {
         process::exit(1);
     }
     
-    // Create nux.toml
+    // Create Bonfort.toml
     let config_content = format!(r#"[package]
 name = "{}"
 version = "0.1.0"
 authors = []
-edition = "2024"
+edition = "nx24"
 
 [dependencies]
 
@@ -220,8 +229,8 @@ target = "native"
 parallel = true
 "#, project_name);
     
-    if let Err(e) = fs::write(project_dir.join("nux.toml"), config_content) {
-        eprintln!("Error creating nux.toml: {}", e);
+    if let Err(e) = fs::write(project_dir.join("Bonfort.toml"), config_content) {
+        eprintln!("Error creating Bonfort.toml: {}", e);
         process::exit(1);
     }
     
@@ -254,7 +263,7 @@ fn cmd_build(args: &[String]) {
         None
     };
     
-    if !current_dir.join("nux.toml").exists() {
+    if !current_dir.join("Bonfort.toml").exists() {
         eprintln!("\n  {} Not a Nux project. Run {} to initialize.", "✕".red().bold(), "nux new".cyan());
         process::exit(1);
     }
@@ -268,7 +277,7 @@ fn cmd_build(args: &[String]) {
     let mut is_native = false;
     let mut project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output").to_string();
     
-    if let Ok(toml_content) = fs::read_to_string(current_dir.join("nux.toml")) {
+    if let Ok(toml_content) = fs::read_to_string(current_dir.join("Bonfort.toml")) {
         for line in toml_content.lines() {
             let t = line.trim();
             if t.starts_with("target") && t.contains("\"native\"") {
@@ -386,7 +395,7 @@ fn cmd_build(args: &[String]) {
     } else {
         match compile(&source) {
             Ok(bytecode) => {
-                let output_file = build_dir.join(format!("{}.ncx", project_name));
+                let output_file = build_dir.join(format!("{}.nuxi", project_name));
                 fs::write(&output_file, bytecode).unwrap();
                 let mode = if release { "release" } else { "debug" };
                 println!("{} {} {}  {}  {}", "├─".truecolor(80, 80, 80), "✦".green(), "compiled".green(), project_name.white().bold(), format!("({})", mode).truecolor(80, 80, 80));
@@ -481,10 +490,10 @@ fn cmd_build_native(args: &[String]) {
 fn cmd_run(args: &[String]) {
     if args.is_empty() || (args.len() == 1 && args[0] == ".") {
         let current_dir = env::current_dir().unwrap();
-        if current_dir.join("nux.toml").exists() {
+        if current_dir.join("Bonfort.toml").exists() {
             cmd_build(&[]);
             let project_name = current_dir.file_name().and_then(|n| n.to_str()).unwrap_or("output");
-            let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.ncx", project_name));
+            let bytecode_file = current_dir.join("target").join("debug").join(format!("{}.nuxi", project_name));
             
             if let Ok(bytecode) = fs::read(&bytecode_file) {
                 println!("{} {} {}  {}\n", "╰─".truecolor(80, 80, 80), "▶".cyan(), "running".cyan(), project_name.white().bold());
@@ -501,7 +510,7 @@ fn cmd_run(args: &[String]) {
     } else {
         let input_file = &args[0];
         
-        if input_file.ends_with(".ncx") || input_file.ends_with(".nuxc") {
+        if input_file.ends_with(".nuxi") || input_file.ends_with(".nuxc") {
             let bytecode = fs::read(input_file).unwrap();
             println!("  {} {}\n", "▶".bright_magenta(), input_file.white().bold());
             let mut vm = NuxVm::new(bytecode);
@@ -595,10 +604,10 @@ fn cmd_compile(args: &[String]) {
         if pos + 1 < args.len() {
             args[pos + 1].clone()
         } else {
-            input_file.replace(".nux", if standalone { ".exe" } else { ".ncx" })
+            input_file.replace(".nux", if standalone { ".exe" } else { ".nuxi" })
         }
     } else {
-        input_file.replace(".nux", if standalone { ".exe" } else { ".ncx" })
+        input_file.replace(".nux", if standalone { ".exe" } else { ".nuxi" })
     };
     
     let source = match fs::read_to_string(input_file) {

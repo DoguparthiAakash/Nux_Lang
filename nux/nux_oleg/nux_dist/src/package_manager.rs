@@ -37,7 +37,7 @@ impl InstallTarget {
     pub fn auto_detect() -> Self {
         if env::var("NUX_LIB_PATH").is_ok() {
             InstallTarget::Venv
-        } else if Path::new("nux.toml").exists() || Path::new("lib").exists() {
+        } else if Path::new("Bonfort.toml").exists() || Path::new("lib").exists() {
             InstallTarget::Local
         } else if Path::new(GLOBAL_NUX_LIB).exists() {
             InstallTarget::Global
@@ -169,18 +169,18 @@ pub fn install(package_name: &str, version_req: &str, target: InstallTarget) {
 }
 
 pub fn install_from_config(target: InstallTarget) {
-    let bonfort_toml = Path::new("nux.toml");
-    let bonfort_lock = Path::new("nux.lock");
+    let bonfort_toml = Path::new("Bonfort.toml");
+    let bonfort_lock = Path::new("Bonfort.lock");
     
     if !bonfort_toml.exists() {
-        eprintln!("Error: nux.toml not found. Run 'nux new' to create a project.");
+        eprintln!("Error: Bonfort.toml not found. Run 'nux new' to create a project.");
         return;
     }
 
     let config = match BonfortConfig::from_file(bonfort_toml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Error reading nux.toml: {}", e);
+            eprintln!("Error reading Bonfort.toml: {}", e);
             return;
         }
     };
@@ -225,14 +225,14 @@ pub fn install_from_config(target: InstallTarget) {
 
     if installed_at_least_one {
         if let Err(e) = lock.to_file(bonfort_lock) {
-            eprintln!("Warning: Could not save nux.lock: {}", e);
+            eprintln!("Warning: Could not save Bonfort.lock: {}", e);
         } else {
-            println!("✓ Created/Updated nux.lock");
+            println!("✓ Created/Updated Bonfort.lock");
         }
     } else if !config.dependencies.is_empty() {
-        println!("All dependencies satisfied by nux.lock");
+        println!("All dependencies satisfied by Bonfort.lock");
     } else {
-        println!("No dependencies found in nux.toml");
+        println!("No dependencies found in Bonfort.toml");
     }
 }
 

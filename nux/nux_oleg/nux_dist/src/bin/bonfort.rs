@@ -171,7 +171,7 @@ fn main() {
             name: project_name.to_string(),
             version: "0.1.0".to_string(),
             authors: vec!["Your Name <you@example.com>".to_string()],
-            edition: "2024".to_string(),
+            edition: "nx24".to_string(),
         },
         dependencies: HashMap::new(),
         dev_dependencies: HashMap::new(),
@@ -380,7 +380,7 @@ fn print_command_help(command: &str) {
             println!();
             println!("DESCRIPTION:");
             println!("    Creates a new Nux project with the following structure:");
-            println!("    - nux.toml (project metadata)");
+            println!("    - Bonfort.toml (project metadata)");
             println!("    - requirements.txt (dependencies)");
             println!("    - src/main.nux (entry point)");
             println!("    - README.md");
