@@ -1520,6 +1520,7 @@ impl Parser {
              if final_type == Type::Unknown || final_type == Type::Void { final_type = expr_type.clone(); }
              if final_type == Type::Float && expr_type == Type::Int { out.push_str("ITOF\n"); }
              else if final_type == Type::Int && expr_type == Type::Float { out.push_str("FTOI\n"); }
+             else if final_type == Type::Int && expr_type == Type::String { out.push_str("OP_STR_TO_INT\n"); }
         } else {
             out.push_str("PUSH 0\n");
         }
@@ -1755,10 +1756,11 @@ impl Parser {
             Token::Input => {
                  self.advance(); if self.current_token != Token::LParen { return self.error("Expected (".to_string()); } self.advance();
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); } self.advance();
-                 out.push_str("INPUT\n"); Ok(Type::Int)
+                 out.push_str("INPUT\n"); Ok(Type::String)
             },
             Token::KwInt => {
-                 self.advance(); if self.current_token == Token::LParen { self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error("Expected )".to_string());} self.advance(); out.push_str("FTOI\n"); Ok(Type::Int) } else { return self.error("Expected (".to_string()); }
+                 self.advance(); if self.current_token == Token::LParen { self.advance(); let expr_type = self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error("Expected )".to_string());} self.advance(); 
+                 if expr_type == Type::String { out.push_str("OP_STR_TO_INT\n"); } else { out.push_str("FTOI\n"); } Ok(Type::Int) } else { return self.error("Expected (".to_string()); }
             },
             Token::KwFloat => {
                  self.advance(); if self.current_token == Token::LParen { self.advance(); self.parse_expression(out)?; if self.current_token!=Token::RParen{return self.error("Expected )".to_string());} self.advance(); out.push_str("ITOF\n"); Ok(Type::Float) } else { return self.error("Expected (".to_string()); }

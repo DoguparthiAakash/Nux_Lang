@@ -67,6 +67,21 @@ banner() {
     nux_header "nux-installer" "interactive menu ..."
 }
 
+do_cleanup() {
+    nux_print "Cleaning up" "$MAGENTA" "caches to free up space..."
+    rm -f /tmp/nux-download-*.tar.gz /tmp/nux-update-*.tar.gz 2>/dev/null || true
+    local SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    local SRC_DIR="$(realpath "$SCRIPT_DIR/../../nux/nux_oleg/nux_dist" 2>/dev/null || echo '')"
+    if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR/target" ]; then
+        rm -rf "$SRC_DIR/target" 2>/dev/null || true
+    fi
+    if [ -d "$HOME/.cargo/registry/cache" ]; then
+        rm -rf "$HOME/.cargo/registry/cache/"* 2>/dev/null || true
+    fi
+    rm -rf rpmbuild /tmp/nux_*_amd64 /tmp/nux_*_arm64 2>/dev/null || true
+    nux_print "Cleaned" "$GREEN" "installation caches successfully"
+}
+
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
         nux_error "This installer requires root privileges."
@@ -254,6 +269,7 @@ DESKTOPEOF
     echo "$VERSION" > "$target_dir/.nux_installed"
     chmod 644 "$target_dir/.nux_installed"
 
+    do_cleanup
     nux_finish "installed" "successfully!"
 }
 
@@ -562,6 +578,7 @@ do_build_from_source() {
 
     echo "$VERSION" > "$INSTALL_DIR/.nux_installed"
 
+    do_cleanup
     nux_finish "installed" "nux $(nux --version 2>/dev/null || echo '(built from source)') → $BIN_LINK"
 }
 

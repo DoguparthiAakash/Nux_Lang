@@ -38,6 +38,20 @@ nux_finish() { local tag="$1" msg="$2"; printf "%bâ•°â”€ %bâ–¶ %b%s
 
 banner() { nux_header "nux-installer" "interactive menu ..."; }
 
+do_cleanup() {
+    nux_print "Cleaning up" "$MAGENTA" "caches to free up space..."
+    rm -f /tmp/nux-download-*.tar.gz /tmp/nux-update-*.tar.gz 2>/dev/null || true
+    local SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    local SRC_DIR="$(realpath "$SCRIPT_DIR/../../nux/nux_oleg/nux_dist" 2>/dev/null || echo '')"
+    if [ -n "$SRC_DIR" ] && [ -d "$SRC_DIR/target" ]; then
+        rm -rf "$SRC_DIR/target" 2>/dev/null || true
+    fi
+    if [ -d "$HOME/.cargo/registry/cache" ]; then
+        rm -rf "$HOME/.cargo/registry/cache/"* 2>/dev/null || true
+    fi
+    nux_print "Cleaned" "$GREEN" "installation caches successfully"
+}
+
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
         nux_error "This installer requires root privileges."
@@ -155,6 +169,7 @@ do_install() {
     fi
 
     echo "$VERSION" > "$target_dir/.nux_installed"
+    do_cleanup
     nux_finish "installed" "successfully!"
 }
 
@@ -176,6 +191,7 @@ do_update() {
     if curl -fSL --connect-timeout 30 -o "$TEMP_TAR" "$DOWNLOAD_URL" 2>/dev/null && verify_checksum "$TEMP_TAR"; then
         rm -f "$INSTALL_DIR/nux" 2>/dev/null || true
         tar --no-same-owner -xzf "$TEMP_TAR" -C "$INSTALL_DIR"
+        do_cleanup
         nux_finish "updated" "successfully!"
     else
         nux_error "Update failed."

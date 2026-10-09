@@ -177,6 +177,7 @@ pub fn compile(source: &str) -> Result<Vec<u8>, String> {
             "OP_STR_LEN" => ops.push(0x6C),
             "OP_STR_CHAR" => ops.push(0x6D),
             "OP_STR_SUB" => ops.push(0x6E),
+            "OP_STR_TO_INT" => ops.push(0x6F),
             
             "OP_TENSOR_NEW" => ops.push(0x82),
             "OP_TENSOR_FREE" => ops.push(0x83),

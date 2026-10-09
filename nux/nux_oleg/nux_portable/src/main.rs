@@ -768,12 +768,12 @@ fn print_temple_errors(errors: &[CompileError], source_content: &str, file_name:
     eprintln!("{}             /\\             {}", orange, reset);
     eprintln!("{}            /  \\            {}", orange, reset);
     eprintln!("{}           /____\\           {}", orange, reset);
-    eprintln!("{}           | ॐ  |           {}", orange, reset);
+    eprintln!("{}           |    |           {}", orange, reset);
     eprintln!("{}          /|____|\\          {}", orange, reset);
     eprintln!("{}         /________\\         {}", orange, reset);
     eprintln!("{}        ║          ║        {}", orange, reset);
     eprintln!("{}╔═══════╩══════════╩═══════════════════════════════════╗{}", orange, reset);
-    eprintln!("{}║                   ॐ  SHANTI  ॐ                       ║{}", gold, reset);
+    eprintln!("{}║                     ERROR                            ║{}", gold, reset);
     eprintln!("{}╟──────────────────────────────────────────────────────╢{}", orange, reset);
     eprintln!("{}║ {}{:<52}{} ║{}", orange, gold, quote, orange, reset);
     eprintln!("{}╟──────────────────────────────────────────────────────╢{}", orange, reset);

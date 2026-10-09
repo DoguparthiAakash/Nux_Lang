@@ -602,6 +602,16 @@ impl NuxVm {
                     heap_strings.push(sub);
                     self.stack.push((heap_strings.len() - 1) as i64);
                 },
+                0x6F => { // OP_STR_TO_INT
+                    let id = self.stack.pop().unwrap() as usize;
+                    let heap_strings = self.shared.heap_strings.read().unwrap();
+                    if id < heap_strings.len() {
+                        let parsed = heap_strings[id].parse::<i64>().unwrap_or(0);
+                        self.stack.push(parsed);
+                    } else {
+                        self.stack.push(0);
+                    }
+                },
                 0x44 => { // OP_GET_LOCAL
                     let offset = self.read_i64() as usize;
                     let idx = self.base_pointer + offset;
