@@ -172,9 +172,25 @@ impl Lexer {
             '/' => {
                 self.advance_pos();
                 if self.pos < self.input.len() && self.input[self.pos] == '/' {
-                    // Floor division //
-                    self.advance_pos();
-                    (Token::SlashSlash, start_span)
+                    self.advance_pos(); // consume second '/'
+                    // Disambiguate: if next char is whitespace, newline, EOF, or another '/',
+                    // treat as a single-line comment. Otherwise it's floor division.
+                    let is_comment = if self.pos >= self.input.len() {
+                        true // EOF after // -> comment
+                    } else {
+                        let next = self.input[self.pos];
+                        next == ' ' || next == '\t' || next == '\r' || next == '\n' || next == '/'
+                    };
+                    if is_comment {
+                        // Single-line comment: skip to end of line
+                        while self.pos < self.input.len() && self.input[self.pos] != '\n' {
+                            self.advance_pos();
+                        }
+                        self.next_token()
+                    } else {
+                        // Floor division operator //
+                        (Token::SlashSlash, start_span)
+                    }
                 } else {
                     (Token::Slash, start_span)
                 }
@@ -309,7 +325,7 @@ impl Lexer {
             "fn"   => Token::Func,      // Alias: fn main() { }
             "def"  => Token::Func,      // Alias: def main() { }
             "var" => Token::Var,
-            "let" => Token::Identifier(text), // Disable let
+            "let" => Token::Var, // Alias: let x = ... same as var x = ...
             
             "const" => Token::Const,
             "mut" => Token::Mut,

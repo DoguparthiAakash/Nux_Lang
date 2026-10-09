@@ -715,9 +715,11 @@ impl NuxVm {
                 OP_PRINT_VAL => { let val = self.pop(); print!("{}", val); io::stdout().flush().unwrap(); },
                 
                 OP_INPUT => {
+                   io::stdout().flush().unwrap_or(());
                    let mut buffer = String::new();
                    if let Ok(_) = io::stdin().read_line(&mut buffer) {
-                       let val = buffer.trim().parse::<i64>().unwrap_or(0);
+                       let trimmed = buffer.trim();
+                       let val = trimmed.parse::<i64>().unwrap_or(0);
                        self.push(val); 
                    } else { 
                        self.push(0); 

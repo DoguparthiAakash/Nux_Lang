@@ -2803,13 +2803,20 @@ OP_IMG_ALLOC
                  if self.current_token != Token::LParen { return self.error("Expected (".to_string()); }
                  self.advance();
                  if self.current_token != Token::RParen {
-                     let mut sub_out = String::new();
-                     let (t, _) = self.parse_expression(&mut sub_out)?;
-                     out.push_str(&sub_out);
-                     if t == Type::String {
-                         out.push_str("PRINTS\n");
+                     if let Token::String(s) = &self.current_token {
+                         for c in s.chars() {
+                             out.push_str(&format!("PUSH {}\nPRINT_CHAR\n", c as u32));
+                         }
+                         self.advance();
                      } else {
-                         out.push_str("PRINT\n");
+                         let mut sub_out = String::new();
+                         let (t, _) = self.parse_expression(&mut sub_out)?;
+                         out.push_str(&sub_out);
+                         if t == Type::Float {
+                             out.push_str("PRINT_FLOAT\n");
+                         } else {
+                             out.push_str("PRINT_VAL\n");
+                         }
                      }
                  }
                  if self.current_token != Token::RParen { return self.error("Expected )".to_string()); }

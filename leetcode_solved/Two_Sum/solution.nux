@@ -1,8 +1,8 @@
 fn main() {
     println("--- Two Sum (O(n^2) Simple) ---");
-    // Array initialization logic might vary depending on Nux's array support
-    // Here is a simple implementation with manual array entries for demonstration.
-    // Given array: [2, 7, 11, 15], target = 9
+    # Array initialization logic might vary depending on Nux's array support
+    # Here is a simple implementation with manual array entries for demonstration.
+    # Given array: [2, 7, 11, 15], target = 9
     
     let target = input("Enter target sum: ");
     
@@ -15,20 +15,20 @@ fn main() {
     let i = 0;
     let found = 0;
     
-    while i < len {
+    while (i < len) {
         let j = i + 1;
-        while j < len {
+        while (j < len) {
             let val_i = 0;
-            if i == 0 { val_i = arr0; }
-            else if i == 1 { val_i = arr1; }
-            else if i == 2 { val_i = arr2; }
-            else if i == 3 { val_i = arr3; }
+            if (i == 0) { val_i = arr0; }
+            else if (i == 1) { val_i = arr1; }
+            else if (i == 2) { val_i = arr2; }
+            else if (i == 3) { val_i = arr3; }
             
             let val_j = 0;
-            if j == 0 { val_j = arr0; }
-            else if j == 1 { val_j = arr1; }
-            else if j == 2 { val_j = arr2; }
-            else if j == 3 { val_j = arr3; }
+            if (j == 0) { val_j = arr0; }
+            else if (j == 1) { val_j = arr1; }
+            else if (j == 2) { val_j = arr2; }
+            else if (j == 3) { val_j = arr3; }
             
             if (val_i + val_j) == target {
                 prints("Indices found: ");
@@ -36,15 +36,15 @@ fn main() {
                 prints(" and ");
                 println(j);
                 found = 1;
-                j = len; // break loop
-                i = len; // break loop
+                j = len; # break loop
+                i = len; # break loop
             }
             j = j + 1;
         }
         i = i + 1;
     }
     
-    if found == 0 {
+    if (found == 0) {
         println("No two sum solution found.");
     }
 }
